@@ -1,9 +1,6 @@
 import admin from 'firebase-admin';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import config from './env.js';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 let firebaseApp = null;
 
 export const initializeFirebase = () => {
@@ -12,9 +9,19 @@ export const initializeFirebase = () => {
       return firebaseApp;
     }
 
-    // Ler credenciais direto do arquivo JSON
-    const credentialsPath = path.join(__dirname, '../../config/firebase-adminsdk.json');
-    const serviceAccount = JSON.parse(fs.readFileSync(credentialsPath, 'utf8'));
+    // Use environment variables for Firebase credentials
+    const serviceAccount = {
+      type: 'service_account',
+      project_id: config.firebase.projectId,
+      private_key_id: 'key-id',
+      private_key: config.firebase.privateKey,
+      client_email: config.firebase.clientEmail,
+      client_id: 'client-id',
+      auth_uri: 'https://accounts.google.com/o/oauth2/auth',
+      token_uri: 'https://oauth2.googleapis.com/token',
+      auth_provider_x509_cert_url: 'https://www.googleapis.com/oauth2/v1/certs',
+      client_x509_cert_url: `https://www.googleapis.com/robot/v1/metadata/x509/${config.firebase.clientEmail}`,
+    };
 
     firebaseApp = admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),

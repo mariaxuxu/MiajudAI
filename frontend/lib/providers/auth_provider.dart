@@ -64,6 +64,10 @@ Future<void> signup({
         return;
       }
 
+      // Update Firebase display name
+      await _authService.updateDisplayName(fullName);
+      print('DEBUG: Display name updated: $fullName');
+
       // Get ID token
       print('DEBUG: Getting ID token...');
       final idToken = await _authService.getIdToken();
@@ -78,14 +82,72 @@ Future<void> signup({
       // Register with backend
       final response = await _apiService.post('/auth/verify-token', {
         'idToken': idToken,
+        'fullName': fullName,
       });
 
       if (response['success']) {
         _authToken = response['token'];
         _user = UserModel.fromJson(response['user']);
+        print('DEBUG SIGNUP: User created - ${_user?.fullName}');
 
         await _preferences.setString('auth_token', _authToken!);
+        await _preferences.setString('user_data', response['user'].toString());
         _isNewUser = true;
+
+        _setLoading(false);
+        notifyListeners();
+      }
+    } catch (e) {
+      _setError(e.toString());
+      _setLoading(false);
+    }
+  }
+
+  Future<void> login({
+    required String email,
+    required String password,
+  }) async {
+    _setLoading(true);
+    _clearError();
+
+    try {
+      // Sign in with Firebase
+      print('DEBUG: Starting login...');
+      final userCredential = await _authService.signInWithEmail(
+        email: email,
+        password: password,
+      );
+      print('DEBUG: User signed in: ${userCredential.user?.uid}');
+
+      if (userCredential.user == null) {
+        _setError('Falha ao fazer login');
+        _setLoading(false);
+        return;
+      }
+
+      // Get ID token
+      print('DEBUG: Getting ID token...');
+      final idToken = await _authService.getIdToken();
+      print('DEBUG: Got ID token: $idToken');
+
+      if (idToken == null) {
+        _setError('Falha ao obter token');
+        _setLoading(false);
+        return;
+      }
+
+      // Verify token with backend
+      final response = await _apiService.post('/auth/verify-token', {
+        'idToken': idToken,
+      });
+
+      if (response['success']) {
+        _authToken = response['token'];
+        _user = UserModel.fromJson(response['user']);
+        _isNewUser = false;
+
+        await _preferences.setString('auth_token', _authToken!);
+        await _preferences.setString('user_data', response['user'].toString());
 
         _setLoading(false);
         notifyListeners();
@@ -122,6 +184,11 @@ Future<void> signup({
       _setError(e.toString());
       _setLoading(false);
     }
+  }
+
+  void updateUserFromResponse(Map<String, dynamic> userData) {
+    _user = UserModel.fromJson(userData);
+    notifyListeners();
   }
 
   Future<void> logout() async {

@@ -11,7 +11,7 @@
     "test:watch": "jest --watch",
     "lint": "eslint src/",
     "lint:fix": "eslint src/ --fix",
-    "migrate": "node scripts/migrate.js",
+    "migrate": "node run-migration.js",
     "migrate:rollback": "node scripts/rollback.js",
     "seed": "node scripts/seed.js"
   },
