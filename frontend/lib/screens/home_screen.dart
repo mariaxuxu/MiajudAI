@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../config/constants.dart';
+import '../config/routes.dart';
 import 'home/dashboard_screen.dart';
 import 'home/finance_screen.dart';
 import 'home/services_screen.dart';
@@ -46,6 +47,17 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
+      floatingActionButton: _currentIndex == 1
+          ? FloatingActionButton.extended(
+              onPressed: () => Navigator.pushNamed(context, AppRoutes.chat),
+              backgroundColor: AppColors.accent,
+              icon: const Icon(Icons.smart_toy_outlined, color: Colors.white),
+              label: const Text(
+                'Assistente IA',
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+              ),
+            )
+          : null,
       body: _screens[_currentIndex],
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,

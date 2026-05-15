@@ -10,6 +10,7 @@ import '../screens/calendar_screen.dart';
 import '../screens/accounts_screen.dart';
 import '../screens/income_screen.dart';
 import '../screens/expenses_screen.dart';
+import '../screens/chat/financial_chat_screen.dart';
 
 class AppRoutes {
   static const String splash = '/';
@@ -39,5 +40,6 @@ class AppRoutes {
     accounts: (context) => const AccountsScreen(),
     income: (context) => const IncomeScreen(),
     expenses: (context) => const ExpensesScreen(),
+    chat: (context) => const FinancialChatScreen(),
   };
 }

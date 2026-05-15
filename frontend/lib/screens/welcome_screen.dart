@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../config/constants.dart';
+import '../config/routes.dart';
 import '../providers/auth_provider.dart';
 
 class WelcomeScreen extends StatelessWidget {
@@ -151,7 +152,7 @@ class WelcomeScreen extends StatelessWidget {
                     height: 56,
                     child: ElevatedButton(
                       onPressed: () {
-                        // TODO: Navegar para chatbot
+                        Navigator.pushNamed(context, AppRoutes.chat);
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFFFF8C00),

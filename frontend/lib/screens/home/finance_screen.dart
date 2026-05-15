@@ -16,13 +16,13 @@ class FinanceScreen extends StatelessWidget {
               Icon(
                 Icons.attach_money_outlined,
                 size: 80,
-                color: const Color(0xFFFF8C00),
+                color: AppColors.accent,
               ),
               const SizedBox(height: 16),
               Text(
                 'Gestão Financeira',
                 style: AppTextStyles.displaySmall.copyWith(
-                  color: const Color(0xFF1B4965),
+                  color: AppColors.primary,
                 ),
               ),
               const SizedBox(height: 8),

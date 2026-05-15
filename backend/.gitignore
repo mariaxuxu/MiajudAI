@@ -42,8 +42,7 @@ coverage/
 jest.json
 
 # Firebase
-backend/src/config/miajudai-firebase-adminsdk-fbsvc-5c8dbfb45b.json
-backend/config/firebase-adminsdk.json
+*firebase-adminsdk*.json
 
 # Docker
 .docker/

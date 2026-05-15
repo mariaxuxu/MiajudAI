@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 // ====================================
 // Colors
@@ -180,9 +181,10 @@ class AppStrings {
 // API Configuration
 // ====================================
 class ApiConfig {
-  static const String baseUrl = 'http://localhost:3000/api';
-  static const int connectionTimeout = 30000; // 30 seconds
-  static const int receiveTimeout = 30000; // 30 seconds
+  static String get baseUrl =>
+      dotenv.env['API_BASE_URL'] ?? 'http://localhost:5000/api';
+  static const int connectionTimeout = 30000;
+  static const int receiveTimeout = 30000;
 }
 
 // ====================================

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../config/constants.dart';
+import '../config/routes.dart';
 import '../providers/auth_provider.dart';
 import '../providers/account_provider.dart';
 
@@ -454,10 +455,23 @@ class _AccountsScreenState extends State<AccountsScreen> {
           );
         },
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _showAddAccountBottomSheet,
-        backgroundColor: const Color(0xFFFF8C00),
-        child: const Icon(Icons.add, color: Colors.white),
+      floatingActionButton: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          FloatingActionButton(
+            heroTag: 'chat',
+            onPressed: () => Navigator.pushNamed(context, AppRoutes.chat),
+            backgroundColor: const Color(0xFFFF8C00),
+            child: const Icon(Icons.smart_toy_outlined, color: Colors.white),
+          ),
+          const SizedBox(width: 12),
+          FloatingActionButton(
+            heroTag: 'add',
+            onPressed: _showAddAccountBottomSheet,
+            backgroundColor: const Color(0xFFFF8C00),
+            child: const Icon(Icons.add, color: Colors.white),
+          ),
+        ],
       ),
     );
   }
