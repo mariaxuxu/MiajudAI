@@ -1,0 +1,75 @@
+# Environment
+.env
+.env.local
+
+# Flutter
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+.dart_tool/
+flutter_export_environment.sh
+
+# Android
+android/.gradle/
+android/**/local.properties
+android/**/GeneratedPluginRegistrant.java
+android/gradlew
+android/gradlew.bat
+android/local.properties
+*.jks
+*.keystore
+
+# iOS
+ios/.symlinks/
+ios/.generated/
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+ios/Flutter/Generated.xcconfig
+ios/Flutter/ephemeral/
+ios/Flutter/app.flutterpack
+ios/Flutter/flutter_export_environment.sh
+ios/Pods/
+ios/Podfile.lock
+ios/.symlinks/
+ios/Flutter/Local.podspec
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+*.iml
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Testing
+coverage/
+.nyc_output/
+
+# Temporary
+*.log
+*.tmp
+temp/
+
+# Firebase
+google-services.json
+GoogleService-Info.plist
+serviceAccountKey.json
+
+# Build artifacts
+*.apk
+*.ipa
+*.app
+*.aar
+
+# Secrets
+secrets.json
+.keys
+private_keys/
