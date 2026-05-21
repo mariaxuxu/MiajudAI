@@ -5,18 +5,25 @@ import '../config/constants.dart';
 class ApiService {
   final String baseUrl = ApiConfig.baseUrl;
 
+  ApiService() {
+    print('DEBUG: ApiService initialized with baseUrl: $baseUrl');
+  }
+
   Future<dynamic> get(String endpoint, {String? token}) async {
     try {
       final headers = _buildHeaders(token);
+      final url = '$baseUrl$endpoint';
+      print('DEBUG API: GET $url');
       final response = await http
           .get(
-            Uri.parse('$baseUrl$endpoint'),
+            Uri.parse(url),
             headers: headers,
           )
           .timeout(const Duration(milliseconds: ApiConfig.connectionTimeout));
 
       return _handleResponse(response);
     } catch (e) {
+      print('DEBUG API ERROR: Request failed - $e');
       rethrow;
     }
   }
@@ -24,16 +31,21 @@ class ApiService {
   Future<dynamic> post(String endpoint, dynamic data, {String? token}) async {
     try {
       final headers = _buildHeaders(token);
+      final url = '$baseUrl$endpoint';
+      print('DEBUG API: POST $url');
+      print('DEBUG API: Body: ${jsonEncode(data)}');
       final response = await http
           .post(
-            Uri.parse('$baseUrl$endpoint'),
+            Uri.parse(url),
             headers: headers,
             body: jsonEncode(data),
           )
           .timeout(const Duration(milliseconds: ApiConfig.connectionTimeout));
 
+      print('DEBUG API: Response status: ${response.statusCode}');
       return _handleResponse(response);
     } catch (e) {
+      print('DEBUG API ERROR: POST failed - $e');
       rethrow;
     }
   }
@@ -51,6 +63,7 @@ class ApiService {
 
       return _handleResponse(response);
     } catch (e) {
+      print('DEBUG API ERROR: Request failed - $e');
       rethrow;
     }
   }
@@ -67,6 +80,7 @@ class ApiService {
 
       return _handleResponse(response);
     } catch (e) {
+      print('DEBUG API ERROR: Request failed - $e');
       rethrow;
     }
   }

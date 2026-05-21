@@ -181,8 +181,17 @@ class AppStrings {
 // API Configuration
 // ====================================
 class ApiConfig {
-  static String get baseUrl =>
-      dotenv.env['API_BASE_URL'] ?? 'http://localhost:5000/api';
+  static String get baseUrl {
+    final envUrl = dotenv.env['API_BASE_URL'];
+    if (envUrl != null && envUrl.isNotEmpty) {
+      print('DEBUG: Using API_BASE_URL from .env: $envUrl');
+      return envUrl;
+    }
+    // Fallback para emulador iOS
+    const fallback = 'http://localhost:3001/api';
+    print('DEBUG: Using fallback API_BASE_URL: $fallback');
+    return fallback;
+  }
   static const int connectionTimeout = 30000;
   static const int receiveTimeout = 30000;
 }

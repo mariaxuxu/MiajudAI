@@ -102,10 +102,6 @@ class _FinancialChatScreenState extends State<FinancialChatScreen> {
                 'Assistente Financeiro',
                 style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.white),
               ),
-              Text(
-                'Powered by Gemini',
-                style: TextStyle(fontSize: 10, color: Colors.white.withValues(alpha: 0.65)),
-              ),
             ],
           ),
         ],

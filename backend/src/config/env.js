@@ -82,7 +82,7 @@ const config = {
 
   // API
   api: {
-    baseUrl: process.env.API_BASE_URL || 'http://localhost:5000',
+    baseUrl: process.env.API_BASE_URL || 'http://localhost:3001',
   },
 
   // Rate limiting

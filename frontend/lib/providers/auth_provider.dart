@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_model.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
+import '../config/constants.dart';
 
 class AuthProvider extends ChangeNotifier {
   final ApiService _apiService = ApiService();
@@ -52,6 +53,7 @@ Future<void> signup({
     try {
       // Create user with Firebase
       print('DEBUG: Starting signup...');
+      print('DEBUG: API Base URL: ${ApiConfig.baseUrl}');
       final userCredential = await _authService.signUpWithEmail(
         email: email,
         password: password,
@@ -113,6 +115,7 @@ Future<void> signup({
     try {
       // Sign in with Firebase
       print('DEBUG: Starting login...');
+      print('DEBUG: API Base URL: ${ApiConfig.baseUrl}');
       final userCredential = await _authService.signInWithEmail(
         email: email,
         password: password,

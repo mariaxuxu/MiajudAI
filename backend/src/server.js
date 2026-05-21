@@ -1,9 +1,16 @@
+// Development: Desabilitar verificação SSL para self-signed certs na rede local
+if (process.env.NODE_ENV === 'development') {
+  process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+  console.warn('⚠️  NODE_TLS_REJECT_UNAUTHORIZED disabled for development');
+}
+
 import app from './app.js';
 import config from './config/env.js';
 
 const PORT = config.port;
+const HOST = '0.0.0.0'; // Listen on all network interfaces
 
-const server = app.listen(PORT, () => {
+const server = app.listen(PORT, HOST, () => {
   console.log(`
 ╔════════════════════════════════════════╗
 ║                                        ║
