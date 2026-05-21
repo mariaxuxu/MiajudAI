@@ -48,6 +48,18 @@ class AuthService {
     }
   }
 
+  Future<void> updateDisplayName(String displayName) async {
+    try {
+      final user = _firebaseAuth.currentUser;
+      if (user != null) {
+        await user.updateDisplayName(displayName);
+      }
+    } catch (e) {
+      print('Update display name error: $e');
+      rethrow;
+    }
+  }
+
   Future<void> signOut() async {
     try {
       await _firebaseAuth.signOut();

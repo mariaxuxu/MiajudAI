@@ -1,26 +1,30 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 // ====================================
 // Colors
 // ====================================
 class AppColors {
-  static const Color primary = Color(0xFF14746F);
-  static const Color primaryDark = Color(0xFF0D4A46);
-  static const Color secondary = Color(0xFF56AB91);
-  static const Color accent = Color(0xFFFFB84D);
+  // Primary Colors (from MiAjudAI logo)
+  static const Color primary = Color(0xFF1B4965);
+  static const Color primaryDark = Color(0xFF0F2A3D);
+  static const Color accent = Color(0xFFFF8C00);
 
+  // Secondary Colors
   static const Color success = Color(0xFF4CAF50);
   static const Color warning = Color(0xFFFFC107);
   static const Color error = Color(0xFFF44336);
   static const Color info = Color(0xFF2196F3);
 
-  static const Color background = Color(0xFFFAFAFA);
+  // Background & Surface
+  static const Color background = Color(0xFFF5F5F7);
   static const Color surface = Colors.white;
-  static const Color divider = Color(0xFFE0E0E0);
+  static const Color divider = Color(0xFFE8E8E8);
 
-  static const Color textPrimary = Color(0xFF212121);
-  static const Color textSecondary = Color(0xFF757575);
-  static const Color textHint = Color(0xFFBDBDBD);
+  // Text Colors
+  static const Color textPrimary = Color(0xFF1B4965);
+  static const Color textSecondary = Color(0xFF999999);
+  static const Color textHint = Color(0xFFCCCCCC);
 }
 
 // ====================================
@@ -177,20 +181,30 @@ class AppStrings {
 // API Configuration
 // ====================================
 class ApiConfig {
-  static const String baseUrl = 'http://localhost:3000/api';
-  static const int connectionTimeout = 30000; // 30 seconds
-  static const int receiveTimeout = 30000; // 30 seconds
+  static String get baseUrl {
+    final envUrl = dotenv.env['API_BASE_URL'];
+    if (envUrl != null && envUrl.isNotEmpty) {
+      print('DEBUG: Using API_BASE_URL from .env: $envUrl');
+      return envUrl;
+    }
+    // Fallback para emulador iOS
+    const fallback = 'http://localhost:3001/api';
+    print('DEBUG: Using fallback API_BASE_URL: $fallback');
+    return fallback;
+  }
+  static const int connectionTimeout = 30000;
+  static const int receiveTimeout = 30000;
 }
 
 // ====================================
 // Firebase Settings
 // ====================================
 class FirebaseSettings {
-  static const String projectId = 'miajudai-dev';
-  static const String apiKey = 'YOUR_FIREBASE_WEB_API_KEY';
-  static const String authDomain = 'miajudai-dev.firebaseapp.com';
-  static const String databaseUrl = 'https://miajudai-dev.firebaseio.com';
-  static const String storageBucket = 'miajudai-dev.appspot.com';
-  static const String messagingSenderId = 'YOUR_MESSAGING_SENDER_ID';
-  static const String appId = 'YOUR_APP_ID';
+  static const String projectId = 'miajudai';
+  static const String apiKey = 'AIzaSyB2FC6YHy22Id3tdTseSzrYCU1oMS7mhZg';
+  static const String authDomain = 'miajudai.firebaseapp.com';
+  static const String databaseUrl = 'https://miajudai.firebaseio.com';
+  static const String storageBucket = 'miajudai.firebasestorage.app';
+  static const String messagingSenderId = '920940740455';
+  static const String appId = '1:920940740455:web:1e9cd26a3cad0cf818f9c2';
 }

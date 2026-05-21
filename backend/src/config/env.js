@@ -69,14 +69,20 @@ const config = {
     phoneNumber: process.env.TWILIO_PHONE_NUMBER,
   },*/
 
+  // Gemini
+  gemini: {
+    apiKey: process.env.GEMINI_API_KEY,
+    model: process.env.GEMINI_MODEL || 'gemini-2.0-flash',
+  },
+
   // CORS
   cors: {
-    origin: (process.env.CORS_ORIGIN || 'http://localhost:3000').split(','),
+    origin: process.env.CORS_ORIGIN === '*' ? '*' : (process.env.CORS_ORIGIN || 'http://localhost:3000').split(','),
   },
 
   // API
   api: {
-    baseUrl: process.env.API_BASE_URL || 'http://localhost:5000',
+    baseUrl: process.env.API_BASE_URL || 'http://localhost:3001',
   },
 
   // Rate limiting

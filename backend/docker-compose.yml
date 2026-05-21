@@ -3,7 +3,7 @@ version: '3.8'
 services:
   # PostgreSQL Database
   postgres:
-    image: postgres:16-alpine
+    image: postgres:14.17
     container_name: miajudai_postgres
     environment:
       POSTGRES_PASSWORD: postgres
@@ -18,17 +18,6 @@ services:
       timeout: 5s
       retries: 5
 
-  # pgAdmin for database management (optional)
-  pgadmin:
-    image: dpage/pgadmin4:latest
-    container_name: miajudai_pgadmin
-    environment:
-      PGADMIN_DEFAULT_EMAIL: admin@miajudai.dev
-      PGADMIN_DEFAULT_PASSWORD: admin
-    ports:
-      - "5050:80"
-    depends_on:
-      - postgres
 
 volumes:
   postgres_data:

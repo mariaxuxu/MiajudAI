@@ -1,15 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:intl/date_symbol_data_local.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'config/firebase_config.dart';
 import 'config/constants.dart';
 import 'config/routes.dart';
 import 'providers/auth_provider.dart';
+import 'providers/event_provider.dart';
+import 'providers/account_provider.dart';
+import 'providers/income_provider.dart';
+import 'providers/expense_provider.dart';
+import 'providers/chat_provider.dart';
 import 'screens/splash_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Firebase
+  await initializeDateFormatting('pt_BR', null);
+  await dotenv.load(fileName: 'assets/.env');
   await FirebaseConfig.initialize();
 
   runApp(const MyApp());
@@ -23,6 +31,11 @@ class MyApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => EventProvider()),
+        ChangeNotifierProvider(create: (_) => AccountProvider()),
+        ChangeNotifierProvider(create: (_) => IncomeProvider()),
+        ChangeNotifierProvider(create: (_) => ExpenseProvider()),
+        ChangeNotifierProvider(create: (_) => ChatProvider()),
       ],
       child: MaterialApp(
         title: 'MiAjudAI',

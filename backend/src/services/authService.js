@@ -94,9 +94,22 @@ class AuthService {
       }
 
       await user.update({
-        full_name: data.full_name || user.full_name,
-        phone: data.phone || user.phone,
-        avatar_url: data.avatar_url || user.avatar_url,
+        full_name: data.full_name !== undefined ? data.full_name : user.full_name,
+        phone: data.phone !== undefined ? data.phone : user.phone,
+        avatar_url: data.avatar_url !== undefined ? data.avatar_url : user.avatar_url,
+        gender: data.gender !== undefined ? data.gender : user.gender,
+        birth_date: data.birth_date !== undefined ? data.birth_date : user.birth_date,
+        birth_country: data.birth_country !== undefined ? data.birth_country : user.birth_country,
+        birth_state: data.birth_state !== undefined ? data.birth_state : user.birth_state,
+        birth_city: data.birth_city !== undefined ? data.birth_city : user.birth_city,
+        nationality: data.nationality !== undefined ? data.nationality : user.nationality,
+        marital_status: data.marital_status !== undefined ? data.marital_status : user.marital_status,
+        emergency_contact_1_name: data.emergency_contact_1_name !== undefined ? data.emergency_contact_1_name : user.emergency_contact_1_name,
+        emergency_contact_1_phone: data.emergency_contact_1_phone !== undefined ? data.emergency_contact_1_phone : user.emergency_contact_1_phone,
+        emergency_contact_2_name: data.emergency_contact_2_name !== undefined ? data.emergency_contact_2_name : user.emergency_contact_2_name,
+        emergency_contact_2_phone: data.emergency_contact_2_phone !== undefined ? data.emergency_contact_2_phone : user.emergency_contact_2_phone,
+        emergency_contact_3_name: data.emergency_contact_3_name !== undefined ? data.emergency_contact_3_name : user.emergency_contact_3_name,
+        emergency_contact_3_phone: data.emergency_contact_3_phone !== undefined ? data.emergency_contact_3_phone : user.emergency_contact_3_phone,
       });
 
       return user;

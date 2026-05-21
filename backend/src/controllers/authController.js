@@ -5,7 +5,7 @@ import { HTTP_STATUS, ERROR_MESSAGES } from '../utils/constants.js';
 // Verify Firebase token and return JWT
 export const verifyToken = async (req, res) => {
   try {
-    const { idToken } = req.body;
+    const { idToken, fullName } = req.body;
 
     if (!idToken) {
       return res.status(HTTP_STATUS.BAD_REQUEST).json({
@@ -26,7 +26,7 @@ export const verifyToken = async (req, res) => {
       user = await authService.registerUser(
         decodedToken.uid,
         decodedToken.email,
-        decodedToken.name
+        fullName
       );
     }
 
@@ -46,6 +46,19 @@ export const verifyToken = async (req, res) => {
         full_name: user.full_name,
         phone: user.phone,
         avatar_url: user.avatar_url,
+        gender: user.gender,
+        birth_date: user.birth_date,
+        birth_country: user.birth_country,
+        birth_state: user.birth_state,
+        birth_city: user.birth_city,
+        nationality: user.nationality,
+        marital_status: user.marital_status,
+        emergency_contact_1_name: user.emergency_contact_1_name,
+        emergency_contact_1_phone: user.emergency_contact_1_phone,
+        emergency_contact_2_name: user.emergency_contact_2_name,
+        emergency_contact_2_phone: user.emergency_contact_2_phone,
+        emergency_contact_3_name: user.emergency_contact_3_name,
+        emergency_contact_3_phone: user.emergency_contact_3_phone,
       },
     });
   } catch (error) {
@@ -89,6 +102,19 @@ export const getCurrentUser = async (req, res) => {
         full_name: user.full_name,
         phone: user.phone,
         avatar_url: user.avatar_url,
+        gender: user.gender,
+        birth_date: user.birth_date,
+        birth_country: user.birth_country,
+        birth_state: user.birth_state,
+        birth_city: user.birth_city,
+        nationality: user.nationality,
+        marital_status: user.marital_status,
+        emergency_contact_1_name: user.emergency_contact_1_name,
+        emergency_contact_1_phone: user.emergency_contact_1_phone,
+        emergency_contact_2_name: user.emergency_contact_2_name,
+        emergency_contact_2_phone: user.emergency_contact_2_phone,
+        emergency_contact_3_name: user.emergency_contact_3_name,
+        emergency_contact_3_phone: user.emergency_contact_3_phone,
         created_at: user.created_at,
       },
     });
@@ -108,12 +134,42 @@ export const getCurrentUser = async (req, res) => {
 export const updateProfile = async (req, res) => {
   try {
     const userId = req.user.userId;
-    const { full_name, phone, avatar_url } = req.body;
+    const {
+      full_name,
+      phone,
+      avatar_url,
+      gender,
+      birth_date,
+      birth_country,
+      birth_state,
+      birth_city,
+      nationality,
+      marital_status,
+      emergency_contact_1_name,
+      emergency_contact_1_phone,
+      emergency_contact_2_name,
+      emergency_contact_2_phone,
+      emergency_contact_3_name,
+      emergency_contact_3_phone,
+    } = req.body;
 
     const user = await authService.updateUserProfile(userId, {
       full_name,
       phone,
       avatar_url,
+      gender,
+      birth_date,
+      birth_country,
+      birth_state,
+      birth_city,
+      nationality,
+      marital_status,
+      emergency_contact_1_name,
+      emergency_contact_1_phone,
+      emergency_contact_2_name,
+      emergency_contact_2_phone,
+      emergency_contact_3_name,
+      emergency_contact_3_phone,
     });
 
     return res.status(HTTP_STATUS.OK).json({
@@ -124,6 +180,19 @@ export const updateProfile = async (req, res) => {
         full_name: user.full_name,
         phone: user.phone,
         avatar_url: user.avatar_url,
+        gender: user.gender,
+        birth_date: user.birth_date,
+        birth_country: user.birth_country,
+        birth_state: user.birth_state,
+        birth_city: user.birth_city,
+        nationality: user.nationality,
+        marital_status: user.marital_status,
+        emergency_contact_1_name: user.emergency_contact_1_name,
+        emergency_contact_1_phone: user.emergency_contact_1_phone,
+        emergency_contact_2_name: user.emergency_contact_2_name,
+        emergency_contact_2_phone: user.emergency_contact_2_phone,
+        emergency_contact_3_name: user.emergency_contact_3_name,
+        emergency_contact_3_phone: user.emergency_contact_3_phone,
       },
     });
   } catch (error) {

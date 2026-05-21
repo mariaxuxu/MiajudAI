@@ -68,7 +68,7 @@ flutter:
   # Assets
   assets:
     - assets/images/
-    - assets/fonts/
+    - assets/.env
 
   # Localization
   generate: true
