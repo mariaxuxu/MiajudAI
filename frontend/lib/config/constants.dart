@@ -5,26 +5,39 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 // Colors
 // ====================================
 class AppColors {
-  // Primary Colors (from MiAjudAI logo)
+  // Primary Brand
   static const Color primary = Color(0xFF1B4965);
   static const Color primaryDark = Color(0xFF0F2A3D);
-  static const Color accent = Color(0xFFFF8C00);
+  static const Color primaryDeep = Color(0xFF0D2740);   // gradiente hero (topo)
+  static const Color primarySurface = Color(0xFFE8F4F8); // fundo de item ativo
 
-  // Secondary Colors
-  static const Color success = Color(0xFF4CAF50);
-  static const Color warning = Color(0xFFFFC107);
-  static const Color error = Color(0xFFF44336);
-  static const Color info = Color(0xFF2196F3);
+  // Accent (CTA, foco, destaque)
+  static const Color accent = Color(0xFFFF8C00);
+  static const Color accentDark = Color(0xFFE67E00);    // gradiente botão (fim)
+  static const Color accentSurface = Color(0xFFFFF3E6); // fundo do hero auth
+
+  // Feedback
+  static const Color success = Color(0xFF22C55E);
+  static const Color warning = Color(0xFFF59E0B);
+  static const Color error = Color(0xFFEF4444);
+  static const Color info = Color(0xFF3B82F6);
+
+  // Agentes de IA
+  static const Color tina = Color(0xFF2D9B5A);           // Tina — doméstico
 
   // Background & Surface
   static const Color background = Color(0xFFF5F5F7);
   static const Color surface = Colors.white;
+  static const Color inputFill = Color(0xFFF9FAFB);      // fundo de inputs
   static const Color divider = Color(0xFFE8E8E8);
+  static const Color inputBorder = Color(0xFFE5E7EB);    // borda padrão de inputs
 
-  // Text Colors
-  static const Color textPrimary = Color(0xFF1B4965);
-  static const Color textSecondary = Color(0xFF999999);
-  static const Color textHint = Color(0xFFCCCCCC);
+  // Text (hierarquia: dark → primary → label → secondary → hint)
+  static const Color textDark = Color(0xFF1C1C2E);       // títulos, texto digitado
+  static const Color textPrimary = Color(0xFF1B4965);    // texto com identidade brand
+  static const Color textLabel = Color(0xFF6B7280);      // labels de campos
+  static const Color textSecondary = Color(0xFF9CA3AF);  // texto auxiliar
+  static const Color textHint = Color(0xFFC4C9D4);       // placeholders
 }
 
 // ====================================
@@ -43,8 +56,13 @@ class AppDimens {
   static const double radiusSmall = 4.0;
   static const double radiusDefault = 8.0;
   static const double radiusMedium = 12.0;
+  static const double radiusInput = 12.0;    // todos os campos de texto
+  static const double radiusButton = 14.0;   // botão primário CTA
   static const double radiusLarge = 16.0;
+  static const double radiusCard = 20.0;     // cards premium
   static const double radiusXLarge = 24.0;
+  static const double radiusHeroCard = 28.0; // card que sobe sobre o hero
+  static const double radiusFull = 999.0;    // elementos circulares
 
   // Icon Sizes
   static const double iconSmall = 16.0;

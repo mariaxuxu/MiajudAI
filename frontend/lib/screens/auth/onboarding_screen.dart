@@ -151,7 +151,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       child: CustomButton(
                         text: AppStrings.back,
                         onPressed: _previousPage,
-                        isOutlined: true,
+                        variant: ButtonVariant.outlined,
                       ),
                     )
                   else

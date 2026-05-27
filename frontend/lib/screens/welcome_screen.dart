@@ -1,265 +1,405 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../config/constants.dart';
 import '../config/routes.dart';
 import '../providers/auth_provider.dart';
+import '../widgets/dialogs/logout_dialog.dart';
+import '../widgets/navigation/agent_bottom_nav.dart';
 
-class WelcomeScreen extends StatelessWidget {
+class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});
 
-  String _getFirstName(String? fullName) {
-    if (fullName == null || fullName.isEmpty) {
-      return '';
-    }
-    return fullName.split(' ').first;
+  @override
+  State<WelcomeScreen> createState() => _WelcomeScreenState();
+}
+
+class _WelcomeScreenState extends State<WelcomeScreen>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+  late List<Animation<double>> _cardFades;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 700),
+    );
+
+    // Stagger de fade para os cards (4 cards)
+    _cardFades = List.generate(4, (i) {
+      final start = i * 0.12;
+      final end = (start + 0.5).clamp(0.0, 1.0);
+      return Tween<double>(begin: 0, end: 1).animate(
+        CurvedAnimation(
+          parent: _ctrl,
+          curve: Interval(start, end, curve: Curves.easeOut),
+        ),
+      );
+    });
+
+    _ctrl.forward();
   }
 
-  void _logout(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Fazer Logout?'),
-        content: const Text('Tem certeza que deseja sair?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
-          ),
-          TextButton(
-            onPressed: () {
-              Provider.of<AuthProvider>(context, listen: false).logout();
-              Navigator.pop(context);
-              Navigator.pushReplacementNamed(context, '/');
-            },
-            child: const Text('Sair', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  String _getFirstName(String? fullName) {
+    if (fullName == null || fullName.trim().isEmpty) return '';
+    return fullName.trim().split(' ').first;
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F7),
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout, color: Color(0xFF1B4965)),
-            onPressed: () => _logout(context),
-          ),
-        ],
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarBrightness: Brightness.light,
+        statusBarIconBrightness: Brightness.dark,
       ),
+    );
+
+    return Scaffold(
+      backgroundColor: AppColors.background,
       body: SafeArea(
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppDimens.paddingMedium,
-              vertical: AppDimens.paddingLarge,
+        bottom: false,
+        child: Column(
+          children: [
+            _buildHeader(context),
+            Expanded(
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+                child: _buildBody(context),
+              ),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Header
-                Center(
-                  child: Column(
-                    children: [
-                      Consumer<AuthProvider>(
-                        builder: (context, authProvider, _) {
-                          final firstName = _getFirstName(authProvider.user?.fullName);
-                          return Text(
-                            'Olá, $firstName!',
-                            style: AppTextStyles.displaySmall.copyWith(
-                              color: const Color(0xFF1B4965),
-                              fontWeight: FontWeight.w700,
-                            ),
-                          );
-                        },
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'No que posso te ajudar hoje?',
-                        style: AppTextStyles.bodyMedium.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    ],
+          ],
+        ),
+      ),
+      bottomNavigationBar: const AgentBottomNav(),
+    );
+  }
+
+  Widget _buildHeader(BuildContext context) {
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.fromLTRB(8, 12, 12, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Linha superior: Logout | MiAjudAI (centro) | Perfil
+          Row(
+            children: [
+              // Ícone de perfil — esquerda
+              GestureDetector(
+                onTap: () =>
+                    Navigator.pushNamed(context, AppRoutes.manageAccount),
+                child: Container(
+                  width: 42,
+                  height: 42,
+                  margin: const EdgeInsets.only(left: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.08),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.person_rounded,
+                    color: AppColors.primary,
+                    size: 22,
                   ),
                 ),
-                const SizedBox(height: AppDimens.paddingLarge),
-                // Funcionalidades Grid
-                _buildFeatureCard(
+              ),
+              // Nome do app — centralizado
+              const Expanded(
+                child: Text(
+                  'MiAjudAI',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.primary,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+              ),
+              // Logout — direita
+              IconButton(
+                onPressed: () => LogoutDialog.show(
                   context,
-                  icon: Icons.person_outline,
-                  title: 'Gerenciar Conta',
-                  description: 'Atualize seus dados pessoais',
-                  color: const Color(0xFF1B4965),
-                  onTap: () {
-                    Navigator.pushNamed(context, '/manage-account');
+                  onConfirm: () async {
+                    await context.read<AuthProvider>().logout();
+                    if (!context.mounted) return;
+                    Navigator.pushReplacementNamed(context, '/');
                   },
                 ),
-                const SizedBox(height: 12),
-                _buildFeatureCard(
-                  context,
-                  icon: Icons.calendar_today_outlined,
-                  title: 'Calendário',
-                  description: 'Veja seus compromissos',
-                  color: const Color(0xFFFF8C00),
-                  onTap: () {
-                    Navigator.pushNamed(context, '/calendar');
-                  },
-                ),
-                const SizedBox(height: 12),
-                _buildFeatureCard(
-                  context,
-                  icon: Icons.home_outlined,
-                  title: 'Área Doméstica',
-                  description: 'Gerenciar sua casa e tarefas',
-                  color: const Color(0xFF1B4965),
-                  onTap: () {
-                    // TODO: Navegar para área doméstica
-                  },
-                ),
-                const SizedBox(height: 12),
-                _buildFeatureCard(
-                  context,
-                  icon: Icons.attach_money_outlined,
-                  title: 'Finanças',
-                  description: 'Gerencie suas finanças',
-                  color: const Color(0xFFFF8C00),
-                  onTap: () {
-                    Navigator.pushNamed(context, '/accounts');
-                  },
-                ),
-                const SizedBox(height: 12),
-                _buildFeatureCard(
-                  context,
-                  icon: Icons.build_circle_outlined,
-                  title: 'Serviços Externos',
-                  description: 'Encontre prestadores de serviços',
-                  color: const Color(0xFF1B4965),
-                  onTap: () {
-                    // TODO: Navegar para serviços externos
-                  },
-                ),
-                const SizedBox(height: AppDimens.paddingLarge),
-                // Falar com MiAjudAI Button
-                Center(
-                  child: SizedBox(
-                    width: 220,
-                    height: 56,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.pushNamed(context, AppRoutes.chat);
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFFF8C00),
-                        shape: RoundedRectangleBorder(
-                          borderRadius:
-                              BorderRadius.circular(AppDimens.radiusDefault),
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(
-                            Icons.chat_outlined,
-                            color: Colors.white,
-                          ),
-                          const SizedBox(width: 12),
-                          Text(
-                            'Falar com MiAjudAI',
-                            style: AppTextStyles.titleSmall.copyWith(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
+                icon: const Icon(Icons.logout_rounded,
+                    color: AppColors.textLabel, size: 22),
+                tooltip: 'Sair',
+              ),
+            ],
+          ),
+          // Saudação
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+            child: Consumer<AuthProvider>(
+              builder: (_, auth, __) {
+                final firstName = _getFirstName(auth.user?.fullName);
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Olá, ${firstName.isNotEmpty ? firstName : 'bem-vindo'}! 👋',
+                      style: const TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textDark,
+                        letterSpacing: -0.2,
                       ),
                     ),
-                  ),
-                ),
-              ],
+                    const SizedBox(height: 2),
+                    const Text(
+                      'No que posso te ajudar hoje?',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textLabel,
+                      ),
+                    ),
+                  ],
+                );
+              },
             ),
           ),
-        ),
+        ],
       ),
     );
   }
 
-  Widget _buildFeatureCard(
-    BuildContext context, {
-    required IconData icon,
-    required String title,
-    required String description,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(AppDimens.radiusLarge),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.08),
-                blurRadius: 16,
-                offset: const Offset(0, 4),
-              ),
-            ],
+  Widget _buildBody(BuildContext context) {
+    final cards = [
+      _CardData(
+        icon: Icons.calendar_today_outlined,
+        title: 'Calendário',
+        description: 'Veja e organize seus compromissos',
+        color: AppColors.accent,
+        onTap: () => Navigator.pushNamed(context, AppRoutes.calendar),
+      ),
+      _CardData(
+        icon: Icons.account_balance_wallet_outlined,
+        title: 'Finanças',
+        description: 'Contas, receitas e despesas',
+        color: AppColors.primary,
+        onTap: () => Navigator.pushNamed(context, AppRoutes.accounts),
+      ),
+      _CardData(
+        icon: Icons.home_repair_service_outlined,
+        title: 'Área Doméstica',
+        description: 'Gerenciar sua casa e tarefas',
+        color: AppColors.tina,
+        onTap: () {},
+      ),
+      _CardData(
+        icon: Icons.handyman_outlined,
+        title: 'Serviços Externos',
+        description: 'Encontre prestadores de serviços',
+        color: const Color(0xFF0891B2),
+        onTap: () {},
+      ),
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 20),
+        const Text(
+          'Acesso rápido',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            color: AppColors.textDark,
+            letterSpacing: -0.2,
           ),
-          child: Padding(
-            padding: const EdgeInsets.all(AppDimens.paddingMedium),
-            child: Row(
+        ),
+        const SizedBox(height: 14),
+        ...cards.asMap().entries.map((entry) {
+          final i = entry.key;
+          final card = entry.value;
+          return FadeTransition(
+            opacity: _cardFades[i],
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _FeatureCard(data: card),
+            ),
+          );
+        }),
+        const SizedBox(height: 8),
+        _buildAgentBanner(context),
+      ],
+    );
+  }
+
+  Widget _buildAgentBanner(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [AppColors.primary, Color(0xFF2E6B8A)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(AppDimens.radiusCard),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.25),
+            blurRadius: 20,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  width: 56,
-                  height: 56,
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.1),
-                    borderRadius:
-                        BorderRadius.circular(AppDimens.radiusMedium),
-                  ),
-                  child: Icon(
-                    icon,
-                    color: color,
-                    size: 28,
+                const Text(
+                  'Seus agentes de IA',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.2,
                   ),
                 ),
-                const SizedBox(width: AppDimens.paddingMedium),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: AppTextStyles.titleSmall.copyWith(
-                          color: const Color(0xFF1B4965),
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        description,
-                        style: AppTextStyles.bodySmall.copyWith(
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    ],
+                const SizedBox(height: 4),
+                Text(
+                  'Use o menu abaixo para conversar com Luna, Otto ou Tina.',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.75),
+                    fontSize: 13,
+                    height: 1.4,
                   ),
-                ),
-                Icon(
-                  Icons.arrow_forward_ios,
-                  color: color,
-                  size: 16,
                 ),
               ],
             ),
+          ),
+          const SizedBox(width: 16),
+          // Imagem conjunta dos 3 agentes
+          ClipRRect(
+            borderRadius: BorderRadius.circular(AppDimens.radiusMedium),
+            child: Image.asset(
+              'assets/images/todos_agents.jpg',
+              width: 100,
+              height: 76,
+              fit: BoxFit.cover,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+}
+
+class _CardData {
+  final IconData icon;
+  final String title;
+  final String description;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _CardData({
+    required this.icon,
+    required this.title,
+    required this.description,
+    required this.color,
+    required this.onTap,
+  });
+}
+
+class _FeatureCard extends StatefulWidget {
+  final _CardData data;
+  const _FeatureCard({required this.data});
+
+  @override
+  State<_FeatureCard> createState() => _FeatureCardState();
+}
+
+class _FeatureCardState extends State<_FeatureCard> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) {
+        setState(() => _pressed = false);
+        widget.data.onTap();
+      },
+      onTapCancel: () => setState(() => _pressed = false),
+      child: AnimatedScale(
+        scale: _pressed ? 0.97 : 1.0,
+        duration: const Duration(milliseconds: 120),
+        curve: Curves.easeOut,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 120),
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: _pressed ? const Color(0xFFF8F9FA) : Colors.white,
+            borderRadius: BorderRadius.circular(AppDimens.radiusLarge),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: _pressed ? 0.04 : 0.07),
+                blurRadius: _pressed ? 8 : 16,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: widget.data.color.withValues(alpha: 0.09),
+                  borderRadius: BorderRadius.circular(AppDimens.radiusMedium),
+                ),
+                child: Icon(widget.data.icon, color: widget.data.color, size: 26),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.data.title,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textDark,
+                        letterSpacing: -0.1,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      widget.data.description,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textLabel,
+                        height: 1.3,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.arrow_forward_ios_rounded,
+                color: widget.data.color.withValues(alpha: 0.7),
+                size: 14,
+              ),
+            ],
           ),
         ),
       ),

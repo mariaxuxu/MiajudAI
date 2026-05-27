@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../config/constants.dart';
 import '../../providers/auth_provider.dart';
+import '../../widgets/auth/auth_field.dart';
+import '../../widgets/common/custom_button.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -10,421 +13,304 @@ class SignupScreen extends StatefulWidget {
   State<SignupScreen> createState() => _SignupScreenState();
 }
 
-class _SignupScreenState extends State<SignupScreen> {
+class _SignupScreenState extends State<SignupScreen>
+    with SingleTickerProviderStateMixin {
+  final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _confirmPasswordController = TextEditingController();
-  final _fullNameController = TextEditingController();
-  final _formKey = GlobalKey<FormState>();
-  bool _obscurePassword = true;
-  bool _obscureConfirmPassword = true;
+  final _confirmController = TextEditingController();
+
+  final _nameFocus = FocusNode();
+  final _emailFocus = FocusNode();
+  final _passwordFocus = FocusNode();
+  final _confirmFocus = FocusNode();
+
+  late AnimationController _animCtrl;
+  late Animation<Offset> _slideAnim;
+  late Animation<double> _fadeAnim;
+
+  int _passwordStrength = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _animCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
+    _slideAnim = Tween<Offset>(
+      begin: const Offset(0, 0.06),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _animCtrl, curve: Curves.easeOutCubic));
+    _fadeAnim = Tween<double>(begin: 0.0, end: 1.0)
+        .animate(CurvedAnimation(parent: _animCtrl, curve: Curves.easeOut));
+
+    Future.delayed(const Duration(milliseconds: 80), () {
+      if (mounted) _animCtrl.forward();
+    });
+  }
 
   @override
   void dispose() {
+    _animCtrl.dispose();
+    _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
-    _confirmPasswordController.dispose();
-    _fullNameController.dispose();
+    _confirmController.dispose();
+    _nameFocus.dispose();
+    _emailFocus.dispose();
+    _passwordFocus.dispose();
+    _confirmFocus.dispose();
     super.dispose();
   }
 
-  String? _validateEmail(String? value) {
-    if (value == null || value.isEmpty) {
-      return AppStrings.requiredField;
-    }
-    if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
-      return AppStrings.invalidEmail;
-    }
-    return null;
-  }
-
-  String? _validatePassword(String? value) {
-    if (value == null || value.isEmpty) {
-      return AppStrings.requiredField;
-    }
-    if (value.length < 6) {
-      return AppStrings.passwordTooShort;
-    }
-    return null;
-  }
-
-  String? _validateConfirmPassword(String? value) {
-    if (value == null || value.isEmpty) {
-      return AppStrings.requiredField;
-    }
-    if (value != _passwordController.text) {
-      return AppStrings.passwordMismatch;
-    }
-    return null;
+  int _calcStrength(String password) {
+    int score = 0;
+    if (password.length >= 6) score++;
+    if (password.length >= 10) score++;
+    if (password.contains(RegExp(r'[A-Z]'))) score++;
+    if (password.contains(RegExp(r'[0-9!@#\$%&*]'))) score++;
+    return score;
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F7),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppDimens.paddingMedium,
-              vertical: AppDimens.paddingLarge,
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                const SizedBox(height: 40),
-                // Logo Section
-                Image.asset(
-                  'assets/images/miajudai_logo_transparent.png',
-                  height: 200,
-                  width: 200,
-                ),
-                const SizedBox(height: 48),
-                // Card
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius:
-                        BorderRadius.circular(AppDimens.radiusLarge),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.08),
-                        blurRadius: 24,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
-                  ),
-                  padding: const EdgeInsets.all(AppDimens.paddingMedium),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Center(
-                          child: Column(
-                            children: [
-                              Text(
-                                'Criar conta',
-                                style: AppTextStyles.displaySmall.copyWith(
-                                  color: const Color(0xFF1B4965),
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              Text(
-                                'Em poucos minutos você já estará começando',
-                                textAlign: TextAlign.center,
-                                style: AppTextStyles.bodySmall.copyWith(
-                                  color: AppColors.textSecondary,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: AppDimens.paddingLarge),
-                        // Full Name
-                        Text(
-                          'Nome Completo',
-                          style: AppTextStyles.titleSmall.copyWith(
-                            color: const Color(0xFF1B4965),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        TextFormField(
-                          controller: _fullNameController,
-                          decoration: _buildInputDecoration(
-                            hintText: 'Digite seu nome completo',
-                            icon: Icons.person_outlined,
-                          ),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return AppStrings.requiredField;
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: AppDimens.paddingMedium),
-                        // Email
-                        Text(
-                          'Email',
-                          style: AppTextStyles.titleSmall.copyWith(
-                            color: const Color(0xFF1B4965),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        TextFormField(
-                          controller: _emailController,
-                          keyboardType: TextInputType.emailAddress,
-                          decoration: _buildInputDecoration(
-                            hintText: 'seu@email.com',
-                            icon: Icons.email_outlined,
-                          ),
-                          validator: _validateEmail,
-                        ),
-                        const SizedBox(height: AppDimens.paddingMedium),
-                        // Password
-                        Text(
-                          'Senha',
-                          style: AppTextStyles.titleSmall.copyWith(
-                            color: const Color(0xFF1B4965),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        TextFormField(
-                          controller: _passwordController,
-                          obscureText: _obscurePassword,
-                          decoration: InputDecoration(
-                            hintText: 'Mínimo 6 caracteres',
-                            hintStyle: TextStyle(
-                              color: AppColors.textHint,
-                            ),
-                            prefixIcon: const Icon(
-                              Icons.lock_outline,
-                              color: Color(0xFFFF8C00),
-                            ),
-                            suffixIcon: IconButton(
-                              icon: Icon(
-                                _obscurePassword
-                                    ? Icons.visibility_off_outlined
-                                    : Icons.visibility_outlined,
-                                color: const Color(0xFFFF8C00),
-                              ),
-                              onPressed: () {
-                                setState(() {
-                                  _obscurePassword = !_obscurePassword;
-                                });
-                              },
-                            ),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(
-                                AppDimens.radiusDefault,
-                              ),
-                              borderSide: const BorderSide(
-                                color: Color(0xFFE8E8E8),
-                              ),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(
-                                AppDimens.radiusDefault,
-                              ),
-                              borderSide: const BorderSide(
-                                color: Color(0xFFE8E8E8),
-                              ),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(
-                                AppDimens.radiusDefault,
-                              ),
-                              borderSide: const BorderSide(
-                                color: Color(0xFFFF8C00),
-                                width: 2,
-                              ),
-                            ),
-                            filled: true,
-                            fillColor: Colors.white,
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: AppDimens.paddingSmall,
-                              vertical: AppDimens.paddingSmall,
-                            ),
-                          ),
-                          validator: _validatePassword,
-                        ),
-                        const SizedBox(height: AppDimens.paddingMedium),
-                        // Confirm Password
-                        Text(
-                          'Confirmar Senha',
-                          style: AppTextStyles.titleSmall.copyWith(
-                            color: const Color(0xFF1B4965),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        TextFormField(
-                          controller: _confirmPasswordController,
-                          obscureText: _obscureConfirmPassword,
-                          decoration: InputDecoration(
-                            hintText: 'Confirme sua senha',
-                            hintStyle: TextStyle(
-                              color: AppColors.textHint,
-                            ),
-                            prefixIcon: const Icon(
-                              Icons.lock_outline,
-                              color: Color(0xFFFF8C00),
-                            ),
-                            suffixIcon: IconButton(
-                              icon: Icon(
-                                _obscureConfirmPassword
-                                    ? Icons.visibility_off_outlined
-                                    : Icons.visibility_outlined,
-                                color: const Color(0xFFFF8C00),
-                              ),
-                              onPressed: () {
-                                setState(() {
-                                  _obscureConfirmPassword =
-                                      !_obscureConfirmPassword;
-                                });
-                              },
-                            ),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(
-                                AppDimens.radiusDefault,
-                              ),
-                              borderSide: const BorderSide(
-                                color: Color(0xFFE8E8E8),
-                              ),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(
-                                AppDimens.radiusDefault,
-                              ),
-                              borderSide: const BorderSide(
-                                color: Color(0xFFE8E8E8),
-                              ),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(
-                                AppDimens.radiusDefault,
-                              ),
-                              borderSide: const BorderSide(
-                                color: Color(0xFFFF8C00),
-                                width: 2,
-                              ),
-                            ),
-                            filled: true,
-                            fillColor: Colors.white,
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: AppDimens.paddingSmall,
-                              vertical: AppDimens.paddingSmall,
-                            ),
-                          ),
-                          validator: _validateConfirmPassword,
-                        ),
-                        const SizedBox(height: AppDimens.paddingLarge),
-                        // Sign Up Button
-                        Center(
-                          child: Consumer<AuthProvider>(
-                            builder: (context, authProvider, _) {
-                              return SizedBox(
-                                width: 200,
-                                height: 48,
-                                child: ElevatedButton(
-                                  onPressed: authProvider.isLoading
-                                      ? null
-                                      : () async {
-                                          if (_formKey.currentState!
-                                              .validate()) {
-                                            try {
-                                              await authProvider.signup(
-                                                email: _emailController.text,
-                                                password:
-                                                    _passwordController.text,
-                                                fullName:
-                                                    _fullNameController.text,
-                                              );
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarBrightness: Brightness.light,
+        statusBarIconBrightness: Brightness.dark,
+      ),
+    );
 
-                                              if (authProvider
-                                                  .isAuthenticated) {
-                                                Navigator
-                                                    .pushReplacementNamed(
-                                                  context,
-                                                  '/welcome',
-                                                );
-                                              } else if (authProvider
-                                                      .error !=
-                                                  null) {
-                                                ScaffoldMessenger.of(context)
-                                                    .showSnackBar(
-                                                  SnackBar(
-                                                    content: Text(
-                                                      authProvider.error!,
-                                                    ),
-                                                    backgroundColor:
-                                                        AppColors.error,
-                                                  ),
-                                                );
-                                              }
-                                            } catch (e) {
-                                              ScaffoldMessenger.of(context)
-                                                  .showSnackBar(
-                                                SnackBar(
-                                                  content: Text(
-                                                    'Erro: ${e.toString()}',
-                                                  ),
-                                                  backgroundColor:
-                                                      AppColors.error,
-                                                ),
-                                              );
-                                            }
-                                          }
-                                        },
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor:
-                                        const Color(0xFFFF8C00),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(
-                                        AppDimens.radiusDefault,
-                                      ),
-                                    ),
-                                    disabledBackgroundColor:
-                                        Colors.grey[400],
-                                  ),
-                                  child: authProvider.isLoading
-                                      ? const SizedBox(
-                                          height: 20,
-                                          width: 20,
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                            valueColor:
-                                                AlwaysStoppedAnimation<Color>(
-                                              Colors.white,
-                                            ),
-                                          ),
-                                        )
-                                      : Text(
-                                          'Criar Conta',
-                                          style: AppTextStyles.titleSmall
-                                              .copyWith(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                ),
-                              );
-                            },
+    return Scaffold(
+      backgroundColor: AppColors.accentSurface,
+      resizeToAvoidBottomInset: true,
+      body: Column(
+        children: [
+          _buildHero(context),
+          _buildFormCard(context),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHero(BuildContext context) {
+    return Expanded(
+      flex: 33,
+      child: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [AppColors.accentSurface, Color(0xFFFAF8F5)],
+          ),
+        ),
+        child: SafeArea(
+          bottom: false,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              IconButton(
+                onPressed: () =>
+                    Navigator.pushReplacementNamed(context, '/'),
+                icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+                color: AppColors.textLabel,
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+              ),
+              Expanded(
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 32),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          width: 64,
+                          height: 64,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: AppColors.accent.withValues(alpha: 0.10),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Image.asset(
+                              'assets/images/miajudai_logo_transparent.png',
+                            ),
                           ),
                         ),
-                        const SizedBox(height: AppDimens.paddingMedium),
-                        // Back to Login
-                        Center(
-                          child: Wrap(
-                            alignment: WrapAlignment.center,
-                            children: [
-                              Text(
-                                'Já tem uma conta? ',
-                                style: AppTextStyles.bodySmall.copyWith(
-                                  color: AppColors.textSecondary,
-                                ),
-                              ),
-                              MouseRegion(
-                                cursor: SystemMouseCursors.click,
-                                child: GestureDetector(
-                                  onTap: () => Navigator.pop(context),
-                                  child: Text(
-                                    'Entrar',
-                                    style: AppTextStyles.bodySmall.copyWith(
-                                      color: const Color(0xFFFF8C00),
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
+                        const SizedBox(height: 10),
+                        const Text(
+                          'Criar conta',
+                          style: TextStyle(
+                            color: AppColors.textDark,
+                            fontSize: 22,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: -0.3,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        const Text(
+                          'Em poucos minutos você já está começando',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: AppColors.textLabel,
+                            fontSize: 13,
+                            height: 1.4,
                           ),
                         ),
                       ],
                     ),
                   ),
                 ),
-              ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFormCard(BuildContext context) {
+    return Expanded(
+      flex: 67,
+      child: FadeTransition(
+        opacity: _fadeAnim,
+        child: SlideTransition(
+          position: _slideAnim,
+          child: Container(
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(AppDimens.radiusHeroCard),
+                topRight: Radius.circular(AppDimens.radiusHeroCard),
+              ),
+            ),
+            child: SingleChildScrollView(
+              physics: const ClampingScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(28, 28, 28, 32),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Text(
+                      'Preencha seus dados',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textDark,
+                        letterSpacing: -0.3,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Nome completo
+                    AuthField(
+                      label: 'Nome completo',
+                      hint: 'Como você quer ser chamado?',
+                      controller: _nameController,
+                      prefixIcon: Icons.person_outline,
+                      focusNode: _nameFocus,
+                      textInputAction: TextInputAction.next,
+                      onEditingComplete: () =>
+                          FocusScope.of(context).requestFocus(_emailFocus),
+                      validator: (v) {
+                        if (v == null || v.trim().isEmpty) {
+                          return 'Informe seu nome';
+                        }
+                        if (v.trim().length < 2) return 'Nome muito curto';
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Email
+                    AuthField(
+                      label: 'Email',
+                      hint: 'seu@email.com',
+                      controller: _emailController,
+                      prefixIcon: Icons.email_outlined,
+                      keyboardType: TextInputType.emailAddress,
+                      focusNode: _emailFocus,
+                      textInputAction: TextInputAction.next,
+                      onEditingComplete: () =>
+                          FocusScope.of(context).requestFocus(_passwordFocus),
+                      validator: (v) {
+                        if (v == null || v.trim().isEmpty) {
+                          return 'Informe seu email';
+                        }
+                        if (!RegExp(r'^[\w\-.]+@([\w-]+\.)+[\w-]{2,}$')
+                            .hasMatch(v.trim())) {
+                          return 'Email inválido';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Senha
+                    AuthField(
+                      label: 'Senha',
+                      hint: 'Mínimo 6 caracteres',
+                      controller: _passwordController,
+                      prefixIcon: Icons.lock_outline,
+                      isPassword: true,
+                      focusNode: _passwordFocus,
+                      textInputAction: TextInputAction.next,
+                      onChanged: (v) =>
+                          setState(() => _passwordStrength = _calcStrength(v)),
+                      onEditingComplete: () =>
+                          FocusScope.of(context).requestFocus(_confirmFocus),
+                      validator: (v) {
+                        if (v == null || v.isEmpty) return 'Crie uma senha';
+                        if (v.length < 6) return 'Mínimo 6 caracteres';
+                        return null;
+                      },
+                    ),
+
+                    // Indicador de força da senha
+                    if (_passwordController.text.isNotEmpty) ...[
+                      const SizedBox(height: 10),
+                      _buildStrengthIndicator(),
+                    ],
+                    const SizedBox(height: 20),
+
+                    // Confirmar senha
+                    AuthField(
+                      label: 'Confirmar senha',
+                      hint: 'Repita a senha',
+                      controller: _confirmController,
+                      prefixIcon: Icons.lock_open_outlined,
+                      isPassword: true,
+                      focusNode: _confirmFocus,
+                      textInputAction: TextInputAction.done,
+                      onEditingComplete: () => _submit(context),
+                      validator: (v) {
+                        if (v == null || v.isEmpty) {
+                          return 'Confirme sua senha';
+                        }
+                        if (v != _passwordController.text) {
+                          return 'As senhas não coincidem';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 28),
+
+                    Consumer<AuthProvider>(
+                      builder: (context, auth, _) => CustomButton(
+                        text: 'Criar conta',
+                        isLoading: auth.isLoading,
+                        onPressed:
+                            auth.isLoading ? null : () => _submit(context),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    _buildLoginLink(context),
+                  ],
+                ),
+              ),
             ),
           ),
         ),
@@ -432,34 +318,128 @@ class _SignupScreenState extends State<SignupScreen> {
     );
   }
 
-  InputDecoration _buildInputDecoration({
-    required String hintText,
-    required IconData icon,
-  }) {
-    return InputDecoration(
-      hintText: hintText,
-      hintStyle: TextStyle(color: AppColors.textHint),
-      prefixIcon: Icon(icon, color: const Color(0xFFFF8C00)),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(AppDimens.radiusDefault),
-        borderSide: const BorderSide(color: Color(0xFFE8E8E8)),
+  Widget _buildStrengthIndicator() {
+    final strengths = [
+      const Color(0xFFEF4444),
+      const Color(0xFFF59E0B),
+      const Color(0xFF84CC16),
+      AppColors.success,
+    ];
+    final labels = ['Muito fraca', 'Fraca', 'Boa', 'Forte'];
+    final color = _passwordStrength > 0
+        ? strengths[_passwordStrength - 1]
+        : AppColors.inputBorder;
+    final label =
+        _passwordStrength > 0 ? labels[_passwordStrength - 1] : '';
+
+    return Row(
+      children: [
+        ...List.generate(4, (i) {
+          return Expanded(
+            child: Container(
+              height: 3,
+              margin: EdgeInsets.only(right: i < 3 ? 4 : 0),
+              decoration: BoxDecoration(
+                color: i < _passwordStrength ? color : AppColors.inputBorder,
+                borderRadius: BorderRadius.circular(AppDimens.radiusFull),
+              ),
+            ),
+          );
+        }),
+        if (label.isNotEmpty) ...[
+          const SizedBox(width: 10),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+              color: color,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildLoginLink(BuildContext context) {
+    return Center(
+      child: Wrap(
+        alignment: WrapAlignment.center,
+        children: [
+          const Text(
+            'Já tem uma conta? ',
+            style: TextStyle(color: AppColors.textLabel, fontSize: 14),
+          ),
+          GestureDetector(
+            onTap: () {
+              if (Navigator.canPop(context)) {
+                Navigator.pop(context);
+              } else {
+                Navigator.pushReplacementNamed(context, '/login');
+              }
+            },
+            child: const Text(
+              'Entrar',
+              style: TextStyle(
+                color: AppColors.accent,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
       ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(AppDimens.radiusDefault),
-        borderSide: const BorderSide(color: Color(0xFFE8E8E8)),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(AppDimens.radiusDefault),
-        borderSide: const BorderSide(
-          color: Color(0xFFFF8C00),
-          width: 2,
+    );
+  }
+
+  Future<void> _submit(BuildContext context) async {
+    FocusScope.of(context).unfocus();
+    if (!_formKey.currentState!.validate()) return;
+
+    final auth = context.read<AuthProvider>();
+
+    try {
+      await auth.signup(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+        fullName: _nameController.text.trim(),
+      );
+
+      if (!context.mounted) return;
+
+      if (auth.isAuthenticated) {
+        Navigator.pushReplacementNamed(context, '/welcome');
+      } else if (auth.error != null) {
+        _showError(context, auth.error!);
+      }
+    } catch (e) {
+      if (!context.mounted) return;
+      _showError(context, 'Não foi possível criar a conta. Tente novamente.');
+    }
+  }
+
+  void _showError(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.error_outline, color: Colors.white, size: 18),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                message,
+                style: const TextStyle(fontSize: 14),
+              ),
+            ),
+          ],
         ),
-      ),
-      filled: true,
-      fillColor: Colors.white,
-      contentPadding: const EdgeInsets.symmetric(
-        horizontal: AppDimens.paddingSmall,
-        vertical: AppDimens.paddingSmall,
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppDimens.radiusMedium),
+        ),
+        margin: const EdgeInsets.all(16),
+        duration: const Duration(seconds: 4),
       ),
     );
   }
