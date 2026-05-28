@@ -1,30 +1,44 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'dart:io' show Platform;
 
 // ====================================
 // Colors
 // ====================================
 class AppColors {
-  // Primary Colors (from MiAjudAI logo)
+  // Primary Brand
   static const Color primary = Color(0xFF1B4965);
   static const Color primaryDark = Color(0xFF0F2A3D);
-  static const Color accent = Color(0xFFFF8C00);
+  static const Color primaryDeep = Color(0xFF0D2740);   // gradiente hero (topo)
+  static const Color primarySurface = Color(0xFFE8F4F8); // fundo de item ativo
 
-  // Secondary Colors
-  static const Color success = Color(0xFF4CAF50);
-  static const Color warning = Color(0xFFFFC107);
-  static const Color error = Color(0xFFF44336);
-  static const Color info = Color(0xFF2196F3);
+  // Accent (CTA, foco, destaque)
+  static const Color accent = Color(0xFFFF8C00);
+  static const Color accentDark = Color(0xFFE67E00);    // gradiente botão (fim)
+  static const Color accentSurface = Color(0xFFFFF3E6); // fundo do hero auth
+
+  // Feedback
+  static const Color success = Color(0xFF22C55E);
+  static const Color warning = Color(0xFFF59E0B);
+  static const Color error = Color(0xFFEF4444);
+  static const Color info = Color(0xFF3B82F6);
+
+  // Agentes de IA
+  static const Color tina = Color(0xFF2D9B5A);           // Tina — doméstico
 
   // Background & Surface
   static const Color background = Color(0xFFF5F5F7);
   static const Color surface = Colors.white;
+  static const Color inputFill = Color(0xFFF9FAFB);      // fundo de inputs
   static const Color divider = Color(0xFFE8E8E8);
+  static const Color inputBorder = Color(0xFFE5E7EB);    // borda padrão de inputs
 
-  // Text Colors
-  static const Color textPrimary = Color(0xFF1B4965);
-  static const Color textSecondary = Color(0xFF999999);
-  static const Color textHint = Color(0xFFCCCCCC);
+  // Text (hierarquia: dark → primary → label → secondary → hint)
+  static const Color textDark = Color(0xFF1C1C2E);       // títulos, texto digitado
+  static const Color textPrimary = Color(0xFF1B4965);    // texto com identidade brand
+  static const Color textLabel = Color(0xFF6B7280);      // labels de campos
+  static const Color textSecondary = Color(0xFF9CA3AF);  // texto auxiliar
+  static const Color textHint = Color(0xFFC4C9D4);       // placeholders
 }
 
 // ====================================
@@ -43,8 +57,13 @@ class AppDimens {
   static const double radiusSmall = 4.0;
   static const double radiusDefault = 8.0;
   static const double radiusMedium = 12.0;
+  static const double radiusInput = 12.0;    // todos os campos de texto
+  static const double radiusButton = 14.0;   // botão primário CTA
   static const double radiusLarge = 16.0;
+  static const double radiusCard = 20.0;     // cards premium
   static const double radiusXLarge = 24.0;
+  static const double radiusHeroCard = 28.0; // card que sobe sobre o hero
+  static const double radiusFull = 999.0;    // elementos circulares
 
   // Icon Sizes
   static const double iconSmall = 16.0;
@@ -181,19 +200,65 @@ class AppStrings {
 // API Configuration
 // ====================================
 class ApiConfig {
+  // 🔒 SINCRONIZADO COM: backend/src/config/env.js linha ~15
+  // Se alterar aqui, DEVE alterar lá também!
+  static const int BACKEND_PORT = 3001;
+
   static String get baseUrl {
+    // Prioridade 1: .env contém IP real detectado pelo backend
     final envUrl = dotenv.env['API_BASE_URL'];
+
     if (envUrl != null && envUrl.isNotEmpty) {
-      print('DEBUG: Using API_BASE_URL from .env: $envUrl');
+      // Android Emulator precisa traduzir o IP real para 10.0.2.2
+      if (Platform.isAndroid && _isAndroidEmulator()) {
+        final url = _translateUrlForAndroidEmulator(envUrl);
+        print('📱 Android Emulator detected - translated URL: $url');
+        return url;
+      }
+
+      // Todos os outros ambientes (iOS, device real, Chrome, etc)
+      print('✅ Using API_BASE_URL from .env: $envUrl');
       return envUrl;
     }
-    // Fallback para emulador iOS
-    const fallback = 'http://localhost:3001/api';
-    print('DEBUG: Using fallback API_BASE_URL: $fallback');
-    return fallback;
+
+    // Fallback: se .env não tiver URL (algo deu errado)
+    String fallbackUrl = _getFallbackUrl();
+    print('⚠️  No API_BASE_URL in .env - using fallback: $fallbackUrl');
+    return fallbackUrl;
   }
-  static const int connectionTimeout = 30000;
-  static const int receiveTimeout = 30000;
+
+  // Detecta se é Android Emulator (não é device real)
+  static bool _isAndroidEmulator() {
+    // Android Emulator roda em devices como "emulator", "generic"
+    // Device real tem manufacturer/model específico
+    // Por enquanto, assumir que se está em Android é emulator (pode melhorar depois)
+    return true; // TODO: Melhorar detecção de emulator vs device real
+  }
+
+  // Traduz IP real para 10.0.2.2 (Android Emulator special IP)
+  static String _translateUrlForAndroidEmulator(String originalUrl) {
+    // Substitui o IP real por 10.0.2.2
+    // Ex: http://192.168.15.4:5000/api → http://10.0.2.2:5000/api
+    return originalUrl.replaceAll(RegExp(r'http://[\d.]+:'), 'http://10.0.2.2:');
+  }
+
+  static String _getFallbackUrl() {
+    // 🔒 USA CONSTANTE: Sincronizada com backend (ver BACKEND_PORT acima)
+    if (Platform.isAndroid) {
+      return 'http://10.0.2.2:$BACKEND_PORT/api';
+    } else if (Platform.isIOS) {
+      return 'http://localhost:$BACKEND_PORT/api';
+    } else {
+      // Web/Chrome
+      return 'http://localhost:$BACKEND_PORT/api';
+    }
+  }
+
+  // 🔒 AUMENTADO: iOS pode ter latência de rede alta em início de conexão
+  // Primeira requisição: 120s (firebase warmup + network latency)
+  // Requisições subsequentes: 30s (cache quente)
+  static const int connectionTimeout = 120000;  // 2 minutos
+  static const int receiveTimeout = 120000;     // 2 minutos
 }
 
 // ====================================

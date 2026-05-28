@@ -19,8 +19,8 @@ export const verifyToken = async (req, res) => {
     // Verify Firebase token
     const decodedToken = await authService.verifyFirebaseToken(idToken);
 
-    // Register or get user
-    let user = await authService.getUserByFirebaseUid(decodedToken.uid);
+    // Register or get user (lookup by email since firebase uid can change between sessions)
+    let user = await authService.getUserByEmail(decodedToken.email);
 
     if (!user) {
       user = await authService.registerUser(

@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:intl/intl.dart';
 import '../config/constants.dart';
 import '../providers/auth_provider.dart';
 import '../providers/event_provider.dart';
+import '../widgets/common/custom_button.dart';
+import '../widgets/dialogs/delete_confirm_dialog.dart';
+import '../utils/app_snackbar.dart';
 
 class CalendarScreen extends StatefulWidget {
   const CalendarScreen({super.key});
@@ -22,126 +26,103 @@ class _CalendarScreenState extends State<CalendarScreen> {
     super.initState();
     _focusedDay = DateTime.now();
     _selectedDay = DateTime.now();
-
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      if (authProvider.authToken != null) {
-        Provider.of<EventProvider>(context, listen: false)
-            .loadEvents(authProvider.authToken!);
+      final auth = context.read<AuthProvider>();
+      if (auth.authToken != null) {
+        context.read<EventProvider>().loadEvents(auth.authToken!);
       }
     });
   }
 
   void _showAddEventBottomSheet() {
     final titleController = TextEditingController();
+    final outerContext = context;
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (context) {
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(AppDimens.radiusHeroCard),
+        ),
+      ),
+      builder: (sheetContext) {
         return Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom,
-            left: 16,
-            right: 16,
-            top: 16,
+          padding: EdgeInsets.fromLTRB(
+            24, 16, 24,
+            MediaQuery.of(sheetContext).viewInsets.bottom + 24,
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.inputBorder,
+                    borderRadius:
+                        BorderRadius.circular(AppDimens.radiusFull),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              const Text(
                 'Novo Compromisso',
-                style: AppTextStyles.headlineSmall.copyWith(
-                  color: const Color(0xFF1B4965),
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textDark,
+                  letterSpacing: -0.3,
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 4),
               Text(
-                '${_selectedDay.day}/${_selectedDay.month}/${_selectedDay.year}',
-                style: AppTextStyles.bodySmall.copyWith(
-                  color: AppColors.textSecondary,
+                DateFormat("d 'de' MMMM 'de' y", 'pt_BR')
+                    .format(_selectedDay),
+                style: const TextStyle(
+                  color: AppColors.textLabel,
+                  fontSize: 13,
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 20),
               TextField(
                 controller: titleController,
                 autofocus: true,
-                decoration: InputDecoration(
-                  hintText: 'Descrição do compromisso',
-                  hintStyle: TextStyle(color: AppColors.textHint),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(AppDimens.radiusDefault),
-                    borderSide: const BorderSide(color: Color(0xFFE8E8E8)),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(AppDimens.radiusDefault),
-                    borderSide: const BorderSide(color: Color(0xFFE8E8E8)),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(AppDimens.radiusDefault),
-                    borderSide: const BorderSide(
-                      color: Color(0xFFFF8C00),
-                      width: 2,
-                    ),
+                style: const TextStyle(
+                    color: AppColors.textDark, fontSize: 15),
+                decoration: const InputDecoration(
+                  labelText: 'Descrição',
+                  hintText: 'Ex: Consulta médica',
+                  prefixIcon: Icon(
+                    Icons.event_note_outlined,
+                    color: AppColors.textLabel,
+                    size: 20,
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
-              SizedBox(
-                height: 48,
-                child: ElevatedButton(
-                  onPressed: () {
-                    final title = titleController.text.trim();
-                    if (title.isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Digite uma descrição'),
-                          backgroundColor: Color(0xFF1B4965),
-                        ),
-                      );
-                      return;
-                    }
-
-                    final authProvider =
-                        Provider.of<AuthProvider>(context, listen: false);
-                    final eventProvider =
-                        Provider.of<EventProvider>(context, listen: false);
-
-                    if (authProvider.authToken != null) {
-                      eventProvider.addEvent(
-                        authProvider.authToken!,
-                        title,
-                        _selectedDay,
-                      ).then((_) {
-                        eventProvider.loadEvents(authProvider.authToken!);
-                      });
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Compromisso salvo!'),
-                          backgroundColor: Color(0xFF1B4965),
-                        ),
-                      );
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFFF8C00),
-                    shape: RoundedRectangleBorder(
-                      borderRadius:
-                          BorderRadius.circular(AppDimens.radiusDefault),
-                    ),
-                  ),
-                  child: Text(
-                    'Salvar',
-                    style: AppTextStyles.titleSmall.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
+              const SizedBox(height: 24),
+              CustomButton(
+                text: 'Salvar compromisso',
+                onPressed: () {
+                  final title = titleController.text.trim();
+                  if (title.isEmpty) {
+                    AppSnackBar.error(sheetContext, 'Digite uma descrição');
+                    return;
+                  }
+                  final auth = outerContext.read<AuthProvider>();
+                  final events = outerContext.read<EventProvider>();
+                  if (auth.authToken != null) {
+                    events
+                        .addEvent(auth.authToken!, title, _selectedDay)
+                        .then((_) => events.loadEvents(auth.authToken!));
+                    Navigator.pop(sheetContext);
+                    AppSnackBar.success(outerContext, 'Compromisso salvo!');
+                  }
+                },
               ),
-              const SizedBox(height: 16),
             ],
           ),
         );
@@ -151,276 +132,322 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   @override
   Widget build(BuildContext context) {
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarBrightness: Brightness.light,
+        statusBarIconBrightness: Brightness.light,
+      ),
+    );
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1B4965),
+        backgroundColor: AppColors.primary,
         elevation: 0,
+        centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded,
+              size: 20, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
         title: const Text(
           'Calendário',
           style: TextStyle(
             color: Colors.white,
-            fontWeight: FontWeight.bold,
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.3,
           ),
-        ),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
         ),
       ),
       body: Consumer<EventProvider>(
         builder: (context, eventProvider, _) {
           return SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.all(AppDimens.paddingMedium),
-              child: Column(
-                children: [
-                  // Calendar Widget
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius:
-                          BorderRadius.circular(AppDimens.radiusLarge),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.08),
-                          blurRadius: 16,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    padding: const EdgeInsets.all(AppDimens.paddingMedium),
-                    child: TableCalendar(
-                      firstDay: DateTime.utc(2000),
-                      lastDay: DateTime.utc(2050),
-                      focusedDay: _focusedDay,
-                      selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
-                      onDaySelected: (selectedDay, focusedDay) {
-                        setState(() {
-                          _selectedDay = selectedDay;
-                          _focusedDay = focusedDay;
-                        });
-                      },
-                      onPageChanged: (focusedDay) {
-                        _focusedDay = focusedDay;
-                      },
-                      calendarStyle: CalendarStyle(
-                        todayDecoration: BoxDecoration(
-                          color: const Color(0xFFFF8C00).withValues(alpha: 0.3),
-                          shape: BoxShape.circle,
-                        ),
-                        selectedDecoration: const BoxDecoration(
-                          color: Color(0xFF1B4965),
-                          shape: BoxShape.circle,
-                        ),
-                        selectedTextStyle: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        todayTextStyle: const TextStyle(
-                          color: Color(0xFF1B4965),
-                          fontWeight: FontWeight.bold,
-                        ),
-                        defaultTextStyle: const TextStyle(
-                          color: Color(0xFF1B4965),
-                        ),
-                        weekendTextStyle: const TextStyle(
-                          color: Color(0xFF1B4965),
-                        ),
-                        outsideTextStyle: const TextStyle(
-                          color: AppColors.textSecondary,
-                        ),
-                        markersMaxCount: 1,
-                        markerDecoration: const BoxDecoration(
-                          color: Color(0xFFFF8C00),
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      headerStyle: HeaderStyle(
-                        formatButtonVisible: false,
-                        titleCentered: true,
-                        titleTextStyle: AppTextStyles.headlineSmall.copyWith(
-                          color: const Color(0xFF1B4965),
-                        ),
-                        leftChevronIcon: const Icon(
-                          Icons.chevron_left,
-                          color: Color(0xFF1B4965),
-                        ),
-                        rightChevronIcon: const Icon(
-                          Icons.chevron_right,
-                          color: Color(0xFF1B4965),
-                        ),
-                      ),
-                      daysOfWeekStyle: DaysOfWeekStyle(
-                        weekdayStyle: const TextStyle(
-                          color: Color(0xFF1B4965),
-                          fontWeight: FontWeight.bold,
-                        ),
-                        weekendStyle: const TextStyle(
-                          color: Color(0xFF1B4965),
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      eventLoader: (day) {
-                        return eventProvider.eventsForDay(day);
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: AppDimens.paddingLarge),
-                  // Events for selected day
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Compromissos de ${_selectedDay.day}/${_selectedDay.month}/${_selectedDay.year}',
-                        style: AppTextStyles.titleSmall.copyWith(
-                          color: const Color(0xFF1B4965),
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      ..._buildEventList(eventProvider),
-                    ],
-                  ),
-                ],
-              ),
+            physics: const BouncingScrollPhysics(),
+            padding: const EdgeInsets.all(AppDimens.paddingDefault),
+            child: Column(
+              children: [
+                _buildCalendarCard(eventProvider),
+                const SizedBox(height: 24),
+                _buildEventSection(eventProvider),
+                const SizedBox(height: 80),
+              ],
             ),
           );
         },
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _showAddEventBottomSheet,
-        backgroundColor: const Color(0xFFFF8C00),
+        backgroundColor: AppColors.accent,
+        elevation: 2,
         child: const Icon(Icons.add, color: Colors.white),
       ),
     );
   }
 
-  List<Widget> _buildEventList(EventProvider eventProvider) {
-    final eventsForDay = eventProvider.eventsForDay(_selectedDay);
-
-    if (eventsForDay.isEmpty) {
-      return [
-        Container(
-          padding: const EdgeInsets.all(AppDimens.paddingMedium),
-          decoration: BoxDecoration(
+  Widget _buildCalendarCard(EventProvider eventProvider) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(AppDimens.radiusCard),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(AppDimens.paddingDefault),
+      child: TableCalendar(
+        firstDay: DateTime.utc(2000),
+        lastDay: DateTime.utc(2050),
+        focusedDay: _focusedDay,
+        selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+        onDaySelected: (selectedDay, focusedDay) {
+          setState(() {
+            _selectedDay = selectedDay;
+            _focusedDay = focusedDay;
+          });
+        },
+        onPageChanged: (focusedDay) => _focusedDay = focusedDay,
+        calendarStyle: CalendarStyle(
+          todayDecoration: BoxDecoration(
+            color: AppColors.accent.withValues(alpha: 0.18),
+            shape: BoxShape.circle,
+          ),
+          selectedDecoration: const BoxDecoration(
+            color: AppColors.primary,
+            shape: BoxShape.circle,
+          ),
+          selectedTextStyle: const TextStyle(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(AppDimens.radiusLarge),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.08),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
+            fontWeight: FontWeight.w700,
           ),
-          child: Text(
-            'Nenhum compromisso neste dia',
-            style: AppTextStyles.bodySmall.copyWith(
-              color: AppColors.textSecondary,
-            ),
-            textAlign: TextAlign.center,
+          todayTextStyle: const TextStyle(
+            color: AppColors.accent,
+            fontWeight: FontWeight.w700,
+          ),
+          defaultTextStyle: const TextStyle(color: AppColors.textDark),
+          weekendTextStyle: const TextStyle(color: AppColors.textDark),
+          outsideTextStyle:
+              const TextStyle(color: AppColors.textSecondary),
+          markersMaxCount: 1,
+          markerDecoration: const BoxDecoration(
+            color: AppColors.accent,
+            shape: BoxShape.circle,
+          ),
+          markerSize: 5,
+        ),
+        headerStyle: const HeaderStyle(
+          formatButtonVisible: false,
+          titleCentered: true,
+          titleTextStyle: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            color: AppColors.textDark,
+            letterSpacing: -0.2,
+          ),
+          leftChevronIcon: Icon(
+            Icons.chevron_left_rounded,
+            color: AppColors.primary,
+          ),
+          rightChevronIcon: Icon(
+            Icons.chevron_right_rounded,
+            color: AppColors.primary,
           ),
         ),
-      ];
-    }
-
-    return eventsForDay.map((event) {
-      final authProvider =
-          Provider.of<AuthProvider>(context, listen: false);
-      final eventProvider =
-          Provider.of<EventProvider>(context, listen: false);
-
-      return Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(AppDimens.radiusLarge),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
+        daysOfWeekStyle: const DaysOfWeekStyle(
+          weekdayStyle: TextStyle(
+            color: AppColors.textLabel,
+            fontWeight: FontWeight.w600,
+            fontSize: 12,
+          ),
+          weekendStyle: TextStyle(
+            color: AppColors.textLabel,
+            fontWeight: FontWeight.w600,
+            fontSize: 12,
+          ),
         ),
-        padding: const EdgeInsets.all(AppDimens.paddingMedium),
-        child: Row(
+        eventLoader: (day) => eventProvider.eventsForDay(day),
+      ),
+    );
+  }
+
+  Widget _buildEventSection(EventProvider eventProvider) {
+    final events = eventProvider.eventsForDay(_selectedDay);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
           children: [
             Container(
               width: 4,
-              height: 60,
+              height: 18,
               decoration: BoxDecoration(
-                color: const Color(0xFFFF8C00),
-                borderRadius: BorderRadius.circular(2),
+                color: AppColors.accent,
+                borderRadius:
+                    BorderRadius.circular(AppDimens.radiusFull),
               ),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    event.title,
-                    style: AppTextStyles.titleSmall.copyWith(
-                      color: const Color(0xFF1B4965),
-                      fontWeight: FontWeight.w600,
-                    ),
+            const SizedBox(width: 10),
+            Text(
+              DateFormat("d 'de' MMMM", 'pt_BR').format(_selectedDay),
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textDark,
+                letterSpacing: -0.2,
+              ),
+            ),
+            if (events.isNotEmpty) ...[
+              const SizedBox(width: 8),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: AppColors.accent.withValues(alpha: 0.12),
+                  borderRadius:
+                      BorderRadius.circular(AppDimens.radiusFull),
+                ),
+                child: Text(
+                  '${events.length}',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.accent,
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    DateFormat('dd/MM/yyyy').format(event.eventDate),
-                    style: AppTextStyles.bodySmall.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
+                ),
+              ),
+            ],
+          ],
+        ),
+        const SizedBox(height: 14),
+        if (events.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(AppDimens.radiusCard),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: const Column(
+              children: [
+                Icon(
+                  Icons.event_available_outlined,
+                  size: 36,
+                  color: AppColors.textSecondary,
+                ),
+                SizedBox(height: 8),
+                Text(
+                  'Nenhum compromisso neste dia',
+                  style: TextStyle(
+                    color: AppColors.textLabel,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+          )
+        else
+          ...events.map((event) {
+            final auth = context.read<AuthProvider>();
+            final eventProv = context.read<EventProvider>();
+            return Container(
+              margin: const EdgeInsets.only(bottom: 10),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius:
+                    BorderRadius.circular(AppDimens.radiusCard),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.06),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
                   ),
                 ],
               ),
-            ),
-            IconButton(
-              icon: const Icon(Icons.delete_outline,
-                  color: Color(0xFFFF8C00)),
-              onPressed: () {
-                showDialog(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    title: const Text('Deletar compromisso?'),
-                    content: const Text(
-                        'Tem certeza que deseja remover este compromisso?'),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: const Text('Cancelar'),
+              child: Row(
+                children: [
+                  Container(
+                    width: 4,
+                    height: 72,
+                    decoration: BoxDecoration(
+                      color: AppColors.accent,
+                      borderRadius: const BorderRadius.only(
+                        topLeft:
+                            Radius.circular(AppDimens.radiusCard),
+                        bottomLeft:
+                            Radius.circular(AppDimens.radiusCard),
                       ),
-                      TextButton(
-                        onPressed: () {
-                          if (authProvider.authToken != null) {
-                            eventProvider.removeEvent(
-                              authProvider.authToken!,
-                              event.id,
-                            );
-                          }
-                          Navigator.pop(context);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Compromisso deletado'),
-                              backgroundColor: AppColors.error,
-                            ),
-                          );
-                        },
-                        child: const Text(
-                          'Deletar',
-                          style: TextStyle(color: Colors.red),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
-                );
-              },
-            ),
-          ],
-        ),
-      );
-    }).toList();
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Padding(
+                      padding:
+                          const EdgeInsets.symmetric(vertical: 14),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            event.title,
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textDark,
+                              letterSpacing: -0.1,
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            DateFormat("d 'de' MMMM", 'pt_BR')
+                                .format(event.eventDate),
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: AppColors.textLabel,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(
+                      Icons.delete_outline_rounded,
+                      color:
+                          AppColors.error.withValues(alpha: 0.65),
+                      size: 20,
+                    ),
+                    onPressed: () => DeleteConfirmDialog.show(
+                      context,
+                      title: 'Deletar compromisso?',
+                      message:
+                          'Tem certeza que deseja remover "${event.title}"?',
+                      onConfirm: () {
+                        if (auth.authToken != null) {
+                          eventProv.removeEvent(
+                              auth.authToken!, event.id);
+                        }
+                        AppSnackBar.error(
+                            context, 'Compromisso removido');
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                ],
+              ),
+            );
+          }),
+      ],
+    );
   }
 }

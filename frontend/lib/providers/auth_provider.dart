@@ -81,21 +81,16 @@ Future<void> signup({
         return;
       }
 
-      // Register with backend
       final response = await _apiService.post('/auth/verify-token', {
         'idToken': idToken,
         'fullName': fullName,
       });
-
       if (response['success']) {
         _authToken = response['token'];
         _user = UserModel.fromJson(response['user']);
-        print('DEBUG SIGNUP: User created - ${_user?.fullName}');
-
         await _preferences.setString('auth_token', _authToken!);
         await _preferences.setString('user_data', response['user'].toString());
         _isNewUser = true;
-
         _setLoading(false);
         notifyListeners();
       }
@@ -139,19 +134,17 @@ Future<void> signup({
         return;
       }
 
-      // Verify token with backend
+      print('DEBUG: About to call backend verify-token...');
       final response = await _apiService.post('/auth/verify-token', {
         'idToken': idToken,
       });
-
+      print('DEBUG: Backend responded: ${response.toString().substring(0, 100)}...');
       if (response['success']) {
         _authToken = response['token'];
         _user = UserModel.fromJson(response['user']);
         _isNewUser = false;
-
         await _preferences.setString('auth_token', _authToken!);
         await _preferences.setString('user_data', response['user'].toString());
-
         _setLoading(false);
         notifyListeners();
       }

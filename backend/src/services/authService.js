@@ -31,11 +31,14 @@ class AuthService {
     try {
       const { User, UserContext } = getDatabase();
 
-      // Check if user already exists
-      let user = await User.findOne({ where: { firebase_uid: firebaseUid } });
+      // Check if user already exists by email (email is stable across logins)
+      let user = await User.findOne({ where: { email } });
 
       if (user) {
-        // User already registered
+        // User already registered - update firebase_uid if changed
+        if (user.firebase_uid !== firebaseUid) {
+          await user.update({ firebase_uid: firebaseUid });
+        }
         return user;
       }
 
@@ -74,10 +77,10 @@ class AuthService {
     }
   }
 
-  async getUserByFirebaseUid(firebaseUid) {
+  async getUserByEmail(email) {
     try {
       const { User } = getDatabase();
-      const user = await User.findOne({ where: { firebase_uid: firebaseUid } });
+      const user = await User.findOne({ where: { email } });
       return user;
     } catch (error) {
       throw new Error(`Failed to get user: ${error.message}`);

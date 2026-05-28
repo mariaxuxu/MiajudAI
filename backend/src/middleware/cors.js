@@ -9,6 +9,10 @@ const corsOptions = {
   maxAge: 86400, // 24 hours
 };
 
+if (process.env.NODE_ENV === 'development') {
+  console.log(`[CORS] Configured origin: ${JSON.stringify(corsOptions.origin)}`);
+}
+
 const corsMiddleware = cors(corsOptions);
 
 export default corsMiddleware;

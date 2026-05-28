@@ -154,6 +154,17 @@ export const createExpense = async (req, res) => {
     });
   } catch (error) {
     console.error('Create expense error:', error);
+
+    // Tratamento específico para categoria não encontrada
+    if (error.message === 'Category not found or not accessible') {
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({
+        error: {
+          statusCode: HTTP_STATUS.BAD_REQUEST,
+          message: 'Categoria inválida ou não encontrada',
+        },
+      });
+    }
+
     return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
       error: {
         statusCode: HTTP_STATUS.INTERNAL_SERVER_ERROR,
@@ -198,6 +209,15 @@ export const updateExpense = async (req, res) => {
         error: {
           statusCode: HTTP_STATUS.NOT_FOUND,
           message: ERROR_MESSAGES.NOT_FOUND,
+        },
+      });
+    }
+
+    if (error.message === 'Category not found or not accessible') {
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({
+        error: {
+          statusCode: HTTP_STATUS.BAD_REQUEST,
+          message: 'Categoria inválida ou não encontrada',
         },
       });
     }
