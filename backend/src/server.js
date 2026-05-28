@@ -17,9 +17,15 @@ const server = app.listen(PORT, HOST, () => {
 ║   🤖 MiAjudAI Backend API              ║
 ║   ✅ Server Running                    ║
 ║                                        ║
-║   🌐 Endpoint: http://localhost:${PORT}    ║
-║   🏥 Health: http://localhost:${PORT}/health  ║
-║   📝 Env: ${config.nodeEnv.toUpperCase()}                      ║
+║   🌐 Listening on: 0.0.0.0:${PORT}            ║
+║   🏥 Health check: /health             ║
+║   📝 Environment: ${config.nodeEnv.toUpperCase()}                      ║
+║                                        ║
+║   💡 Frontend auto-detects and uses:   ║
+║      • iOS (any): http://<local-ip>:${PORT}/api ║
+║      • Android Emulator: http://10.0.2.2:${PORT}/api ║
+║      • Android Device Real: http://<local-ip>:${PORT}/api ║
+║      • Chrome: http://localhost:${PORT}/api ║
 ║                                        ║
 ╚════════════════════════════════════════╝
   `);

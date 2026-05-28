@@ -63,7 +63,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
     );
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.accentSurface,
       body: SafeArea(
         bottom: false,
         child: Column(
@@ -85,7 +85,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
 
   Widget _buildHeader(BuildContext context) {
     return Container(
-      color: Colors.white,
+      color: AppColors.background,
       padding: const EdgeInsets.fromLTRB(8, 12, 12, 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

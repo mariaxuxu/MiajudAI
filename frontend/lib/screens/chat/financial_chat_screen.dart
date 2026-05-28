@@ -91,7 +91,12 @@ class _FinancialChatScreenState extends State<FinancialChatScreen> {
               color: Colors.white.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(17),
             ),
-            child: const Icon(Icons.smart_toy_outlined, color: Colors.white, size: 19),
+            child: Image.asset(
+              'assets/images/luna.png',
+              width: 19,
+              height: 19,
+              fit: BoxFit.contain,
+            ),
           ),
           const SizedBox(width: 10),
           Column(
@@ -99,7 +104,7 @@ class _FinancialChatScreenState extends State<FinancialChatScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               const Text(
-                'Assistente Financeiro',
+                'Luna - Assistente Financeira',
                 style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.white),
               ),
             ],
@@ -155,10 +160,15 @@ class _FinancialChatScreenState extends State<FinancialChatScreen> {
               color: AppColors.primary.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(45),
             ),
-            child: Icon(Icons.smart_toy_outlined, size: 48, color: AppColors.primary),
+            child: Image.asset(
+              'assets/images/luna.png',
+              width: 48,
+              height: 48,
+              fit: BoxFit.contain,
+            ),
           ),
           const SizedBox(height: 16),
-          Text('Assistente Financeiro', style: AppTextStyles.headlineMedium),
+          Text('Assistente Financeira', style: AppTextStyles.headlineMedium),
           const SizedBox(height: 6),
           Text(
             'Pergunte qualquer coisa sobre suas finanças',
@@ -280,7 +290,12 @@ class _FinancialChatScreenState extends State<FinancialChatScreen> {
         color: AppColors.primary.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(16),
       ),
-      child: Icon(Icons.smart_toy_outlined, size: 17, color: AppColors.primary),
+      child: Image.asset(
+        'assets/images/luna.png',
+        width: 17,
+        height: 17,
+        fit: BoxFit.contain,
+      ),
     );
   }
 

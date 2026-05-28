@@ -5,40 +5,53 @@ import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+// 🔒 SINCRONIZADO COM:
+//    - backend/src/config/env.js (port: 3001)
+//    - frontend/lib/config/constants.dart (BACKEND_PORT = 3001)
+// Se alterar aqui, DEVE alterar nos outros dois lugares também!
+const BACKEND_PORT = 3001;
+
 const getLocalIP = () => {
   const interfaces = os.networkInterfaces();
-  let wifi192 = null; // Wi-Fi normal (192.168.x.x)
-  let docker172 = null; // Docker/Emulator bridge (172.x.x.x)
-  let tethering10 = null; // Tethering (10.x.x.x)
-  let other = null; // Outros
+  let wifi192 = null;
+  let tethering10 = null;
 
   for (const ifaces of Object.values(interfaces)) {
     for (const iface of ifaces) {
       if (iface.family !== 'IPv4' || iface.internal) continue;
       const ip = iface.address;
 
+      // Prioridade 1: Wi-Fi normal (192.168.x.x)
       if (ip.startsWith('192.168.')) {
-        wifi192 = ip; // Prioridade 1: Wi-Fi normal
-      } else if (ip.startsWith('172.') && !docker172) {
-        docker172 = ip; // Prioridade 2: Docker/Emulator (172.x.x.x)
-      } else if (ip.startsWith('10.') && !tethering10) {
-        tethering10 = ip; // Prioridade 3: Tethering
-      } else if (!ip.startsWith('169.') && !other) {
-        other = ip; // Prioridade 4: Outros
+        wifi192 = ip;
+      }
+      // Prioridade 2: Tethering local (10.0.x.x ou 10.1.x.x) — evitar VPNs (10.254.x.x)
+      else if (ip.startsWith('10.0.') || ip.startsWith('10.1.')) {
+        if (!tethering10) tethering10 = ip;
       }
     }
   }
 
-  // Retornar em ordem de prioridade: Wi-Fi > Docker > Tethering > Outros > localhost
-  return wifi192 || docker172 || tethering10 || other || 'localhost';
+  return wifi192 || tethering10 || 'localhost';
 };
 
 const ip = getLocalIP();
-// Usar IP real da rede local (compatível com device físico, emulador, e produção)
-// Em desenvolvimento local, localhost + flutter run port forwarding também funciona
-const apiUrl = ip && ip !== 'localhost' ? `http://${ip}:3001/api` : 'http://localhost:3001/api';
 const envPath = path.resolve(__dirname, '../../frontend/assets/.env');
-const content = `API_BASE_URL=${apiUrl}\n`;
+
+// 🔒 PORTA HARDCODED: Sincronizada com backend/src/config/env.js
+// Tanto backend quanto frontend SEMPRE usam 3001
+const content = `# API Configuration
+# 🔒 HARDCODED: Backend SEMPRE roda em 3001
+# Frontend SEMPRE acessa http://${ip}:${BACKEND_PORT}/api
+#
+# Detalhes:
+# - iOS Simulator: Usa ${ip}:${BACKEND_PORT}
+# - iOS Device Real: Usa ${ip}:${BACKEND_PORT}
+# - Android Emulator: Traduz para 10.0.2.2:${BACKEND_PORT}
+# - Android Device Real: Usa ${ip}:${BACKEND_PORT}
+# - Chrome: Usa localhost:${BACKEND_PORT}
+API_BASE_URL=http://${ip}:${BACKEND_PORT}/api
+`;
 
 fs.writeFileSync(envPath, content, 'utf8');
-console.log(`✅ Frontend URL: ${apiUrl}`);
+console.log(`✅ Frontend .env configured: API_BASE_URL=http://${ip}:${BACKEND_PORT}/api`);

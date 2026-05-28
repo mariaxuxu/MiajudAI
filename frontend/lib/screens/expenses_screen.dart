@@ -109,10 +109,11 @@ class _ExpensesScreenState extends State<ExpensesScreen>
     String selectedPaymentMethod = 'cash';
     String selectedStatus = 'paid';
     DateTime selectedDate = _selectedMonth;
-    int selectedCategoryId = 1;
+    int selectedCategoryId = 1; // Água (primeiro da lista)
     int? selectedAccountId;
     final outerContext = context;
 
+    // Categories baseadas no seed-categories.js
     final categories = {
       1: 'Água',
       2: 'Luz',
@@ -326,16 +327,16 @@ class _ExpensesScreenState extends State<ExpensesScreen>
                             null,
                             null,
                           )
-                              .then((_) {
-                            if (selectedAccountId != null) {
-                              accounts.subtractFromAccountBalance(
-                                  selectedAccountId!, amount);
-                            }
-                            if (!sheetContext.mounted) return;
-                            Navigator.pop(sheetContext);
+                              .then((_) async {
                             if (!outerContext.mounted) return;
                             AppSnackBar.success(
                                 outerContext, 'Despesa adicionada!');
+                            if (!sheetContext.mounted) return;
+                            Navigator.pop(sheetContext);
+                            // Navegar para /accounts para ver saldo atualizado
+                            if (!outerContext.mounted) return;
+                            Navigator.pushReplacementNamed(
+                                outerContext, '/accounts');
                           });
                         }
                       } catch (_) {

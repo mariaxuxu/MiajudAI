@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'dart:io' show Platform;
 
 // ====================================
 // Colors
@@ -199,19 +200,65 @@ class AppStrings {
 // API Configuration
 // ====================================
 class ApiConfig {
+  // 🔒 SINCRONIZADO COM: backend/src/config/env.js linha ~15
+  // Se alterar aqui, DEVE alterar lá também!
+  static const int BACKEND_PORT = 3001;
+
   static String get baseUrl {
+    // Prioridade 1: .env contém IP real detectado pelo backend
     final envUrl = dotenv.env['API_BASE_URL'];
+
     if (envUrl != null && envUrl.isNotEmpty) {
-      print('DEBUG: Using API_BASE_URL from .env: $envUrl');
+      // Android Emulator precisa traduzir o IP real para 10.0.2.2
+      if (Platform.isAndroid && _isAndroidEmulator()) {
+        final url = _translateUrlForAndroidEmulator(envUrl);
+        print('📱 Android Emulator detected - translated URL: $url');
+        return url;
+      }
+
+      // Todos os outros ambientes (iOS, device real, Chrome, etc)
+      print('✅ Using API_BASE_URL from .env: $envUrl');
       return envUrl;
     }
-    // Fallback para emulador iOS
-    const fallback = 'http://localhost:3001/api';
-    print('DEBUG: Using fallback API_BASE_URL: $fallback');
-    return fallback;
+
+    // Fallback: se .env não tiver URL (algo deu errado)
+    String fallbackUrl = _getFallbackUrl();
+    print('⚠️  No API_BASE_URL in .env - using fallback: $fallbackUrl');
+    return fallbackUrl;
   }
-  static const int connectionTimeout = 30000;
-  static const int receiveTimeout = 30000;
+
+  // Detecta se é Android Emulator (não é device real)
+  static bool _isAndroidEmulator() {
+    // Android Emulator roda em devices como "emulator", "generic"
+    // Device real tem manufacturer/model específico
+    // Por enquanto, assumir que se está em Android é emulator (pode melhorar depois)
+    return true; // TODO: Melhorar detecção de emulator vs device real
+  }
+
+  // Traduz IP real para 10.0.2.2 (Android Emulator special IP)
+  static String _translateUrlForAndroidEmulator(String originalUrl) {
+    // Substitui o IP real por 10.0.2.2
+    // Ex: http://192.168.15.4:5000/api → http://10.0.2.2:5000/api
+    return originalUrl.replaceAll(RegExp(r'http://[\d.]+:'), 'http://10.0.2.2:');
+  }
+
+  static String _getFallbackUrl() {
+    // 🔒 USA CONSTANTE: Sincronizada com backend (ver BACKEND_PORT acima)
+    if (Platform.isAndroid) {
+      return 'http://10.0.2.2:$BACKEND_PORT/api';
+    } else if (Platform.isIOS) {
+      return 'http://localhost:$BACKEND_PORT/api';
+    } else {
+      // Web/Chrome
+      return 'http://localhost:$BACKEND_PORT/api';
+    }
+  }
+
+  // 🔒 AUMENTADO: iOS pode ter latência de rede alta em início de conexão
+  // Primeira requisição: 120s (firebase warmup + network latency)
+  // Requisições subsequentes: 30s (cache quente)
+  static const int connectionTimeout = 120000;  // 2 minutos
+  static const int receiveTimeout = 120000;     // 2 minutos
 }
 
 // ====================================

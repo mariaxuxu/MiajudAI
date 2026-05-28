@@ -134,9 +134,11 @@ Future<void> signup({
         return;
       }
 
+      print('DEBUG: About to call backend verify-token...');
       final response = await _apiService.post('/auth/verify-token', {
         'idToken': idToken,
       });
+      print('DEBUG: Backend responded: ${response.toString().substring(0, 100)}...');
       if (response['success']) {
         _authToken = response['token'];
         _user = UserModel.fromJson(response['user']);

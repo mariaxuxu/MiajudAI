@@ -248,7 +248,8 @@ class _IncomeScreenState extends State<IncomeScreen> {
                         final accounts =
                             outerContext.read<AccountProvider>();
                         if (auth.authToken != null) {
-                          income.addIncome(
+                          income
+                              .addIncome(
                             auth.authToken!,
                             amount,
                             description,
@@ -257,14 +258,18 @@ class _IncomeScreenState extends State<IncomeScreen> {
                             selectedAccountId,
                             false,
                             null,
-                          );
-                          if (selectedAccountId != null) {
-                            accounts.addToAccountBalance(
-                                selectedAccountId!, amount);
-                          }
-                          Navigator.pop(sheetContext);
-                          AppSnackBar.success(
-                              outerContext, 'Receita adicionada!');
+                          )
+                              .then((_) {
+                            if (!outerContext.mounted) return;
+                            AppSnackBar.success(
+                                outerContext, 'Receita adicionada!');
+                            if (!sheetContext.mounted) return;
+                            Navigator.pop(sheetContext);
+                            // Navegar para /accounts para ver saldo atualizado
+                            if (!outerContext.mounted) return;
+                            Navigator.pushReplacementNamed(
+                                outerContext, '/accounts');
+                          });
                         }
                       } catch (_) {
                         AppSnackBar.error(sheetContext, 'Valor inválido');

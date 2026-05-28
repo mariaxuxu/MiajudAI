@@ -33,7 +33,10 @@ class ApiService {
       final headers = _buildHeaders(token);
       final url = '$baseUrl$endpoint';
       print('DEBUG API: POST $url');
-      print('DEBUG API: Body: ${jsonEncode(data)}');
+      print('DEBUG API: Headers: $headers');
+      print('DEBUG API: Body size: ${jsonEncode(data).length} bytes');
+
+      final startTime = DateTime.now();
       final response = await http
           .post(
             Uri.parse(url),
@@ -42,13 +45,20 @@ class ApiService {
           )
           .timeout(const Duration(milliseconds: ApiConfig.connectionTimeout));
 
+      final elapsed = DateTime.now().difference(startTime);
+      print('DEBUG API: Response received in ${elapsed.inMilliseconds}ms');
       print('DEBUG API: Response status: ${response.statusCode}');
+      print('DEBUG API: Response body (first 200 chars): ${response.body.substring(0, minOf(200, response.body.length))}');
       return _handleResponse(response);
     } catch (e) {
       print('DEBUG API ERROR: POST failed - $e');
+      print('DEBUG API ERROR: Error type: ${e.runtimeType}');
+      print('DEBUG API ERROR: Stack trace: $e');
       rethrow;
     }
   }
+
+  int minOf(int a, int b) => a < b ? a : b;
 
   Future<dynamic> put(String endpoint, dynamic data, {String? token}) async {
     try {

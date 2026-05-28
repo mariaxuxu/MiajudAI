@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../config/constants.dart';
 import '../../providers/auth_provider.dart';
+import '../../services/auth_service.dart';
 import '../../widgets/auth/auth_field.dart';
 import '../../widgets/common/custom_button.dart';
 
@@ -348,12 +349,76 @@ class _ForgotPasswordSheet extends StatefulWidget {
 class _ForgotPasswordSheetState extends State<_ForgotPasswordSheet> {
   final _emailCtrl = TextEditingController();
   final _formKey = GlobalKey<FormState>();
+  final _authService = AuthService();
   bool _sent = false;
+  bool _isLoading = false;
+  String? _errorMessage;
 
   @override
   void dispose() {
     _emailCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _sendResetEmail() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      await _authService.sendPasswordResetEmail(_emailCtrl.text.trim());
+
+      if (!mounted) return;
+
+      setState(() {
+        _isLoading = false;
+        _sent = true;
+      });
+
+      // Show success toast
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Row(
+            children: [
+              Icon(Icons.email_outlined, color: Colors.white, size: 18),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Email de recuperação enviado com sucesso',
+                  style: TextStyle(fontSize: 14),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: AppColors.success,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppDimens.radiusMedium),
+          ),
+          margin: const EdgeInsets.all(16),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      String errorMsg = 'Erro ao enviar email';
+      if (e.toString().contains('user-not-found')) {
+        errorMsg = 'Email não encontrado';
+      } else if (e.toString().contains('invalid-email')) {
+        errorMsg = 'Email inválido';
+      } else if (e.toString().contains('too-many-requests')) {
+        errorMsg = 'Muitas tentativas. Tente novamente mais tarde';
+      }
+
+      setState(() {
+        _isLoading = false;
+        _errorMessage = errorMsg;
+      });
+    }
   }
 
   @override
@@ -421,14 +486,38 @@ class _ForgotPasswordSheetState extends State<_ForgotPasswordSheet> {
                 },
               ),
             ),
+            if (_errorMessage != null) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.error.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(AppDimens.radiusSmall),
+                  border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.error_outline,
+                        color: AppColors.error, size: 18),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _errorMessage!,
+                        style: const TextStyle(
+                          color: AppColors.error,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             const SizedBox(height: 20),
             CustomButton(
               text: 'Enviar link',
-              onPressed: () {
-                if (_formKey.currentState!.validate()) {
-                  setState(() => _sent = true);
-                }
-              },
+              isLoading: _isLoading,
+              onPressed: _isLoading ? null : _sendResetEmail,
             ),
           ] else ...[
             Container(

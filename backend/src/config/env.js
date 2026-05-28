@@ -11,8 +11,10 @@ dotenv.config({ path: envPath });
 // Configuration object
 const config = {
   // Server
+  // 🔒 SINCRONIZADO COM: frontend/lib/config/constants.dart
+  // Se alterar aqui, DEVE alterar lá também!
   nodeEnv: process.env.NODE_ENV || 'development',
-  port: process.env.PORT || 5000,
+  port: 3001,
   logLevel: process.env.LOG_LEVEL || 'info',
 
   // Database
@@ -77,10 +79,15 @@ const config = {
 
   // CORS
   cors: {
-    origin: process.env.CORS_ORIGIN === '*' ? '*' : (process.env.CORS_ORIGIN || 'http://localhost:3000').split(','),
+    // Em desenvolvimento, permitir todos os origins
+    // Em produção, configurar via CORS_ORIGIN no .env
+    origin: process.env.NODE_ENV === 'development'
+      ? '*'
+      : (process.env.CORS_ORIGIN || 'http://localhost:3000').split(','),
   },
 
   // API
+  // 🔒 SINCRONIZADO: Deve corresponder à porta acima (3001)
   api: {
     baseUrl: process.env.API_BASE_URL || 'http://localhost:3001',
   },
