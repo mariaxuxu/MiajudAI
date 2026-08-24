@@ -1,8 +1,10 @@
 # Diary + Behavior Profile Feature Specification
 
 **Date:** 2026-08-22
-**Status:** ✅ Specification Complete (Ready for Implementation)
-**Phase:** Phase 1 (Backend + Manual Diary MVP)
+**Last Updated:** 2026-08-24
+**Status:** ✅ MVP Specification Finalized (Diary-Only Testing)
+**Current Implementation:** Phase 1 MVP (DiaryScreen + POST /api/user-activity)
+**Scope:** Manual diary writes to PostgreSQL (no batching, no screen tracking, no reminders)
 
 ---
 
@@ -18,6 +20,7 @@ MiAjudAI will track user behavior and diary entries to enrich agent personalizat
 ---
 
 ## 2. Data Model
+**✅ STATUS: DONE — Tables migrated to backend/run-migration.js**
 
 ### Storage
 - **Database:** PostgreSQL (Supabase cloud)
@@ -74,27 +77,31 @@ CREATE INDEX idx_interaction_type ON interaction_events(interaction_type);
 
 ---
 
-## 3. Frontend - EventsService (Flutter)
+## 3. Frontend - Diary Service (Flutter)
 
-### Purpose
-Single service handling all event tracking and batching. Initialized after user login.
+### ✅ MVP Implementation (Current)
 
-### Features
+**Scope:** Direct POST on diary save (no batching, no screen tracking, no events buffering)
 
-#### Initialization
-- Start after `AuthProvider` successfully authenticates user
-- Check opt-in permission; if opted out, disable all tracking
-- Schedule smart daily diary reminder (local notification, 8pm default)
+#### DiaryService
+```dart
+Future<void> saveDiaryEntry(DiaryEntry entry) async {
+  final response = await apiService.post(
+    '/api/user-activity',
+    body: {
+      'events': [{
+        'type': 'diary',
+        'text': entry.text,
+        'mood': entry.mood,
+        'tags': entry.tags,
+      }]
+    },
+  );
+  // Immediate response (success/error)
+}
+```
 
-#### Event Batching
-- Buffer events in memory (diary, screen, interaction)
-- Batch sending: **every 5 minutes OR when user leaves a screen** (whichever first)
-- Hard limit: max 100 events per batch request
-- Failed batches retry 3x with exponential backoff, then discard
-
-#### Event Types
-
-**Diary Entry:**
+#### Event Format
 ```dart
 {
   "type": "diary",
@@ -104,51 +111,72 @@ Single service handling all event tracking and batching. Initialized after user 
 }
 ```
 
-**Screen Event:**
-```dart
-{
-  "type": "screen",
-  "screen_name": "/accounts or /calendar or /chat, etc",
-  "dwell_time_seconds": 120,
-  "source_screen": "previous screen name"
-}
-```
+---
 
-**Interaction Event:**
-```dart
-{
-  "type": "interaction",
-  "interaction_type": "clicked_add_income|submitted_chat|etc",
-  "screen_name": "current screen"
-}
-```
+### TODO upgrade: Full EventsService (Phase 2)
 
-### API Integration
-- Sends to `POST /api/user-activity` (single endpoint)
-- Respects opt-in permission; checks daily before showing reminder
+> ⏸️ DEFERRED — Implement after MVP testing confirms diary persistence
+
+#### Planned Features
+- **Event Batching:** Buffer events in memory (diary, screen, interaction)
+  - Batch sending: **every 5 minutes OR when user leaves a screen** (whichever first)
+  - Hard limit: max 100 events per batch request
+  - Failed batches retry 3x with exponential backoff, then discard
+- **Screen Event Tracking:**
+  ```dart
+  {
+    "type": "screen",
+    "screen_name": "/accounts or /calendar or /chat, etc",
+    "dwell_time_seconds": 120,
+    "source_screen": "previous screen name"
+  }
+  ```
+- **Interaction Event Tracking:**
+  ```dart
+  {
+    "type": "interaction",
+    "interaction_type": "clicked_add_income|submitted_chat|etc",
+    "screen_name": "current screen"
+  }
+  ```
+- **Initialization:** Start after `AuthProvider` successfully authenticates user
+- **Opt-in Check:** Verify permission before tracking (see section 7)
+
+**When to implement:** After confirming diary entries persist and sync correctly with database
 
 ---
 
 ## 4. Frontend - DiaryScreen (Flutter)
 
-### Design
+### ✅ MVP Implementation (Current)
+
+#### Design
 - Clean, minimal journal aesthetic (whitespace, soft shadows)
 - Calendar view with note blocks
 - Tap date to view/edit entry for that day
 
-### UI Flow
+#### UI Flow
 1. User taps date on calendar
 2. Show entry form with:
    - Text input (multiline, ~200 chars suggested)
    - Mood selector (buttons: happy | sad | neutral)
    - Category tags (checkboxes: finance, food, domestic, calendar)
-3. On save: Send diary entry via EventsService
+3. On save: Direct POST to `/api/user-activity`
+4. Show success/error toast
 
-### Smart Daily Reminder
+---
+
+### TODO upgrade: Smart Daily Reminder (Phase 2)
+
+> ⏸️ DEFERRED — Implement after testing confirms diary persistence
+
+#### Planned Features
 - Check on app launch if user has diary entry for today
 - If not, schedule local notification at 8pm: "How was your day? 📖"
 - Only one reminder per day
-- User can customize reminder time in settings (not in MVP)
+- User can customize reminder time in settings (Phase 3)
+
+**When to implement:** After Phase 2 completes EventsService initialization
 
 ---
 
@@ -268,20 +296,33 @@ Agents may proactively reference diary context when relevant:
 
 ## 7. Opt-in & Privacy
 
-### Opt-in Flow
+### ✅ MVP Status
+**No opt-in required for MVP** — Testing assumes user consent. Diary tracking is enabled by default.
+
+---
+
+### TODO upgrade: Opt-in Modal (Phase 2)
+
+> ⏸️ DEFERRED — Implement after core diary persistence works
+
+#### Planned Flow
 - On first app launch, show modal: "MiAjudAI learns from your behavior to personalize recommendations. Allow tracking?"
 - User must tap "Allow" or "Not Now"
 - Store permission in user profile
 - Respect permission on future launches
+- If opted out: disable all event collection (screen, interaction, diary)
 
-### Data Deletion
+#### Data Deletion Policy
 - After 30 days, raw `diary_entries`, `screen_events`, `interaction_events` are deleted
 - Aggregates (mood trends, patterns) may be kept longer for analytics
-- Users can request full data deletion (future feature)
+- Users can request full data deletion (Phase 3)
+
+**When to implement:** After MVP testing confirms user wants to see consent flow
 
 ---
 
 ## 8. Database Migrations
+**✅ STATUS: DONE — All migrations implemented in backend/run-migration.js**
 
 ### Migration Strategy
 - Use Sequelize migrations (for now; review after Supabase sync)
@@ -296,38 +337,77 @@ Agents may proactively reference diary context when relevant:
 
 ## 9. Implementation Phases
 
-### Phase 1 (MVP - Backend First)
-- ✅ Supabase PostgreSQL setup (Task #1)
-- Database schema (3 tables + indexes)
-- Backend endpoint `/api/user-activity` with validation
-- Build `user_profile_prompt` context builder
-- Test with Luna (curl/Postman manual testing)
-- DiaryScreen UI (calendar + form)
-- EventsService (batch events)
-- Opt-in modal
+### Phase 1 MVP (Current) - Diary-Only Testing
+**Goal:** Verify diary entries save to PostgreSQL via DiaryScreen
 
-### Phase 2 (Enhanced)
-- Auto-summarization job (daily mood/pattern summaries)
+✅ **Implemented:**
+- ✅ Database schema (`diary_entries` table + indexes)
+- ✅ Backend endpoint `POST /api/user-activity` with strict validation
+- ✅ DiaryScreen UI (calendar + form)
+- ✅ DiaryService (direct POST on save, no batching)
+- ✅ Integration with Luna (context builder reads diary_entries)
+
+🎯 **Test Checklist:**
+- [ ] Start backend: `npm run dev`
+- [ ] Start frontend: `flutter run`
+- [ ] Login with test account
+- [ ] Open Diary screen
+- [ ] Write entry + select mood/tags
+- [ ] Tap Save → verify success toast
+- [ ] Check database: `SELECT * FROM diary_entries ORDER BY created_at DESC LIMIT 1;`
+- [ ] Chat with Luna → verify diary context appears in response
+
+---
+
+### TODO upgrade: Phase 2 (EventsService + Screen Tracking)
+
+> ⏸️ AFTER MVP testing confirms diary persistence
+
+**Tasks:**
+- EventsService with event batching (5min flush + screen-leave trigger)
+- Screen event tracking + dwell time
+- Interaction event tracking
+- Opt-in permission modal
+- Smart daily reminder notifications
 - Unit + integration tests
-- Otto & Tina integration (food, domestic diary)
+
+---
+
+### TODO upgrade: Phase 3 (Otto & Tina + Auto-Aggregation)
+
+> ⏸️ AFTER Phase 2 completes screen/interaction tracking
+
+**Tasks:**
+- Auto-summarization job (daily mood/pattern summaries)
+- Otto integration (food tag context)
+- Tina integration (domestic tag context)
+- Mood trend visualization
 - Export diary entries feature
-- Mood charts / trend visualization
 
 ---
 
 ## 10. Example Workflows
 
-### User Writes Diary Entry
+### ✅ MVP: User Writes Diary Entry
 ```
-1. User opens app → EventsService initializes
-2. User taps calendar → DiaryScreen opens
-3. User selects date, writes "Paid bills today, relieved" → mood: happy, tag: finance
-4. User taps Save → EventsService buffers event
-5. EventsService flushes at 5-min mark → POST /api/user-activity
-6. Backend validates, stores in diary_entries table
+1. User opens app → Logs in
+2. User navigates to Diary screen
+3. User taps date on calendar
+4. User writes "Paid bills today, relieved" → mood: happy, tag: finance
+5. User taps Save button
+6. DiaryService POSTs to /api/user-activity
+7. Backend validates, stores in diary_entries table
+8. Success toast shown to user
 ```
 
-### Luna Uses Diary Context
+**Test this first.**
+
+---
+
+### TODO upgrade: Luna Uses Diary Context (Phase 2+)
+
+> ⏸️ AFTER confirming diary persistence works
+
 ```
 1. User: "What should I save this month?"
 2. Backend builds user_profile_prompt:
@@ -336,7 +416,12 @@ Agents may proactively reference diary context when relevant:
 3. Luna sees context, responds: "Great, you're keeping up with bills! Let's build on that momentum..."
 ```
 
-### Smart Reminder
+---
+
+### TODO upgrade: Smart Reminder (Phase 2+)
+
+> ⏸️ DEFERRED — Implement after EventsService initialization
+
 ```
 1. App launches at 7pm → EventsService checks: "Did user write diary today?"
 2. No diary entry → Schedule local notification at 8pm
@@ -368,21 +453,31 @@ Agents may proactively reference diary context when relevant:
 
 ## 13. Success Criteria
 
-### MVP Complete (Phase 1)
-- [ ] Supabase PostgreSQL synced
-- [ ] 3 tables + indexes created
-- [ ] `/api/user-activity` endpoint validates and stores events
-- [ ] Luna uses diary context in responses (manual testing)
-- [ ] DiaryScreen works (user can write entries)
-- [ ] EventsService batches screen/interaction events
-- [ ] Opt-in modal shows on app launch
-- [ ] Smart daily reminder schedules correctly
+### ✅ MVP Complete (Current Phase)
+- [x] PostgreSQL setup with diary schema
+- [x] `diary_entries` table created + indexed
+- [x] `/api/user-activity` endpoint validates and stores **diary events only**
+- [x] DiaryScreen works (user can write entries via calendar UI)
+- [x] DiaryService posts directly to backend on save
+- [ ] **Test:** Entry appears in database within 2s after save
+- [ ] **Test:** Luna receives diary context in next message
 
-### Phase 2 Complete
+---
+
+### TODO upgrade: Phase 2 Complete
+
+- [ ] EventsService batches screen/interaction events (5min + screen-leave)
+- [ ] Opt-in permission modal on first launch
+- [ ] Smart daily reminder schedules correctly
+- [ ] Unit + integration tests pass (EventsService, event validation)
+
+### TODO upgrade: Phase 3 Complete
+
 - [ ] Auto-summarization job runs daily
-- [ ] Unit + integration tests pass
-- [ ] Otto & Tina use diary context
+- [ ] Otto & Tina use diary context (food, domestic tags)
 - [ ] Mood trends visible to user
+- [ ] Export diary entries feature
+- [ ] Data deletion after 30 days (automated job)
 
 ---
 

@@ -8,6 +8,9 @@ import defineAccountModel from '../models/Account.js';
 import defineIncomeModel from '../models/Income.js';
 import defineExpenseModel from '../models/Expense.js';
 import defineCategoryModel from '../models/Category.js';
+import defineDiaryEntryModel from '../models/DiaryEntry.js';
+import defineScreenEventModel from '../models/ScreenEvent.js';
+import defineInteractionEventModel from '../models/InteractionEvent.js';
 
 let sequelize = null;
 let db = null;
@@ -48,6 +51,9 @@ export const initializeDatabase = async () => {
     const Income = defineIncomeModel(sequelize);
     const Expense = defineExpenseModel(sequelize);
     const Category = defineCategoryModel(sequelize);
+    const DiaryEntry = defineDiaryEntryModel(sequelize);
+    const ScreenEvent = defineScreenEventModel(sequelize);
+    const InteractionEvent = defineInteractionEventModel(sequelize);
 
     // Define associations
     User.hasMany(EmergencyContact, {
@@ -94,6 +100,24 @@ export const initializeDatabase = async () => {
       onDelete: 'CASCADE',
     });
 
+    User.hasMany(DiaryEntry, {
+      foreignKey: 'user_id',
+      onDelete: 'CASCADE',
+    });
+    DiaryEntry.belongsTo(User, { foreignKey: 'user_id' });
+
+    User.hasMany(ScreenEvent, {
+      foreignKey: 'user_id',
+      onDelete: 'CASCADE',
+    });
+    ScreenEvent.belongsTo(User, { foreignKey: 'user_id' });
+
+    User.hasMany(InteractionEvent, {
+      foreignKey: 'user_id',
+      onDelete: 'CASCADE',
+    });
+    InteractionEvent.belongsTo(User, { foreignKey: 'user_id' });
+
     // Sync models
     await sequelize.sync({ alter: false });
     console.log('✅ Database models synchronized');
@@ -108,6 +132,9 @@ export const initializeDatabase = async () => {
       Income,
       Expense,
       Category,
+      DiaryEntry,
+      ScreenEvent,
+      InteractionEvent,
     };
 
     return { sequelize, db };

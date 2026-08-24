@@ -447,6 +447,137 @@ async function runMigration() {
       }
     }
 
+    // Create diary_entries table
+    if (!tables.includes('diary_entries')) {
+      console.log('  ➕ Creating diary_entries table');
+      await queryInterface.createTable('diary_entries', {
+        id: {
+          type: 'INTEGER',
+          primaryKey: true,
+          autoIncrement: true,
+        },
+        user_id: {
+          type: 'INTEGER',
+          allowNull: false,
+          references: {
+            model: 'users',
+            key: 'id',
+          },
+          onDelete: 'CASCADE',
+        },
+        text: {
+          type: 'TEXT',
+          allowNull: false,
+        },
+        mood: {
+          type: 'VARCHAR(50)',
+          allowNull: false,
+          validate: {
+            isIn: [['happy', 'sad', 'neutral']],
+          },
+        },
+        tags: {
+          type: 'ARRAY(VARCHAR(50))',
+          defaultValue: [],
+          allowNull: true,
+        },
+        emotion_score: {
+          type: 'INTEGER',
+          allowNull: false,
+        },
+        created_at: {
+          type: 'TIMESTAMP',
+          defaultValue: sequelize.literal('CURRENT_TIMESTAMP'),
+        },
+        updated_at: {
+          type: 'TIMESTAMP',
+          defaultValue: sequelize.literal('CURRENT_TIMESTAMP'),
+        },
+      });
+      // Create indexes for diary_entries
+      await queryInterface.addIndex('diary_entries', ['user_id', 'created_at']);
+      await queryInterface.addIndex('diary_entries', ['tags']);
+      console.log('  ✅ diary_entries table created with indexes');
+    }
+
+    // Create screen_events table
+    if (!tables.includes('screen_events')) {
+      console.log('  ➕ Creating screen_events table');
+      await queryInterface.createTable('screen_events', {
+        id: {
+          type: 'INTEGER',
+          primaryKey: true,
+          autoIncrement: true,
+        },
+        user_id: {
+          type: 'INTEGER',
+          allowNull: false,
+          references: {
+            model: 'users',
+            key: 'id',
+          },
+          onDelete: 'CASCADE',
+        },
+        screen_name: {
+          type: 'VARCHAR(100)',
+          allowNull: false,
+        },
+        dwell_time_seconds: {
+          type: 'INTEGER',
+          allowNull: true,
+        },
+        source_screen: {
+          type: 'VARCHAR(100)',
+          allowNull: true,
+        },
+        created_at: {
+          type: 'TIMESTAMP',
+          defaultValue: sequelize.literal('CURRENT_TIMESTAMP'),
+        },
+      });
+      // Create indexes for screen_events
+      await queryInterface.addIndex('screen_events', ['user_id', 'created_at']);
+      await queryInterface.addIndex('screen_events', ['screen_name']);
+      console.log('  ✅ screen_events table created with indexes');
+    }
+
+    // Create interaction_events table
+    if (!tables.includes('interaction_events')) {
+      console.log('  ➕ Creating interaction_events table');
+      await queryInterface.createTable('interaction_events', {
+        id: {
+          type: 'INTEGER',
+          primaryKey: true,
+          autoIncrement: true,
+        },
+        user_id: {
+          type: 'INTEGER',
+          allowNull: false,
+          references: {
+            model: 'users',
+            key: 'id',
+          },
+          onDelete: 'CASCADE',
+        },
+        interaction_type: {
+          type: 'VARCHAR(100)',
+          allowNull: false,
+        },
+        screen_name: {
+          type: 'VARCHAR(100)',
+          allowNull: true,
+        },
+        created_at: {
+          type: 'TIMESTAMP',
+          defaultValue: sequelize.literal('CURRENT_TIMESTAMP'),
+        },
+      });
+      // Create indexes for interaction_events
+      await queryInterface.addIndex('interaction_events', ['user_id', 'created_at']);
+      await queryInterface.addIndex('interaction_events', ['interaction_type']);
+      console.log('  ✅ interaction_events table created with indexes');
+    }
+
     console.log('✅ Migrations completed successfully!');
     await sequelize.close();
     process.exit(0);
