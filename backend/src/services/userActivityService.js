@@ -58,11 +58,14 @@ export const validateInteractionEvent = (event) => {
 export const storeDiaryEntry = async (userId, eventData) => {
   const { DiaryEntry } = getDatabase();
 
-  validateDiaryEvent(eventData);
-
-  const emotionScore = EMOTION_SCORES[eventData.mood];
-
   try {
+    // Validate
+    validateDiaryEvent(eventData);
+    console.log(`[VALIDATE] ✓ Diary event validation passed`);
+
+    const emotionScore = EMOTION_SCORES[eventData.mood];
+
+    // Store
     const entry = await DiaryEntry.create({
       user_id: userId,
       text: eventData.text.trim(),
@@ -73,10 +76,20 @@ export const storeDiaryEntry = async (userId, eventData) => {
       updated_at: new Date(),
     });
 
-    console.log(`✅ Diary entry created: id=${entry.id}, mood=${eventData.mood}, emotion_score=${emotionScore}`);
+    console.log(`[DB] ✅ Diary entry CREATED`);
+    console.log(`[DB]   ID: ${entry.id}`);
+    console.log(`[DB]   User: ${userId}`);
+    console.log(`[DB]   Mood: ${eventData.mood} (score: ${emotionScore})`);
+    console.log(`[DB]   Text: "${eventData.text.substring(0, 50)}${eventData.text.length > 50 ? '...' : ''}"`);
+    console.log(`[DB]   Tags: [${(eventData.tags || []).join(', ')}]`);
+
     return entry;
   } catch (error) {
-    console.error('❌ Error storing diary entry:', error.message);
+    if (error.name === 'ValidationError') {
+      console.log(`[VALIDATE] ✗ Validation failed: ${error.field} - ${error.message}`);
+    } else {
+      console.error(`[DB_ERROR] ❌ Error storing diary entry:`, error.message);
+    }
     throw error;
   }
 };

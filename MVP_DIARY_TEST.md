@@ -96,22 +96,45 @@ docker exec -it miajudai-postgres-1 psql -U postgres -d miajudai -c \
 
 ---
 
-## Debug Commands
+## Debug Commands & Audit Logs
 
-### Backend Logs
+### Backend Audit Logs
 ```bash
-# Watch backend logs
-tail -f backend/logs/debug.log
+# When you run: npm run dev
+# You'll see comprehensive audit logs like this:
 
-# Or run with verbose output
-npm run dev 2>&1 | grep -i diary
+============================================================
+[AUDIT] 2026-08-24T14:30:00.000Z - POST /api/user-activity
+[AUDIT] User ID: 1
+[AUDIT] Events received: 1
+[AUDIT]   Event 0: type=diary
+[PROCESSING] 📤 Processing batch: 1 events for user 1
+[VALIDATE] ✓ Diary event validation passed
+[DB] ✅ Diary entry CREATED
+[DB]   ID: 42
+[DB]   User: 1
+[DB]   Mood: happy (score: 80)
+[DB]   Text: "This is my first diary entry"
+[DB]   Tags: [finance, food]
+[SUCCESS] ✅ Batch processed: 1 stored, 0 errors
+[SUMMARY] Diary: 1 | Screen: 0 | Interaction: 0
+============================================================
 ```
 
 ### Frontend Debug
 ```dart
 // In DiaryService.saveDiaryEntry()
 print('📝 Saving diary entry...');  // Before POST
-print('✅ Diary entry saved: ${response['events_stored']} event(s) stored');  // After POST
+print('✅ Diary entry saved: 1 event(s) stored');  // After POST (from response)
+```
+
+### Watch Logs in Real-Time
+```bash
+# Terminal 1: Backend
+cd backend && npm run dev
+
+# Terminal 2: Watch logs (in another terminal)
+tail -f backend/logs/debug.log | grep -E '\[AUDIT\]|\[DB\]|\[ERROR\]'
 ```
 
 ### API Testing (curl)
@@ -172,15 +195,60 @@ After confirming diary persistence works:
 
 ---
 
+## Audit Log Examples
+
+### ✅ Success Case
+```
+============================================================
+[AUDIT] 2026-08-24T14:30:00.123Z - POST /api/user-activity
+[AUDIT] User ID: 1
+[AUDIT] Events received: 1
+[AUDIT]   Event 0: type=diary
+[PROCESSING] 📤 Processing batch: 1 events for user 1
+[VALIDATE] ✓ Diary event validation passed
+[DB] ✅ Diary entry CREATED
+[DB]   ID: 42
+[DB]   User: 1
+[DB]   Mood: happy (score: 80)
+[DB]   Text: "Paid bills today, relieved"
+[DB]   Tags: [finance]
+[SUCCESS] ✅ Batch processed: 1 stored, 0 errors
+[SUMMARY] Diary: 1 | Screen: 0 | Interaction: 0
+============================================================
+```
+
+### ❌ Validation Error
+```
+============================================================
+[AUDIT] 2026-08-24T14:31:00.456Z - POST /api/user-activity
+[AUDIT] User ID: 1
+[AUDIT] Events received: 1
+[AUDIT]   Event 0: type=diary
+[PROCESSING] 📤 Processing batch: 1 events for user 1
+[VALIDATE] ✗ Validation failed: mood - Mood must be one of: happy, sad, neutral
+[ERROR]   Event index 0: mood - Mood must be one of: happy, sad, neutral
+[ERROR] Batch processed: 0 stored, 1 errors
+============================================================
+```
+
+### ❌ Empty Text Error
+```
+[VALIDATE] ✗ Validation failed: text - Diary text is required and cannot be empty
+[ERROR]   Event index 0: text - Diary text is required and cannot be empty
+```
+
+---
+
 ## Troubleshooting
 
-| Issue | Cause | Fix |
-|-------|-------|-----|
-| "Not authenticated" | No token in request | Ensure login completed, check `authProvider.authToken` |
-| "Invalid mood" | typo in mood value | Use exactly: `happy`, `sad`, `neutral` |
-| Network error | Backend not running | Start backend: `npm run dev` |
-| No database row | Validation failed | Check backend logs for validation error |
-| Wrong emotion_score | Mood derivation bug | Happy=80, sad=20, neutral=50 |
+| Issue | Cause | Audit Log Sign | Fix |
+|-------|-------|----------------|-----|
+| "Not authenticated" | No token in request | `[AUDIT]` not shown | Ensure login completed, check `authProvider.authToken` |
+| "Invalid mood" | Typo in mood value | `[VALIDATE] ✗ Validation failed: mood` | Use exactly: `happy`, `sad`, `neutral` |
+| Network error | Backend not running | No logs at all | Start backend: `npm run dev` |
+| No database row | Validation failed | `[ERROR]` in logs | Check backend logs for validation error |
+| Wrong emotion_score | Mood derivation bug | `[DB]` shows wrong score | Happy=80, sad=20, neutral=50 |
+| Empty text | Text not provided | `[VALIDATE] ✗ text - required` | Ensure DiaryScreen has text input before Save
 
 ---
 

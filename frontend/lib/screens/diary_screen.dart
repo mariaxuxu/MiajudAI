@@ -172,7 +172,7 @@ class _DiaryScreenState extends State<DiaryScreen> {
         headerStyle: HeaderStyle(
           formatButtonVisible: false,
           titleCentered: true,
-          titleTextStyle: AppTextStyles.bodyLarge,
+          titleTextStyle: AppTextStyles.titleSmall,
           leftChevronIcon: Icon(
             Icons.chevron_left,
             color: AppColors.primary,
@@ -210,7 +210,7 @@ class _DiaryScreenState extends State<DiaryScreen> {
             hint: 'What\'s on your mind?',
             controller: _textController,
             maxLines: 6,
-            required: true,
+            isRequired: true,
           ),
           const SizedBox(height: AppDimens.paddingLarge),
 
@@ -303,7 +303,7 @@ class _DiaryScreenState extends State<DiaryScreen> {
             children: [
               Expanded(
                 child: CustomButton(
-                  label: 'Cancel',
+                  text: 'Cancel',
                   onPressed: _cancelEdit,
                   variant: ButtonVariant.outlined,
                 ),
@@ -311,7 +311,7 @@ class _DiaryScreenState extends State<DiaryScreen> {
               const SizedBox(width: AppDimens.paddingMedium),
               Expanded(
                 child: CustomButton(
-                  label: 'Save',
+                  text: 'Save',
                   onPressed: diaryProvider.isLoading ? null : _saveDiary,
                   variant: ButtonVariant.primary,
                   isLoading: diaryProvider.isLoading,
@@ -339,7 +339,7 @@ class _DiaryScreenState extends State<DiaryScreen> {
             ),
             const SizedBox(height: AppDimens.paddingMedium),
             CustomButton(
-              label: 'Write entry',
+              text: 'Write entry',
               onPressed: () => setState(() => _showForm = true),
               variant: ButtonVariant.primary,
             ),

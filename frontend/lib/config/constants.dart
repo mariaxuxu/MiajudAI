@@ -207,6 +207,7 @@ class ApiConfig {
   static String get baseUrl {
     // Prioridade 1: .env contém IP real detectado pelo backend
     final envUrl = dotenv.env['API_BASE_URL'];
+    print('DEBUG: Raw envUrl from dotenv: $envUrl');
 
     if (envUrl != null && envUrl.isNotEmpty) {
       // Android Emulator precisa traduzir o IP real para 10.0.2.2
@@ -216,8 +217,9 @@ class ApiConfig {
         return url;
       }
 
-      // Todos os outros ambientes (iOS, device real, Chrome, etc)
+      // Todos os outros ambientes (iOS device real, iOS simulator, Chrome, etc)
       print('✅ Using API_BASE_URL from .env: $envUrl');
+      print('✅ Platform detected: iOS=${Platform.isIOS}, Android=${Platform.isAndroid}');
       return envUrl;
     }
 

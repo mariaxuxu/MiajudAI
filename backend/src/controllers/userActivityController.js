@@ -2,12 +2,25 @@ import userActivityService from '../services/userActivityService.js';
 import { HTTP_STATUS, ERROR_MESSAGES } from '../utils/constants.js';
 
 export const postUserActivity = async (req, res) => {
+  const timestamp = new Date().toISOString();
   try {
     const userId = req.user.userId;
     const { events } = req.body;
 
+    // AUDIT LOG: Request received
+    console.log(`\n${'='.repeat(60)}`);
+    console.log(`[AUDIT] ${timestamp} - POST /api/user-activity`);
+    console.log(`[AUDIT] User ID: ${userId}`);
+    console.log(`[AUDIT] Events received: ${events?.length || 0}`);
+    if (events && events.length > 0) {
+      events.forEach((evt, idx) => {
+        console.log(`[AUDIT]   Event ${idx}: type=${evt.type}`);
+      });
+    }
+
     // Validate request body
     if (!events || !Array.isArray(events)) {
+      console.log(`[ERROR] Invalid request: events is not an array`);
       return res.status(HTTP_STATUS.BAD_REQUEST).json({
         error: {
           statusCode: HTTP_STATUS.BAD_REQUEST,
@@ -19,6 +32,7 @@ export const postUserActivity = async (req, res) => {
 
     // Batch size limit
     if (events.length > 100) {
+      console.log(`[ERROR] Batch size exceeded: ${events.length} > 100`);
       return res.status(HTTP_STATUS.BAD_REQUEST).json({
         error: {
           statusCode: HTTP_STATUS.BAD_REQUEST,
@@ -30,6 +44,7 @@ export const postUserActivity = async (req, res) => {
 
     // Empty batch check
     if (events.length === 0) {
+      console.log(`[ERROR] Empty batch received`);
       return res.status(HTTP_STATUS.BAD_REQUEST).json({
         error: {
           statusCode: HTTP_STATUS.BAD_REQUEST,
@@ -38,7 +53,7 @@ export const postUserActivity = async (req, res) => {
       });
     }
 
-    console.log(`📤 Processing batch: ${events.length} events for user ${userId}`);
+    console.log(`[PROCESSING] 📤 Processing batch: ${events.length} events for user ${userId}`);
 
     // Process all events
     const results = await userActivityService.processEventBatch(userId, events);
@@ -48,20 +63,22 @@ export const postUserActivity = async (req, res) => {
 
     // Log any validation errors
     if (results.errors.length > 0) {
-      console.log(`⚠️  ${results.errors.length} events failed validation:`);
+      console.log(`[WARNING] ⚠️  ${results.errors.length} events failed validation:`);
       results.errors.forEach((err) => {
-        console.log(`   Event index ${err.index}: ${err.field} - ${err.message}`);
+        console.log(`[ERROR]   Event index ${err.index}: ${err.field} - ${err.message}`);
       });
     }
 
     console.log(
-      `✅ Batch processed: ${totalStored} stored, ${results.errors.length} errors`
+      `[SUCCESS] ✅ Batch processed: ${totalStored} stored, ${results.errors.length} errors`
     );
+    console.log(`[SUMMARY] Diary: ${results.diary.length} | Screen: ${results.screen.length} | Interaction: ${results.interaction.length}`);
+    console.log(`${'='.repeat(60)}\n`);
 
     return res.status(HTTP_STATUS.OK).json({
       success: true,
       events_stored: totalStored,
-      timestamp: new Date().toISOString(),
+      timestamp: timestamp,
       summary: {
         diary: results.diary.length,
         screen: results.screen.length,
@@ -70,7 +87,9 @@ export const postUserActivity = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('❌ User activity error:', error.message);
+    console.error(`[FATAL] ❌ User activity error: ${error.message}`);
+    console.error(`[STACKTRACE] ${error.stack}`);
+    console.log(`${'='.repeat(60)}\n`);
     return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
       error: {
         statusCode: HTTP_STATUS.INTERNAL_SERVER_ERROR,

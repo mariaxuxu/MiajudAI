@@ -4,10 +4,13 @@ import { HTTP_STATUS, ERROR_MESSAGES } from '../utils/constants.js';
 // POST /auth/verify-token
 // Verify Firebase token and return JWT
 export const verifyToken = async (req, res) => {
+  console.log(`\n[AUTH] POST /auth/verify-token - ${new Date().toISOString()}`);
   try {
     const { idToken, fullName } = req.body;
+    console.log(`[AUTH] Received: fullName="${fullName}", idToken.length=${idToken?.length || 0}`);
 
     if (!idToken) {
+      console.log(`[ERROR] Missing idToken`);
       return res.status(HTTP_STATUS.BAD_REQUEST).json({
         error: {
           statusCode: HTTP_STATUS.BAD_REQUEST,
@@ -17,24 +20,37 @@ export const verifyToken = async (req, res) => {
     }
 
     // Verify Firebase token
+    console.log(`[AUTH] ⏳ Verifying Firebase token...`);
     const decodedToken = await authService.verifyFirebaseToken(idToken);
+    console.log(`[AUTH] ✅ Firebase token verified`);
 
     // Register or get user (lookup by email since firebase uid can change between sessions)
+    console.log(`[AUTH] ⏳ Looking up user by email: ${decodedToken.email}`);
     let user = await authService.getUserByEmail(decodedToken.email);
+    console.log(`[AUTH] ✅ User lookup done: ${user ? 'found' : 'not found'}`);
 
     if (!user) {
+      console.log(`[AUTH] ⏳ Registering new user...`);
       user = await authService.registerUser(
         decodedToken.uid,
         decodedToken.email,
         fullName
       );
+      console.log(`[AUTH] ✅ User registered: id=${user.id}`);
     }
 
     // Generate JWT
+    console.log(`[AUTH] ⏳ Generating JWT...`);
     const jwtToken = authService.generateJWT(user.id, user.email);
+    console.log(`[AUTH] ✅ JWT generated`);
 
     // Update last activity
+    console.log(`[AUTH] ⏳ Updating last activity...`);
     await user.update({ last_activity: new Date() });
+    console.log(`[AUTH] ✅ Last activity updated`);
+
+    console.log(`[AUTH] ✅ SUCCESS - Token verified and user authenticated`);
+    console.log(`[AUTH] Returning JWT to client\n`);
 
     return res.status(HTTP_STATUS.OK).json({
       success: true,
@@ -62,7 +78,8 @@ export const verifyToken = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Token verification error:', error);
+    console.error(`[ERROR] ❌ Token verification failed: ${error.message}`);
+    console.error(`[STACKTRACE] ${error.stack}\n`);
     return res.status(HTTP_STATUS.UNAUTHORIZED).json({
       error: {
         statusCode: HTTP_STATUS.UNAUTHORIZED,

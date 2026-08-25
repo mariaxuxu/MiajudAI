@@ -33,6 +33,8 @@ class ApiService {
       final headers = _buildHeaders(token);
       final url = '$baseUrl$endpoint';
       print('DEBUG API: POST $url');
+      print('DEBUG API: BaseURL used: $baseUrl');
+      print('DEBUG API: Full URL: $url');
       print('DEBUG API: Headers: $headers');
       print('DEBUG API: Body size: ${jsonEncode(data).length} bytes');
 
