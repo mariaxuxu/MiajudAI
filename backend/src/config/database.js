@@ -12,28 +12,73 @@ import defineCategoryModel from '../models/Category.js';
 let sequelize = null;
 let db = null;
 
+const sslDialectOptions = {
+  ssl: {
+    require: true,
+    rejectUnauthorized: false,
+  },
+};
+
+// Pure seam: turns a database config into the options/connection-string Sequelize needs.
+export const buildSequelizeOptions = (dbConfig = config.database) => {
+  const options = {
+    dialect: dbConfig.dialect,
+    pool: dbConfig.pool,
+    logging: dbConfig.logging,
+    define: {
+      underscored: true,
+      timestamps: true,
+    },
+  };
+
+  if (dbConfig.ssl !== false) {
+    options.dialectOptions = sslDialectOptions;
+  }
+
+  if (dbConfig.databaseUrl) {
+    return {
+      useUrl: true,
+      connectionString: dbConfig.databaseUrl,
+      options,
+    };
+  }
+
+  return {
+    useUrl: false,
+    database: dbConfig.name,
+    username: dbConfig.username,
+    password: dbConfig.password,
+    options: {
+      ...options,
+      host: dbConfig.host,
+      port: dbConfig.port,
+    },
+  };
+};
+
+// Single factory that turns env config into a Sequelize instance.
+export const createSequelize = (dbConfig = config.database) => {
+  const connection = buildSequelizeOptions(dbConfig);
+
+  if (connection.useUrl) {
+    return new Sequelize(connection.connectionString, connection.options);
+  }
+
+  return new Sequelize(
+    connection.database,
+    connection.username,
+    connection.password,
+    connection.options
+  );
+};
+
 export const initializeDatabase = async () => {
   try {
     if (sequelize) {
       return { sequelize, db };
     }
 
-    sequelize = new Sequelize(
-      config.database.name,
-      config.database.username,
-      config.database.password,
-      {
-        host: config.database.host,
-        port: config.database.port,
-        dialect: config.database.dialect,
-        pool: config.database.pool,
-        logging: config.database.logging,
-        define: {
-          underscored: true,
-          timestamps: true,
-        },
-      }
-    );
+    sequelize = createSequelize();
 
     // Test connection
     await sequelize.authenticate();
@@ -93,10 +138,6 @@ export const initializeDatabase = async () => {
       foreignKey: 'category_id',
       onDelete: 'CASCADE',
     });
-
-    // Sync models
-    await sequelize.sync({ alter: false });
-    console.log('✅ Database models synchronized');
 
     db = {
       sequelize,

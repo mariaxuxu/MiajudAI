@@ -7,7 +7,7 @@ Backend Node.js + Express for MiAjudAI - Intelligent Support App for people livi
 ### Prerequisites
 - Node.js >= 18.0.0
 - npm >= 9.0.0
-- PostgreSQL (via Oracle Cloud Free Tier)
+- PostgreSQL — local (docker-compose) or remote (Supabase)
 - Firebase project
 - OpenAI or Anthropic Claude API key
 
@@ -25,12 +25,22 @@ cp .env.example .env
 ```
 
 Edit `.env` with your credentials:
-- **Database**: Oracle Cloud PostgreSQL credentials
+- **Database**: Supabase `DATABASE_URL`, or local docker-compose Postgres (see "Database Setup" below)
 - **Firebase**: Service account keys from Firebase Console
 - **LLM**: OpenAI API key or Anthropic Claude key
 - **Twilio**: SMS service credentials (optional, for emergency contacts)
 
-3. **Run development server**
+3. **Start the database and run migrations**
+
+Local (docker-compose):
+```bash
+docker compose up -d
+npm run migrate
+```
+
+For Supabase, set `DATABASE_URL` in `.env` instead — see "Database Setup" below.
+
+4. **Run development server**
 ```bash
 npm run dev
 ```
@@ -124,17 +134,20 @@ backend/
 | `npm run test:watch` | Run tests in watch mode |
 | `npm run lint` | Check code style |
 | `npm run lint:fix` | Auto-fix style issues |
-| `npm run migrate` | Run database migrations |
-| `npm run seed` | Seed database |
+| `npm run migrate` | Apply pending migrations (Umzug) |
+| `npm run migrate:down` | Revert the last applied migration |
+| `npm run migrate:status` | List executed and pending migrations |
 
 ---
 
 ## 🔐 Environment Variables
 
 ### Required
-- `POSTGRES_HOST` - Database host
+- `DATABASE_URL` - Supabase connection string (takes priority over the `POSTGRES_*` fields below)
+- `POSTGRES_HOST` - Database host (local docker-compose fallback)
 - `POSTGRES_USER` - Database user
 - `POSTGRES_PASSWORD` - Database password
+- `POSTGRES_SSL` - Set `false` for local docker-compose Postgres (SSL is on by default)
 - `FIREBASE_PROJECT_ID` - Firebase project ID
 - `JWT_SECRET` - JWT signing secret (min 32 chars)
 
@@ -149,10 +162,29 @@ See `.env.example` for all options.
 
 ## 🗄️ Database Setup
 
-### Create Connection
-1. Get PostgreSQL credentials from Oracle Cloud
-2. Update `.env` with credentials
-3. Run migrations:
+The backend connects to Postgres through a single factory that accepts either a
+Supabase `DATABASE_URL` or local `POSTGRES_*` fields. Migrations (Umzug) are the
+single source of truth for the schema — `sequelize.sync()` is no longer run on boot.
+
+### Local (docker-compose)
+1. Start PostgreSQL:
+   ```bash
+   docker compose up -d
+   ```
+2. In `.env`, keep `POSTGRES_SSL=false` and the default `POSTGRES_*` values
+   (`localhost:5432`, db `miajudai_dev`, user/password `postgres`).
+3. Apply migrations:
+   ```bash
+   npm run migrate
+   ```
+
+### Supabase (remote)
+1. Copy the connection string from **Supabase → Settings → Database → Connection string**
+   (use **direct**, port `5432`; the pooler on `6543` is a fallback if you hit network errors).
+2. In `.env`, set `DATABASE_URL` (it takes priority over `POSTGRES_*`) and
+   remove `POSTGRES_SSL=false` — Supabase requires SSL. URL-encode special
+   characters (`@ : / # ? % space`) in the password.
+3. Apply migrations:
    ```bash
    npm run migrate
    ```
@@ -255,8 +287,9 @@ kill -9 <PID>
 ```
 
 ### Database Connection Error
-- Check `POSTGRES_*` environment variables
-- Verify Oracle Cloud PostgreSQL is running
+- Check `DATABASE_URL` (Supabase) or the `POSTGRES_*` environment variables (local docker)
+- Verify PostgreSQL is running (`docker compose ps` for local, Supabase dashboard for remote)
+- For Supabase, confirm SSL is enabled (do not set `POSTGRES_SSL=false`)
 - Test connection with pgAdmin
 
 ### Firebase Error
