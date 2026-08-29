@@ -19,6 +19,10 @@ const config = {
 
   // Database
   database: {
+    // Connection string (Supabase) — takes priority over the POSTGRES_* fields below.
+    databaseUrl: process.env.DATABASE_URL,
+    // SSL is on by default (Supabase requires it). Set POSTGRES_SSL=false for the local docker Postgres.
+    ssl: process.env.POSTGRES_SSL !== 'false',
     host: process.env.POSTGRES_HOST || 'localhost',
     port: process.env.POSTGRES_PORT || 5432,
     name: process.env.POSTGRES_DB || 'miajudai_dev',
