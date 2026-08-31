@@ -27,8 +27,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       duration: const Duration(milliseconds: 700),
     );
 
-    // Stagger de fade para os cards (4 cards)
-    _cardFades = List.generate(4, (i) {
+    _cardFades = List.generate(5, (i) {
       final start = i * 0.12;
       final end = (start + 0.5).clamp(0.0, 1.0);
       return Tween<double>(begin: 0, end: 1).animate(
@@ -90,29 +89,9 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Linha superior: Logout | MiAjudAI (centro) | Perfil
           Row(
             children: [
-              // Ícone de perfil — esquerda
-              GestureDetector(
-                onTap: () =>
-                    Navigator.pushNamed(context, AppRoutes.manageAccount),
-                child: Container(
-                  width: 42,
-                  height: 42,
-                  margin: const EdgeInsets.only(left: 4),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.08),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.person_rounded,
-                    color: AppColors.primary,
-                    size: 22,
-                  ),
-                ),
-              ),
-              // Nome do app — centralizado
+              const SizedBox.shrink(),
               const Expanded(
                 child: Text(
                   'MiAjudAI',
@@ -125,7 +104,6 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                   ),
                 ),
               ),
-              // Logout — direita
               IconButton(
                 onPressed: () => LogoutDialog.show(
                   context,
@@ -141,7 +119,6 @@ class _WelcomeScreenState extends State<WelcomeScreen>
               ),
             ],
           ),
-          // Saudação
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
             child: Consumer<AuthProvider>(
@@ -150,9 +127,9 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Olá, ${firstName.isNotEmpty ? firstName : 'bem-vindo'}! 👋',
-                      style: const TextStyle(
+                    const Text(
+                      'Olá',
+                      style: TextStyle(
                         fontSize: 17,
                         fontWeight: FontWeight.w700,
                         color: AppColors.textDark,
@@ -192,6 +169,13 @@ class _WelcomeScreenState extends State<WelcomeScreen>
         description: 'Contas, receitas e despesas',
         color: AppColors.primary,
         onTap: () => Navigator.pushNamed(context, AppRoutes.accounts),
+      ),
+      _CardData(
+        icon: Icons.receipt_long_outlined,
+        title: 'Dashboard / Fatura',
+        description: 'Parcelas e gastos fixos mensais',
+        color: AppColors.primary,
+        onTap: () => Navigator.pushNamed(context, AppRoutes.invoiceDashboard),
       ),
       _CardData(
         icon: Icons.home_repair_service_outlined,
