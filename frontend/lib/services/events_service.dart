@@ -42,8 +42,8 @@ class EventsService {
       iOS: iosSettings,
     );
     await _notificationsPlugin.initialize(
-      settings,
-      onDidReceiveNotificationResponse: (NotificationResponse? _) {},
+      settings: settings,
+      onDidReceiveNotificationResponse: (_) {},
     );
 
     // Start periodic flush timer

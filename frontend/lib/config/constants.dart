@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'dart:io' show Platform;
 
@@ -211,15 +212,13 @@ class ApiConfig {
 
     if (envUrl != null && envUrl.isNotEmpty) {
       // Android Emulator precisa traduzir o IP real para 10.0.2.2
-      if (Platform.isAndroid && _isAndroidEmulator()) {
+      if (!kIsWeb && Platform.isAndroid && _isAndroidEmulator()) {
         final url = _translateUrlForAndroidEmulator(envUrl);
         print('📱 Android Emulator detected - translated URL: $url');
         return url;
       }
 
-      // Todos os outros ambientes (iOS device real, iOS simulator, Chrome, etc)
       print('✅ Using API_BASE_URL from .env: $envUrl');
-      print('✅ Platform detected: iOS=${Platform.isIOS}, Android=${Platform.isAndroid}');
       return envUrl;
     }
 
@@ -245,15 +244,9 @@ class ApiConfig {
   }
 
   static String _getFallbackUrl() {
-    // 🔒 USA CONSTANTE: Sincronizada com backend (ver BACKEND_PORT acima)
-    if (Platform.isAndroid) {
-      return 'http://10.0.2.2:$BACKEND_PORT/api';
-    } else if (Platform.isIOS) {
-      return 'http://localhost:$BACKEND_PORT/api';
-    } else {
-      // Web/Chrome
-      return 'http://localhost:$BACKEND_PORT/api';
-    }
+    if (kIsWeb) return 'http://localhost:$BACKEND_PORT/api';
+    if (Platform.isAndroid) return 'http://10.0.2.2:$BACKEND_PORT/api';
+    return 'http://localhost:$BACKEND_PORT/api';
   }
 
   // 🔒 AUMENTADO: iOS pode ter latência de rede alta em início de conexão

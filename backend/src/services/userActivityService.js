@@ -66,14 +66,15 @@ export const storeDiaryEntry = async (userId, eventData) => {
     const emotionScore = EMOTION_SCORES[eventData.mood];
 
     // Store
+    const entryDate = eventData.date ? new Date(eventData.date) : new Date();
     const entry = await DiaryEntry.create({
       user_id: userId,
       text: eventData.text.trim(),
       mood: eventData.mood,
       tags: eventData.tags || [],
       emotion_score: emotionScore,
-      created_at: new Date(),
-      updated_at: new Date(),
+      created_at: entryDate,
+      updated_at: entryDate,
     });
 
     console.log(`[DB] ✅ Diary entry CREATED`);
@@ -227,6 +228,27 @@ export const getDiaryEntriesForPeriod = async (userId, startDate, endDate, limit
   }
 };
 
+export const getDiaryEntriesForMonth = async (userId, year, month) => {
+  const { DiaryEntry } = getDatabase();
+
+  const startDate = new Date(Date.UTC(year, month - 1, 1));
+  const endDate = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999));
+
+  try {
+    const entries = await DiaryEntry.findAll({
+      where: {
+        user_id: userId,
+        created_at: { [Op.between]: [startDate, endDate] },
+      },
+      order: [['created_at', 'DESC']],
+    });
+    return entries;
+  } catch (error) {
+    console.error('❌ Error querying diary entries for month:', error.message);
+    throw error;
+  }
+};
+
 export default {
   validateDiaryEvent,
   validateScreenEvent,
@@ -237,4 +259,5 @@ export default {
   processEventBatch,
   getDiaryEntriesByTag,
   getDiaryEntriesForPeriod,
+  getDiaryEntriesForMonth,
 };

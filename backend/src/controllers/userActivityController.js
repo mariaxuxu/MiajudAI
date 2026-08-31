@@ -99,6 +99,42 @@ export const postUserActivity = async (req, res) => {
   }
 };
 
+export const getDiaryEntries = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { month } = req.query;
+
+    if (!month || !/^\d{4}-\d{2}$/.test(month)) {
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({
+        error: { message: 'month parameter required in YYYY-MM format' },
+      });
+    }
+
+    const [year, m] = month.split('-').map(Number);
+    const entries = await userActivityService.getDiaryEntriesForMonth(userId, year, m);
+
+    return res.status(HTTP_STATUS.OK).json({
+      entries: entries.map((e) => ({
+        id: e.id,
+        user_id: e.user_id,
+        text: e.text,
+        mood: e.mood,
+        tags: e.tags,
+        emotion_score: e.emotion_score,
+        created_at: e.created_at,
+        updated_at: e.updated_at,
+      })),
+      month,
+    });
+  } catch (error) {
+    console.error('❌ Error fetching diary entries:', error.message);
+    return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+      error: { message: ERROR_MESSAGES.INTERNAL_ERROR },
+    });
+  }
+};
+
 export default {
   postUserActivity,
+  getDiaryEntries,
 };
