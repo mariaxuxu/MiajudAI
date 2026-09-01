@@ -11,6 +11,7 @@ import '../screens/accounts_screen.dart';
 import '../screens/income_screen.dart';
 import '../screens/expenses_screen.dart';
 import '../screens/chat/financial_chat_screen.dart';
+import '../screens/diary_screen.dart';
 
 class AppRoutes {
   static const String splash = '/';
@@ -27,6 +28,7 @@ class AppRoutes {
   static const String expenses = '/expenses';
   static const String finance = '/finance';
   static const String chat = '/chat';
+  static const String diary = '/diary';
 
   static Map<String, WidgetBuilder> routes = {
     splash: (context) => const SplashScreen(),
@@ -41,5 +43,6 @@ class AppRoutes {
     income: (context) => const IncomeScreen(),
     expenses: (context) => const ExpensesScreen(),
     chat: (context) => const FinancialChatScreen(),
+    diary: (context) => const DiaryScreen(),
   };
 }

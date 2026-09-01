@@ -19,8 +19,10 @@ async function main() {
 
   const sequelize = createSequelize();
 
+  const migrationsGlob = path.join(__dirname, '../migrations/*.js').replace(/\\/g, '/');
+
   const umzug = new Umzug({
-    migrations: { glob: path.join(__dirname, '../migrations/*.js') },
+    migrations: { glob: migrationsGlob },
     context: sequelize,
     storage: new SequelizeStorage({ sequelize, tableName: 'SequelizeMeta' }),
   });
