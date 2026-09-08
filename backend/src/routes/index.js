@@ -7,6 +7,8 @@ import accountsRoutes from './accounts.js';
 import incomeRoutes from './income.js';
 import expensesRoutes from './expenses.js';
 import chatRoutes from './chat.js';
+import installmentsRoutes from './installments.js';
+import fixedCostsRoutes from './fixedCosts.js';
 
 const router = express.Router();
 
@@ -22,5 +24,7 @@ router.use('/accounts', accountsRoutes);
 router.use('/income', incomeRoutes);
 router.use('/expenses', expensesRoutes);
 router.use('/chat', chatRoutes);
+router.use('/installments', installmentsRoutes);
+router.use('/fixed-costs', fixedCostsRoutes);
 
 export default router;

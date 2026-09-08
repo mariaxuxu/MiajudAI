@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'dart:io' show Platform;
+import 'dart:io' as io;
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 // ====================================
 // Colors
@@ -210,7 +211,7 @@ class ApiConfig {
 
     if (envUrl != null && envUrl.isNotEmpty) {
       // Android Emulator precisa traduzir o IP real para 10.0.2.2
-      if (Platform.isAndroid && _isAndroidEmulator()) {
+      if (!kIsWeb && io.Platform.isAndroid && _isAndroidEmulator()) {
         final url = _translateUrlForAndroidEmulator(envUrl);
         print('📱 Android Emulator detected - translated URL: $url');
         return url;
@@ -244,12 +245,14 @@ class ApiConfig {
 
   static String _getFallbackUrl() {
     // 🔒 USA CONSTANTE: Sincronizada com backend (ver BACKEND_PORT acima)
-    if (Platform.isAndroid) {
+    if (kIsWeb) {
+      // Web/Chrome
+      return 'http://localhost:$BACKEND_PORT/api';
+    } else if (io.Platform.isAndroid) {
       return 'http://10.0.2.2:$BACKEND_PORT/api';
-    } else if (Platform.isIOS) {
+    } else if (io.Platform.isIOS) {
       return 'http://localhost:$BACKEND_PORT/api';
     } else {
-      // Web/Chrome
       return 'http://localhost:$BACKEND_PORT/api';
     }
   }

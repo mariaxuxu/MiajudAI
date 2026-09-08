@@ -8,6 +8,8 @@ import defineAccountModel from '../models/Account.js';
 import defineIncomeModel from '../models/Income.js';
 import defineExpenseModel from '../models/Expense.js';
 import defineCategoryModel from '../models/Category.js';
+import { defineInstallmentModel } from '../models/Installment.js';
+import { defineFixedCostModel } from '../models/FixedCost.js';
 
 let sequelize = null;
 let db = null;
@@ -93,6 +95,8 @@ export const initializeDatabase = async () => {
     const Income = defineIncomeModel(sequelize);
     const Expense = defineExpenseModel(sequelize);
     const Category = defineCategoryModel(sequelize);
+    const Installment = defineInstallmentModel(sequelize);
+    const FixedCost = defineFixedCostModel(sequelize);
 
     // Define associations
     User.hasMany(EmergencyContact, {
@@ -139,6 +143,18 @@ export const initializeDatabase = async () => {
       onDelete: 'CASCADE',
     });
 
+    User.hasMany(Installment, {
+      foreignKey: 'user_id',
+      onDelete: 'CASCADE',
+    });
+    Installment.belongsTo(User, { foreignKey: 'user_id' });
+
+    User.hasMany(FixedCost, {
+      foreignKey: 'user_id',
+      onDelete: 'CASCADE',
+    });
+    FixedCost.belongsTo(User, { foreignKey: 'user_id' });
+
     db = {
       sequelize,
       User,
@@ -149,6 +165,8 @@ export const initializeDatabase = async () => {
       Income,
       Expense,
       Category,
+      Installment,
+      FixedCost,
     };
 
     return { sequelize, db };

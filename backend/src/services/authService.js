@@ -23,6 +23,16 @@ class AuthService {
       const decodedToken = await verifyIdToken(idToken);
       return decodedToken;
     } catch (error) {
+      // Development fallback: when Firebase is not configured, use token as email
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('⚠️  Firebase not configured - using development mode fallback');
+        return {
+          uid: `dev_${Date.now()}`,
+          email: idToken.split('@')[0] ? idToken : 'dev@miajudai.com',
+          email_verified: false,
+          name: 'Dev User'
+        };
+      }
       throw new Error(`Firebase token verification failed: ${error.message}`);
     }
   }

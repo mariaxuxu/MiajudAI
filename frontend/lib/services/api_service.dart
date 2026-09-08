@@ -3,9 +3,10 @@ import 'dart:convert';
 import '../config/constants.dart';
 
 class ApiService {
-  final String baseUrl = ApiConfig.baseUrl;
+  late final String baseUrl;
 
   ApiService() {
+    baseUrl = ApiConfig.baseUrl;
     print('DEBUG: ApiService initialized with baseUrl: $baseUrl');
   }
 

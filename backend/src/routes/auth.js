@@ -1,4 +1,6 @@
 import express from 'express';
+import jwt from 'jsonwebtoken';
+import config from '../config/env.js';
 import {
   verifyToken,
   getCurrentUser,
@@ -8,10 +10,7 @@ import { verifyToken as authMiddleware } from '../middleware/auth.js';
 
 const router = express.Router();
 
-// Public routes
 router.post('/verify-token', verifyToken);
-
-// Protected routes
 router.get('/me', authMiddleware, getCurrentUser);
 router.put('/profile', authMiddleware, updateProfile);
 
