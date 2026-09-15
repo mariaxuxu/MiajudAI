@@ -1,4 +1,6 @@
-export const defineFixedCostModel = (sequelize, DataTypes) => {
+import { DataTypes } from 'sequelize';
+
+export const defineFixedCostModel = (sequelize) => {
   const FixedCost = sequelize.define('FixedCost', {
     id: {
       type: DataTypes.INTEGER,

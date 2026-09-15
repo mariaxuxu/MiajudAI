@@ -1,4 +1,6 @@
-export const defineInstallmentModel = (sequelize, DataTypes) => {
+import { DataTypes } from 'sequelize';
+
+export const defineInstallmentModel = (sequelize) => {
   const Installment = sequelize.define('Installment', {
     id: {
       type: DataTypes.INTEGER,
