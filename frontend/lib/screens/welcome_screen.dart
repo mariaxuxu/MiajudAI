@@ -27,7 +27,8 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       duration: const Duration(milliseconds: 700),
     );
 
-    _cardFades = List.generate(5, (i) {
+    // Stagger de fade para os cards (6 cards)
+    _cardFades = List.generate(6, (i) {
       final start = i * 0.12;
       final end = (start + 0.5).clamp(0.0, 1.0);
       return Tween<double>(begin: 0, end: 1).animate(
@@ -162,6 +163,13 @@ class _WelcomeScreenState extends State<WelcomeScreen>
         description: 'Veja e organize seus compromissos',
         color: AppColors.accent,
         onTap: () => Navigator.pushNamed(context, AppRoutes.calendar),
+      ),
+      _CardData(
+        icon: Icons.menu_book_outlined,
+        title: 'Meu Diário',
+        description: 'Registre seus pensamentos e humor',
+        color: const Color(0xFF7C3AED),
+        onTap: () => Navigator.pushNamed(context, AppRoutes.diary),
       ),
       _CardData(
         icon: Icons.account_balance_wallet_outlined,

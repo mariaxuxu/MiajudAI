@@ -145,6 +145,7 @@ Future<void> signup({
         _isNewUser = false;
         await _preferences.setString('auth_token', _authToken!);
         await _preferences.setString('user_data', response['user'].toString());
+
         _setLoading(false);
         notifyListeners();
       }
@@ -190,6 +191,7 @@ Future<void> signup({
   Future<void> logout() async {
     _setLoading(true);
     try {
+
       await _authService.signOut();
       _authToken = null;
       _user = null;

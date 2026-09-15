@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'dart:io' as io;
-import 'package:flutter/foundation.dart' show kIsWeb;
 
 // ====================================
 // Colors
@@ -208,6 +208,7 @@ class ApiConfig {
   static String get baseUrl {
     // Prioridade 1: .env contém IP real detectado pelo backend
     final envUrl = dotenv.env['API_BASE_URL'];
+    print('DEBUG: Raw envUrl from dotenv: $envUrl');
 
     if (envUrl != null && envUrl.isNotEmpty) {
       // Android Emulator precisa traduzir o IP real para 10.0.2.2
@@ -217,7 +218,6 @@ class ApiConfig {
         return url;
       }
 
-      // Todos os outros ambientes (iOS, device real, Chrome, etc)
       print('✅ Using API_BASE_URL from .env: $envUrl');
       return envUrl;
     }

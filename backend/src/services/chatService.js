@@ -1,6 +1,7 @@
 import axios from 'axios';
 import config from '../config/env.js';
 import { getDatabase } from '../config/database.js';
+import userProfilePromptService from './userProfilePromptService.js';
 
 const GEMINI_BASE_URL = 'https://api.groq.com/openai/v1';
 
@@ -146,18 +147,22 @@ const sendMessage = async (userId, message, history = []) => {
   const financialContext = await buildFinancialContext(userId);
   console.log(`[CHAT] ✓ Financial context built in ${Date.now() - startContextTime}ms (${financialContext.length} chars)`);
 
+  console.log(`[CHAT] ✓ Building diary context...`);
+  const diaryContext = await userProfilePromptService.buildDiaryContext(userId, 'luna', 800);
+
   console.log(`[CHAT] ✓ Preparing message structure (${history.length} history items)`);
 
   const messages = [
     { role: 'system', content: systemPrompt },
   ];
 
-  // Se é primeira mensagem do dia (history vazio), passar contexto financeiro escondido
+  // Se é primeira mensagem do dia (history vazio), passar contexto financeiro + diário escondido
   if (history.length === 0) {
-    console.log(`[CHAT] ⚡ FIRST MESSAGE OF SESSION - Including financial context (hidden from user)`);
+    console.log(`[CHAT] ⚡ FIRST MESSAGE OF SESSION - Including financial + diary context (hidden from user)`);
+    const contextMessage = `[CONTEXTO FINANCEIRO E DIÁRIO - NÃO MOSTRAR AO USUÁRIO]\n\n${financialContext}\n\n${diaryContext}`;
     messages.push({
       role: 'user',
-      content: `[CONTEXTO FINANCEIRO - NÃO MOSTRAR AO USUÁRIO]\n${financialContext}`,
+      content: contextMessage,
     });
 
     // Resposta escondida confirmando que memorizou

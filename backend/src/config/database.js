@@ -10,6 +10,9 @@ import defineExpenseModel from '../models/Expense.js';
 import defineCategoryModel from '../models/Category.js';
 import { defineInstallmentModel } from '../models/Installment.js';
 import { defineFixedCostModel } from '../models/FixedCost.js';
+import defineDiaryEntryModel from '../models/DiaryEntry.js';
+import defineScreenEventModel from '../models/ScreenEvent.js';
+import defineInteractionEventModel from '../models/InteractionEvent.js';
 
 let sequelize = null;
 let db = null;
@@ -97,6 +100,9 @@ export const initializeDatabase = async () => {
     const Category = defineCategoryModel(sequelize);
     const Installment = defineInstallmentModel(sequelize);
     const FixedCost = defineFixedCostModel(sequelize);
+    const DiaryEntry = defineDiaryEntryModel(sequelize);
+    const ScreenEvent = defineScreenEventModel(sequelize);
+    const InteractionEvent = defineInteractionEventModel(sequelize);
 
     // Define associations
     User.hasMany(EmergencyContact, {
@@ -155,6 +161,24 @@ export const initializeDatabase = async () => {
     });
     FixedCost.belongsTo(User, { foreignKey: 'user_id' });
 
+    User.hasMany(DiaryEntry, {
+      foreignKey: 'user_id',
+      onDelete: 'CASCADE',
+    });
+    DiaryEntry.belongsTo(User, { foreignKey: 'user_id' });
+
+    User.hasMany(ScreenEvent, {
+      foreignKey: 'user_id',
+      onDelete: 'CASCADE',
+    });
+    ScreenEvent.belongsTo(User, { foreignKey: 'user_id' });
+
+    User.hasMany(InteractionEvent, {
+      foreignKey: 'user_id',
+      onDelete: 'CASCADE',
+    });
+    InteractionEvent.belongsTo(User, { foreignKey: 'user_id' });
+
     db = {
       sequelize,
       User,
@@ -167,6 +191,9 @@ export const initializeDatabase = async () => {
       Category,
       Installment,
       FixedCost,
+      DiaryEntry,
+      ScreenEvent,
+      InteractionEvent,
     };
 
     return { sequelize, db };
