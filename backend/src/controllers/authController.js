@@ -1,8 +1,8 @@
 import authService from '../services/authService.js';
 import { HTTP_STATUS, ERROR_MESSAGES } from '../utils/constants.js';
 
-// POST /auth/verify-token
-// Verify Firebase token and return JWT
+const devUsers = {};
+
 export const verifyToken = async (req, res) => {
   console.log(`\n[AUTH] POST /auth/verify-token - ${new Date().toISOString()}`);
   try {
@@ -23,6 +23,47 @@ export const verifyToken = async (req, res) => {
     console.log(`[AUTH] ⏳ Verifying Firebase token...`);
     const decodedToken = await authService.verifyFirebaseToken(idToken);
     console.log(`[AUTH] ✅ Firebase token verified`);
+
+    if (process.env.NODE_ENV === 'development') {
+      const email = decodedToken.email || idToken;
+      const userId = `user_${Date.now()}`;
+
+      if (!devUsers[email]) {
+        devUsers[email] = {
+          id: userId,
+          firebase_uid: decodedToken.uid,
+          email,
+          full_name: decodedToken.name || fullName || 'Usuário',
+          phone: null,
+          avatar_url: null,
+          gender: null,
+          birth_date: null,
+          birth_country: null,
+          birth_state: null,
+          birth_city: null,
+          nationality: null,
+          marital_status: null,
+          emergency_contact_1_name: null,
+          emergency_contact_1_phone: null,
+          emergency_contact_2_name: null,
+          emergency_contact_2_phone: null,
+          emergency_contact_3_name: null,
+          emergency_contact_3_phone: null,
+          created_at: new Date(),
+          updated_at: new Date(),
+          last_activity: new Date(),
+        };
+      }
+
+      const user = devUsers[email];
+      const jwtToken = authService.generateJWT(user.id, user.email);
+
+      return res.status(HTTP_STATUS.OK).json({
+        success: true,
+        token: jwtToken,
+        user,
+      });
+    }
 
     // Register or get user (lookup by email since firebase uid can change between sessions)
     console.log(`[AUTH] ⏳ Looking up user by email: ${decodedToken.email}`);
@@ -90,8 +131,6 @@ export const verifyToken = async (req, res) => {
   }
 };
 
-// GET /auth/me
-// Get current authenticated user
 export const getCurrentUser = async (req, res) => {
   try {
     const userId = req.user.userId;
@@ -107,7 +146,6 @@ export const getCurrentUser = async (req, res) => {
       });
     }
 
-    // Update last activity
     await user.update({ last_activity: new Date() });
 
     return res.status(HTTP_STATUS.OK).json({
@@ -146,8 +184,6 @@ export const getCurrentUser = async (req, res) => {
   }
 };
 
-// PUT /auth/profile
-// Update user profile
 export const updateProfile = async (req, res) => {
   try {
     const userId = req.user.userId;

@@ -35,6 +35,7 @@ ios/Pods/
 ios/Podfile.lock
 ios/.symlinks/
 ios/Flutter/Local.podspec
+ios/**/xcshareddata/swiftpm/
 
 # IDE
 .vscode/

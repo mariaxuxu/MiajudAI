@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'dart:io' show Platform;
+import 'dart:io' as io;
 
 // ====================================
 // Colors
@@ -212,7 +212,7 @@ class ApiConfig {
 
     if (envUrl != null && envUrl.isNotEmpty) {
       // Android Emulator precisa traduzir o IP real para 10.0.2.2
-      if (!kIsWeb && Platform.isAndroid && _isAndroidEmulator()) {
+      if (!kIsWeb && io.Platform.isAndroid && _isAndroidEmulator()) {
         final url = _translateUrlForAndroidEmulator(envUrl);
         print('📱 Android Emulator detected - translated URL: $url');
         return url;
@@ -244,9 +244,17 @@ class ApiConfig {
   }
 
   static String _getFallbackUrl() {
-    if (kIsWeb) return 'http://localhost:$BACKEND_PORT/api';
-    if (Platform.isAndroid) return 'http://10.0.2.2:$BACKEND_PORT/api';
-    return 'http://localhost:$BACKEND_PORT/api';
+    // 🔒 USA CONSTANTE: Sincronizada com backend (ver BACKEND_PORT acima)
+    if (kIsWeb) {
+      // Web/Chrome
+      return 'http://localhost:$BACKEND_PORT/api';
+    } else if (io.Platform.isAndroid) {
+      return 'http://10.0.2.2:$BACKEND_PORT/api';
+    } else if (io.Platform.isIOS) {
+      return 'http://localhost:$BACKEND_PORT/api';
+    } else {
+      return 'http://localhost:$BACKEND_PORT/api';
+    }
   }
 
   // 🔒 AUMENTADO: iOS pode ter latência de rede alta em início de conexão

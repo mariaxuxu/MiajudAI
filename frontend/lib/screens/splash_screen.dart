@@ -221,7 +221,7 @@ class _SplashScreenState extends State<SplashScreen>
           style: const TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w700,
-            color: AppColors.textDark,
+            color: Color(0xFF000000),
           ),
         ),
         const SizedBox(height: 2),
@@ -229,7 +229,7 @@ class _SplashScreenState extends State<SplashScreen>
           role,
           style: const TextStyle(
             fontSize: 12,
-            color: AppColors.textLabel,
+            color: Color(0xFF666666),
           ),
         ),
       ],

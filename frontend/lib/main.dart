@@ -11,6 +11,8 @@ import 'providers/account_provider.dart';
 import 'providers/income_provider.dart';
 import 'providers/expense_provider.dart';
 import 'providers/chat_provider.dart';
+import 'providers/installment_provider.dart';
+import 'providers/fixed_cost_provider.dart';
 import 'providers/diary_provider.dart';
 
 void main() async {
@@ -36,6 +38,8 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => IncomeProvider()),
         ChangeNotifierProvider(create: (_) => ExpenseProvider()),
         ChangeNotifierProvider(create: (_) => ChatProvider()),
+        ChangeNotifierProvider(create: (_) => InstallmentProvider()),
+        ChangeNotifierProvider(create: (_) => FixedCostProvider()),
         ChangeNotifierProvider(create: (_) => DiaryProvider()),
       ],
       child: MaterialApp(

@@ -11,6 +11,7 @@ import '../screens/accounts_screen.dart';
 import '../screens/income_screen.dart';
 import '../screens/expenses_screen.dart';
 import '../screens/chat/financial_chat_screen.dart';
+import '../screens/invoice_dashboard_screen.dart';
 import '../screens/diary_screen.dart';
 
 class AppRoutes {
@@ -28,6 +29,7 @@ class AppRoutes {
   static const String expenses = '/expenses';
   static const String finance = '/finance';
   static const String chat = '/chat';
+  static const String invoiceDashboard = '/invoice-dashboard';
   static const String diary = '/diary';
 
   static Map<String, WidgetBuilder> routes = {
@@ -43,6 +45,7 @@ class AppRoutes {
     income: (context) => const IncomeScreen(),
     expenses: (context) => const ExpensesScreen(),
     chat: (context) => const FinancialChatScreen(),
-    diary: (context) => const DiaryScreen(),
+    invoiceDashboard: (context) => const InvoiceDashboardScreen(),
+    diary: (context) => const DiaryScreen()
   };
 }
