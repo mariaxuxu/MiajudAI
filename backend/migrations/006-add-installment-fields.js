@@ -1,5 +1,6 @@
 export async function up({ context: sequelize }) {
   const queryInterface = sequelize.getQueryInterface();
+  const Sequelize = sequelize.constructor;
 
   // Adicionar payment_method
   await queryInterface.sequelize.query(`
@@ -8,13 +9,13 @@ export async function up({ context: sequelize }) {
   `);
 
   await queryInterface.addColumn('installments', 'payment_method', {
-    type: sequelize.DataTypes.ENUM('credit_card', 'debit_card', 'pix', 'cash', 'transfer', 'other'),
+    type: Sequelize.ENUM('credit_card', 'debit_card', 'pix', 'cash', 'transfer', 'other'),
     defaultValue: 'credit_card',
   });
 
   // Adicionar merchant_name
   await queryInterface.addColumn('installments', 'merchant_name', {
-    type: sequelize.DataTypes.STRING(255),
+    type: Sequelize.STRING(255),
     allowNull: true,
   });
 }

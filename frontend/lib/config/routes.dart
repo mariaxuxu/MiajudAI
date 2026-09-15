@@ -46,6 +46,6 @@ class AppRoutes {
     expenses: (context) => const ExpensesScreen(),
     chat: (context) => const FinancialChatScreen(),
     invoiceDashboard: (context) => const InvoiceDashboardScreen(),
-    diary: (context) => const DiaryScreen(),
+    diary: (context) => const DiaryScreen()
   };
 }
