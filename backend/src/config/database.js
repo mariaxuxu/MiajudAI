@@ -13,6 +13,7 @@ import { defineFixedCostModel } from '../models/FixedCost.js';
 import defineDiaryEntryModel from '../models/DiaryEntry.js';
 import defineScreenEventModel from '../models/ScreenEvent.js';
 import defineInteractionEventModel from '../models/InteractionEvent.js';
+import defineUserEventModel from '../models/UserEvent.js';
 
 let sequelize = null;
 let db = null;
@@ -103,6 +104,7 @@ export const initializeDatabase = async () => {
     const DiaryEntry = defineDiaryEntryModel(sequelize);
     const ScreenEvent = defineScreenEventModel(sequelize);
     const InteractionEvent = defineInteractionEventModel(sequelize);
+    const UserEvent = defineUserEventModel(sequelize);
 
     // Define associations
     User.hasMany(EmergencyContact, {
@@ -179,6 +181,12 @@ export const initializeDatabase = async () => {
     });
     InteractionEvent.belongsTo(User, { foreignKey: 'user_id' });
 
+    User.hasMany(UserEvent, {
+      foreignKey: 'user_id',
+      onDelete: 'CASCADE',
+    });
+    UserEvent.belongsTo(User, { foreignKey: 'user_id' });
+
     db = {
       sequelize,
       User,
@@ -194,6 +202,7 @@ export const initializeDatabase = async () => {
       DiaryEntry,
       ScreenEvent,
       InteractionEvent,
+      UserEvent,
     };
 
     return { sequelize, db };
