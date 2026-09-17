@@ -1,241 +1,202 @@
 import 'dart:async';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'api_service.dart';
+import 'dart:convert';
 
+import 'package:flutter/widgets.dart';
+import 'package:http/http.dart' as http;
+
+import '../config/constants.dart';
+
+/// Bufferized publisher of user behavior events.
+///
+/// Events are accumulated in memory and flushed in batches to
+/// `POST /api/user-events` (the `user_id` is derived from the JWT on the
+/// backend, so only the token is needed here). Events published before a token
+/// is set are discarded — they have no owner.
 class EventsService {
-  static final EventsService _instance = EventsService._internal();
-  final ApiService _apiService = ApiService();
-  final List<Map<String, dynamic>> _eventBuffer = [];
+  EventsService._({
+    http.Client? client,
+    String? baseUrl,
+    Duration flushInterval = const Duration(minutes: 5),
+    Duration backoffBase = const Duration(seconds: 1),
+    Duration requestTimeout = const Duration(seconds: 30),
+    int batchSize = 100,
+    int bufferCap = 1000,
+    int maxRetries = 3,
+  })  : _client = client ?? http.Client(),
+        _baseUrl = baseUrl ?? ApiConfig.baseUrl,
+        _flushInterval = flushInterval,
+        _backoffBase = backoffBase,
+        _requestTimeout = requestTimeout,
+        _batchSize = batchSize,
+        _bufferCap = bufferCap,
+        _maxRetries = maxRetries;
+
+  static final EventsService _instance = EventsService._();
+
+  factory EventsService() => _instance;
+
+  /// Test-only constructor returning an isolated instance with injectable seams.
+  @visibleForTesting
+  factory EventsService.forTest({
+    http.Client? client,
+    String baseUrl = 'http://localhost/api',
+    Duration flushInterval = const Duration(minutes: 5),
+    Duration backoffBase = const Duration(seconds: 1),
+    Duration requestTimeout = const Duration(seconds: 30),
+    int batchSize = 100,
+    int bufferCap = 1000,
+    int maxRetries = 3,
+  }) {
+    return EventsService._(
+      client: client,
+      baseUrl: baseUrl,
+      flushInterval: flushInterval,
+      backoffBase: backoffBase,
+      requestTimeout: requestTimeout,
+      batchSize: batchSize,
+      bufferCap: bufferCap,
+      maxRetries: maxRetries,
+    );
+  }
+
+  final http.Client _client;
+  final String _baseUrl;
+  final Duration _flushInterval;
+  final Duration _backoffBase;
+  final Duration _requestTimeout;
+  final int _batchSize;
+  final int _bufferCap;
+  final int _maxRetries;
+
+  final List<Map<String, dynamic>> _buffer = [];
   Timer? _flushTimer;
-  Timer? _screenChangeDebounce;
-  late FlutterLocalNotificationsPlugin _notificationsPlugin;
-  bool _isInitialized = false;
-  String? _currentToken;
-  int _maxEventsPerBatch = 100;
-  int _flushIntervalSeconds = 5 * 60; // 5 minutes
-  int _maxRetries = 3;
+  String? _token;
+  Future<void>? _inFlight;
 
-  EventsService._internal();
+  String? get token => _token;
+  int get bufferSize => _buffer.length;
 
-  factory EventsService() {
-    return _instance;
+  @visibleForTesting
+  List<Map<String, dynamic>> get bufferedEvents => List.unmodifiable(_buffer);
+
+  /// Sets (or clears) the auth token. A non-null token starts the periodic
+  /// flush timer; `null` cancels it.
+  void setToken(String? token) {
+    _token = token;
+    if (token != null) {
+      _flushTimer ??= Timer.periodic(_flushInterval, (_) => flush());
+    } else {
+      _flushTimer?.cancel();
+      _flushTimer = null;
+    }
   }
 
-  Future<void> init(String token) async {
-    if (_isInitialized) {
-      print('DEBUG: EventsService already initialized');
-      return;
+  /// Buffers a single event. Events published before a token is set are
+  /// discarded (they have no `user_id`).
+  void publishEvent(
+    String action, {
+    String? screenName,
+    Map<String, dynamic>? metadata,
+  }) {
+    if (_token == null) return;
+
+    final event = <String, dynamic>{
+      'action': action,
+      if (screenName != null && screenName.isNotEmpty)
+        'screen_name': screenName,
+      'metadata': metadata ?? <String, dynamic>{},
+    };
+
+    _buffer.add(event);
+    if (_buffer.length > _bufferCap) {
+      _buffer.removeAt(0);
     }
 
-    _currentToken = token;
-    _isInitialized = true;
-
-    print('DEBUG: EventsService initializing with token');
-
-    // Initialize local notifications
-    _notificationsPlugin = FlutterLocalNotificationsPlugin();
-    const androidSettings =
-        AndroidInitializationSettings('app_icon');
-    const iosSettings = DarwinInitializationSettings();
-    const settings = InitializationSettings(
-      android: androidSettings,
-      iOS: iosSettings,
-    );
-    await _notificationsPlugin.initialize(
-      settings: settings,
-      onDidReceiveNotificationResponse: (_) {},
-    );
-
-    // Start periodic flush timer
-    _flushTimer = Timer.periodic(
-      Duration(seconds: _flushIntervalSeconds),
-      (_) => flush(),
-    );
-
-    print('DEBUG: EventsService initialized - flush timer started');
-
-    // Schedule daily reminder
-    await scheduleReminder();
+    if (_buffer.length >= _batchSize) {
+      flush();
+    }
   }
 
-  /// Log a diary entry
-  void logDiary(String text, String mood, List<String> tags) {
-    if (!_isInitialized) {
-      print('DEBUG: EventsService not initialized, buffering diary event');
-    }
-
-    _eventBuffer.add({
-      'type': 'diary',
-      'text': text,
-      'mood': mood,
-      'tags': tags,
+  /// Flushes buffered events to the backend (best-effort). Overlapping calls
+  /// share the same in-flight drain, which picks up any newly buffered events.
+  Future<void> flush() {
+    return _inFlight ??= _drain().whenComplete(() {
+      _inFlight = null;
     });
-
-    print('DEBUG: Diary event buffered. Buffer size: ${_eventBuffer.length}');
   }
 
-  /// Log a screen navigation event
-  void logScreenEvent(
-    String screenName,
-    int? dwellTimeSeconds,
-    String? sourceScreen,
-  ) {
-    if (!_isInitialized) {
-      print('DEBUG: EventsService not initialized, buffering screen event');
+  /// Flushes pending events, then clears the token and any events that could
+  /// not be flushed (the logout trigger). Clearing prevents events from one
+  /// session being attributed to the next user that logs in.
+  Future<void> flushAndClearToken() async {
+    await flush();
+    setToken(null);
+    _buffer.clear();
+  }
+
+  /// Notifies the publisher of an app lifecycle change; flushes on pause.
+  void onLifecycleChanged(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused) {
+      flush();
     }
+  }
 
-    _eventBuffer.add({
-      'type': 'screen',
-      'screen_name': screenName,
-      'dwell_time_seconds': dwellTimeSeconds,
-      'source_screen': sourceScreen,
-    });
+  Future<void> _drain() async {
+    while (_buffer.isNotEmpty && _token != null) {
+      final events = _buffer.take(_batchSize).toList();
+      final sent = await _sendWithRetry(events);
+      if (!sent) return; // retries exhausted; events stay in the buffer
+      _buffer.removeRange(0, events.length);
+    }
+  }
 
-    print('DEBUG: Screen event buffered. Buffer size: ${_eventBuffer.length}');
-
-    // Debounce screen change flush
-    _screenChangeDebounce?.cancel();
-    _screenChangeDebounce = Timer(const Duration(milliseconds: 500), () {
-      if (_eventBuffer.length > 20) {
-        flush();
+  Future<bool> _sendWithRetry(List<Map<String, dynamic>> events) async {
+    for (var attempt = 1; attempt <= _maxRetries; attempt++) {
+      try {
+        final body = await _post('/user-events', {'events': events});
+        if (body['success'] == true) return true;
+      } catch (_) {
+        // fall through to retry
       }
-    });
-  }
-
-  /// Log an interaction event
-  void logInteractionEvent(String interactionType, String? screenName) {
-    if (!_isInitialized) {
-      print('DEBUG: EventsService not initialized, buffering interaction event');
-    }
-
-    _eventBuffer.add({
-      'type': 'interaction',
-      'interaction_type': interactionType,
-      'screen_name': screenName,
-    });
-
-    print(
-        'DEBUG: Interaction event buffered. Buffer size: ${_eventBuffer.length}');
-  }
-
-  /// Flush buffered events to server
-  Future<void> flush({int attempt = 1}) async {
-    if (_eventBuffer.isEmpty) {
-      return;
-    }
-
-    if (_currentToken == null) {
-      print('DEBUG: No token available, cannot flush events');
-      return;
-    }
-
-    // Respect batch size limit
-    final eventsToSend = _eventBuffer.take(_maxEventsPerBatch).toList();
-    final remaining = _eventBuffer.length - eventsToSend.length;
-
-    print(
-        'DEBUG: Flushing ${eventsToSend.length} events ($remaining remaining in buffer)');
-
-    try {
-      final response = await _apiService.post(
-        '/user-activity',
-        {'events': eventsToSend},
-        token: _currentToken,
-      );
-
-      if (response is Map && response['success'] == true) {
-        _eventBuffer.removeRange(
-            0,
-            eventsToSend.length);
-        print(
-            '✅ Events flushed successfully. Stored: ${response['events_stored']}');
-      } else {
-        print('❌ Flush failed: Invalid response');
-        if (attempt < _maxRetries) {
-          _scheduleRetry(attempt + 1);
-        } else {
-          print('❌ Max retries reached, discarding batch');
-          _eventBuffer.removeRange(0, eventsToSend.length);
-        }
-      }
-    } catch (error) {
-      print('❌ Flush error: $error');
       if (attempt < _maxRetries) {
-        _scheduleRetry(attempt + 1);
-      } else {
-        print('❌ Max retries reached, discarding batch');
-        _eventBuffer.removeRange(0, eventsToSend.length);
+        await Future<void>.delayed(_backoffDelay(attempt));
       }
     }
+    return false;
   }
 
-  void _scheduleRetry(int attempt) {
-    final delay = Duration(milliseconds: 150 * (1 << (attempt - 1)));
-    print('DEBUG: Scheduling retry ${attempt}/${_maxRetries} after ${delay.inMilliseconds}ms');
-    Timer(delay, () => flush(attempt: attempt));
-  }
+  Duration _backoffDelay(int attempt) =>
+      _backoffBase * (1 << (attempt - 1));
 
-  /// Schedule daily reminder notification
-  Future<void> scheduleReminder({int hour = 20, int minute = 0}) async {
-    if (!_isInitialized) {
-      print('DEBUG: EventsService not initialized, cannot schedule reminder');
-      return;
+  Future<Map<String, dynamic>> _post(
+    String endpoint,
+    Map<String, dynamic> body,
+  ) async {
+    final response = await _client
+        .post(
+          Uri.parse('$_baseUrl$endpoint'),
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            if (_token != null) 'Authorization': 'Bearer $_token',
+          },
+          body: jsonEncode(body),
+        )
+        .timeout(_requestTimeout);
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw http.ClientException('HTTP ${response.statusCode}');
     }
 
-    try {
-      // Request notification permissions (implicit on iOS 10+, explicit on Android 13+)
-      final iosPlugin = _notificationsPlugin
-          .resolvePlatformSpecificImplementation<
-              IOSFlutterLocalNotificationsPlugin>();
-      await iosPlugin?.requestPermissions(alert: true, badge: true, sound: true);
-
-      // Schedule notification at specified time daily
-      const androidDetails = AndroidNotificationDetails(
-        'diary_reminder',
-        'Diary Reminder',
-        channelDescription: 'Daily reminder to write diary',
-        importance: Importance.high,
-        priority: Priority.high,
-      );
-      const iosDetails = DarwinNotificationDetails();
-      const notificationDetails = NotificationDetails(
-        android: androidDetails,
-        iOS: iosDetails,
-      );
-
-      // Schedule one-time notification for today/tomorrow at specified time
-      final now = DateTime.now();
-      var scheduledDate =
-          DateTime(now.year, now.month, now.day, hour, minute);
-
-      if (scheduledDate.isBefore(now)) {
-        scheduledDate = scheduledDate.add(const Duration(days: 1));
-      }
-
-      // Note: schedule() method available in newer versions
-      // For basic reminder, we'll use a simple Timer approach
-      // Production should use platform-specific implementation
-      print('Note: Notification scheduling requires platform-specific setup');
-
-      print('✅ Daily reminder scheduled for $hour:${minute.toString().padLeft(2, '0')}');
-    } catch (error) {
-      print('Error scheduling reminder: $error');
-    }
+    return jsonDecode(response.body) as Map<String, dynamic>;
   }
 
-  /// Dispose service and cleanup
+  /// Cancels the flush timer and clears buffered state (test/teardown helper).
+  @visibleForTesting
   void dispose() {
     _flushTimer?.cancel();
-    _screenChangeDebounce?.cancel();
-    _eventBuffer.clear();
-    _isInitialized = false;
-    _currentToken = null;
-    print('DEBUG: EventsService disposed');
+    _flushTimer = null;
+    _buffer.clear();
+    _token = null;
   }
-
-  /// Get current buffer size
-  int get bufferSize => _eventBuffer.length;
-
-  /// Check if service is initialized
-  bool get isInitialized => _isInitialized;
 }

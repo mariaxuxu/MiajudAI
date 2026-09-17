@@ -5,6 +5,8 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'config/firebase_config.dart';
 import 'config/constants.dart';
 import 'config/routes.dart';
+import 'services/events_service.dart';
+import 'services/navigation_observer.dart';
 import 'providers/auth_provider.dart';
 import 'providers/event_provider.dart';
 import 'providers/account_provider.dart';
@@ -25,8 +27,30 @@ void main() async {
   runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({Key? key}) : super(key: key);
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    EventsService().onLifecycleChanged(state);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -47,6 +71,7 @@ class MyApp extends StatelessWidget {
         theme: _buildTheme(),
         initialRoute: '/',
         routes: AppRoutes.routes,
+        navigatorObservers: [AppNavigatorObserver()],
         debugShowCheckedModeBanner: false,
       ),
     );

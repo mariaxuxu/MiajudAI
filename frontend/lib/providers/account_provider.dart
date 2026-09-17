@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../models/account_model.dart';
 import '../services/account_service.dart';
+import '../services/events_service.dart';
+import '../config/event_actions.dart';
 
 class AccountProvider extends ChangeNotifier {
   final AccountService _accountService = AccountService();
@@ -66,6 +68,10 @@ class AccountProvider extends ChangeNotifier {
         accountNumber,
       );
       _accounts.add(account);
+      EventsService().publishEvent(
+        EventActions.accountCreated,
+        metadata: {'account_id': account.id, 'account_name': account.name},
+      );
       _setLoading(false);
       notifyListeners();
     } catch (e) {

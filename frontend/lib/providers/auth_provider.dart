@@ -4,6 +4,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_model.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
+import '../services/events_service.dart';
+import '../config/event_actions.dart';
 import '../config/constants.dart';
 
 class AuthProvider extends ChangeNotifier {
@@ -36,6 +38,9 @@ class AuthProvider extends ChangeNotifier {
 
   void _loadStoredData() {
     _authToken = _preferences.getString('auth_token');
+    if (_authToken != null) {
+      EventsService().setToken(_authToken);
+    }
     final userJson = _preferences.getString('user_data');
     if (userJson != null) {
       // TODO: Parse user JSON and set _user
@@ -87,6 +92,8 @@ Future<void> signup({
       });
       if (response['success']) {
         _authToken = response['token'];
+        EventsService().setToken(_authToken);
+        EventsService().publishEvent(EventActions.userRegistered);
         _user = UserModel.fromJson(response['user']);
         await _preferences.setString('auth_token', _authToken!);
         await _preferences.setString('user_data', response['user'].toString());
@@ -141,6 +148,8 @@ Future<void> signup({
       print('DEBUG: Backend responded: ${response.toString().substring(0, 100)}...');
       if (response['success']) {
         _authToken = response['token'];
+        EventsService().setToken(_authToken);
+        EventsService().publishEvent(EventActions.userLoggedIn);
         _user = UserModel.fromJson(response['user']);
         _isNewUser = false;
         await _preferences.setString('auth_token', _authToken!);
@@ -191,6 +200,7 @@ Future<void> signup({
   Future<void> logout() async {
     _setLoading(true);
     try {
+      await EventsService().flushAndClearToken();
 
       await _authService.signOut();
       _authToken = null;

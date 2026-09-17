@@ -1,30 +1,46 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 
-import 'package:miajudai/main.dart';
+import 'package:miajudai/services/events_service.dart';
+import 'package:miajudai/services/navigation_observer.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  testWidgets('navigation emits screen_opened via the registered observer',
+      (tester) async {
+    final events = EventsService.forTest(
+      client: MockClient((_) async => http.Response('{"success": true}', 200)),
+    );
+    events.setToken('jwt');
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    try {
+      await tester.pumpWidget(
+        MaterialApp(
+          navigatorObservers: [AppNavigatorObserver(events: events)],
+          initialRoute: '/',
+          routes: {
+            '/': (_) => const Scaffold(body: Text('root')),
+            '/accounts': (_) => const Scaffold(body: Text('accounts')),
+          },
+        ),
+      );
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+      final navigator = tester.state<NavigatorState>(find.byType(Navigator));
+      navigator.pushNamed('/accounts');
+      await tester.pumpAndSettle();
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+      expect(
+        events.bufferedEvents,
+        contains(
+          allOf(
+            containsPair('action', 'screen_opened'),
+            containsPair('screen_name', 'accounts'),
+          ),
+        ),
+      );
+    } finally {
+      events.dispose();
+    }
   });
 }
