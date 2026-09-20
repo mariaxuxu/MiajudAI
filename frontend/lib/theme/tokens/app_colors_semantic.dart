@@ -1,0 +1,128 @@
+import 'package:flutter/widgets.dart';
+
+import 'app_primitives.dart';
+
+/// Camada 2 do Design System: TOKENS SEMANTICOS.
+///
+/// Esta e a camada que os componentes consomem. Um botao nao precisa saber
+/// que sua cor e `#2563EB` — ele consome [actionPrimary].
+///
+/// NAO substitui `AppColors` de `config/constants.dart`: aquela continua
+/// valendo para as telas ainda nao redesenhadas.
+abstract final class AppSemanticColors {
+  // ── Superficies ────────────────────────────────────────────────────────
+  static const Color background = AppPrimitives.slate50;
+  static const Color surface = AppPrimitives.white;
+  static const Color surfaceSubtle = AppPrimitives.slate100;
+  static const Color border = AppPrimitives.slate200;
+  static const Color borderStrong = AppPrimitives.slate300;
+
+  // ── Acao ───────────────────────────────────────────────────────────────
+  static const Color actionPrimary = AppPrimitives.blue600;
+  static const Color actionPrimaryHover = AppPrimitives.blue700;
+  static const Color actionPrimarySubtle = AppPrimitives.blue50;
+  static const Color onAction = AppPrimitives.white;
+  static const Color actionDisabled = AppPrimitives.slate200;
+  static const Color onActionDisabled = AppPrimitives.slate400;
+
+  // ── Texto ──────────────────────────────────────────────────────────────
+  /// Titulos e texto de maior peso. Contraste 16.9:1 sobre [background].
+  static const Color textPrimary = AppPrimitives.navy900;
+
+  /// Texto de apoio, descricoes. Contraste 4.9:1 sobre [background].
+  static const Color textSecondary = AppPrimitives.slate500;
+
+  /// Texto de apoio sobre superficies tonais (cards de agente/modulo), onde
+  /// [textSecondary] ficaria no limite do AA. Contraste >= 7:1 nos tons 50.
+  static const Color textSecondaryStrong = AppPrimitives.slate600;
+
+  /// Texto terciario / placeholders. Use apenas em texto nao essencial.
+  static const Color textTertiary = AppPrimitives.slate400;
+
+  static const Color textOnAction = AppPrimitives.white;
+  static const Color textLink = AppPrimitives.blue600;
+
+  // ── Feedback ───────────────────────────────────────────────────────────
+  static const Color feedbackSuccess = AppPrimitives.emerald500;
+  static const Color feedbackSuccessSubtle = AppPrimitives.emerald50;
+  static const Color onFeedbackSuccess = AppPrimitives.emerald700;
+
+  static const Color feedbackWarning = AppPrimitives.amber500;
+  static const Color feedbackWarningSubtle = AppPrimitives.amber50;
+  static const Color onFeedbackWarning = AppPrimitives.amber700;
+
+  static const Color feedbackError = AppPrimitives.red500;
+  static const Color feedbackErrorSubtle = AppPrimitives.red50;
+  static const Color onFeedbackError = AppPrimitives.red700;
+
+  // ── Foco (acessibilidade: anel de foco sempre visivel) ─────────────────
+  static const Color focusRing = AppPrimitives.blue600;
+
+  // ── Modulos ────────────────────────────────────────────────────────────
+  static const Color moduleAi = AppPrimitives.violet500;
+  static const Color moduleAiSubtle = AppPrimitives.violet50;
+  static const Color onModuleAi = AppPrimitives.violet700;
+
+  static const Color moduleCleaning = AppPrimitives.cyan500;
+  static const Color moduleCleaningSubtle = AppPrimitives.cyan50;
+  static const Color onModuleCleaning = AppPrimitives.cyan700;
+
+  // ── Decorativo ─────────────────────────────────────────────────────────
+  /// Blobs/curvas de fundo dos protocolos visuais. Puramente ornamental.
+  static const Color backdropBlob = Color(0x14BFDBFE);
+  static const Color backdropBlobSoft = Color(0x0D93C5FD);
+}
+
+/// Identidade visual de cada agente.
+///
+/// Luna, Otto e Tina compartilham a MESMA estrutura de interface; a
+/// diferenciacao acontece por avatar, nome, cor contextual e conteudo.
+enum AppAgent {
+  luna(
+    name: 'Luna',
+    role: 'Financeiro',
+    assetPath: 'assets/images/luna.png',
+    accent: AppPrimitives.blue600,
+    surface: AppPrimitives.blue50,
+    onSurface: AppPrimitives.blue700,
+  ),
+  otto(
+    name: 'Otto',
+    role: 'Cozinha',
+    assetPath: 'assets/images/otto.png',
+    accent: AppPrimitives.amber500,
+    surface: AppPrimitives.amber50,
+    onSurface: AppPrimitives.amber700,
+  ),
+  tina(
+    name: 'Tina',
+    role: 'Doméstica',
+    assetPath: 'assets/images/tina.png',
+    accent: AppPrimitives.emerald500,
+    surface: AppPrimitives.emerald50,
+    onSurface: AppPrimitives.emerald700,
+  );
+
+  const AppAgent({
+    required this.name,
+    required this.role,
+    required this.assetPath,
+    required this.accent,
+    required this.surface,
+    required this.onSurface,
+  });
+
+  final String name;
+  final String role;
+  final String assetPath;
+
+  /// Cor de identidade do agente. Use para icones e detalhes, nunca como
+  /// unico portador de significado.
+  final Color accent;
+
+  /// Fundo tonal suave do card do agente.
+  final Color surface;
+
+  /// Cor de texto legivel sobre [surface] (contraste AA).
+  final Color onSurface;
+}

@@ -1,8 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../config/constants.dart';
-import '../widgets/common/custom_button.dart';
 
+import '../theme/app_spacing.dart';
+import '../theme/app_typography.dart';
+import '../theme/tokens/app_colors_semantic.dart';
+import '../widgets/agents/agent_card.dart';
+import '../widgets/brand/app_logo.dart';
+import '../widgets/common/app_screen_scaffold.dart';
+import '../widgets/common/brand_note.dart';
+
+/// Tela publica / entrada do aplicativo (rota `/`).
+///
+/// Apesar do nome do arquivo, esta nao e uma tela de carregamento: e a
+/// vitrine publica do produto. O nome da classe e a rota foram preservados
+/// para nao alterar a navegacao existente.
+///
+/// Destinos preservados: "Entrar" -> `/login`, "Criar conta gratis" ->
+/// `/signup`, ambos via `pushReplacementNamed`, como antes.
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -12,31 +26,23 @@ class SplashScreen extends StatefulWidget {
 
 class _SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
-  late AnimationController _ctrl;
-  late Animation<double> _fadeAnim;
-  late Animation<Offset> _slideAnim;
-  late Animation<double> _scaleLogoAnim;
+  late final AnimationController _ctrl;
+  late final Animation<double> _fade;
+  late final Animation<Offset> _slide;
 
   @override
   void initState() {
     super.initState();
     _ctrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 900),
+      duration: const Duration(milliseconds: 650),
     )..forward();
 
-    _fadeAnim = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(parent: _ctrl, curve: const Interval(0, 0.6, curve: Curves.easeOut)),
-    );
-    _scaleLogoAnim = Tween<double>(begin: 0.75, end: 1.0).animate(
-      CurvedAnimation(parent: _ctrl, curve: const Interval(0, 0.55, curve: Curves.easeOutBack)),
-    );
-    _slideAnim = Tween<Offset>(
-      begin: const Offset(0, 0.12),
+    _fade = CurvedAnimation(parent: _ctrl, curve: Curves.easeOut);
+    _slide = Tween<Offset>(
+      begin: const Offset(0, 0.04),
       end: Offset.zero,
-    ).animate(
-      CurvedAnimation(parent: _ctrl, curve: const Interval(0.25, 1.0, curve: Curves.easeOutCubic)),
-    );
+    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic));
   }
 
   @override
@@ -49,44 +55,41 @@ class _SplashScreenState extends State<SplashScreen>
   Widget build(BuildContext context) {
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
         statusBarBrightness: Brightness.light,
         statusBarIconBrightness: Brightness.dark,
       ),
     );
 
-    return Scaffold(
-      backgroundColor: AppColors.accentSurface,
-      body: SafeArea(
-        child: FadeTransition(
-          opacity: _fadeAnim,
+    return AppScreenScaffold(
+      child: FadeTransition(
+        opacity: _fade,
+        child: SlideTransition(
+          position: _slide,
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Expanded(
-                child: SingleChildScrollView(
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 52),
-                      _buildLogo(),
-                      const SizedBox(height: 36),
-                      SlideTransition(
-                        position: _slideAnim,
-                        child: _buildHeroText(),
-                      ),
-                      const SizedBox(height: 48),
-                      SlideTransition(
-                        position: _slideAnim,
-                        child: _buildAgentHighlights(),
-                      ),
-                      const SizedBox(height: 32),
-                    ],
-                  ),
+              const Align(
+                alignment: Alignment.centerRight,
+                child: BrandNote(
+                  text: 'Mais liberdade para o seu dia',
+                  textAlign: TextAlign.right,
+                  rotation: -0.07,
+                  maxWidth: 132,
                 ),
               ),
-              SlideTransition(
-                position: _slideAnim,
-                child: _buildButtons(),
-              ),
-              const SizedBox(height: 36),
+              const SizedBox(height: 12),
+              const Center(child: AppLogo(markHeight: 50)),
+              const SizedBox(height: AppSpacing.defaultGap),
+              _buildHeadline(),
+              const SizedBox(height: 10),
+              _buildSubtitle(),
+              const SizedBox(height: AppSpacing.defaultGap),
+              _buildAgents(),
+              const SizedBox(height: AppSpacing.defaultGap),
+              _buildActions(context),
+              const SizedBox(height: AppSpacing.defaultGap),
+              _buildFooter(),
             ],
           ),
         ),
@@ -94,168 +97,124 @@ class _SplashScreenState extends State<SplashScreen>
     );
   }
 
-  Widget _buildLogo() {
-    return ScaleTransition(
-      scale: _scaleLogoAnim,
-      child: Container(
-        width: 152,
-        height: 152,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: AppColors.accent.withValues(alpha: 0.10),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(26),
-          child: Image.asset('assets/images/miajudai_logo_transparent.png'),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHeroText() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 32),
-      child: Column(
+  Widget _buildHeadline() {
+    return Text.rich(
+      TextSpan(
         children: [
-          RichText(
-            textAlign: TextAlign.center,
-            text: const TextSpan(
-              children: [
-                TextSpan(
-                  text: 'Domine ',
-                  style: TextStyle(
-                    fontSize: 30,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textDark,
-                    letterSpacing: -0.5,
-                    height: 1.2,
-                  ),
-                ),
-                TextSpan(
-                  text: 'sua independência',
-                  style: TextStyle(
-                    fontSize: 30,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.accent,
-                    letterSpacing: -0.5,
-                    height: 1.2,
-                  ),
-                ),
-              ],
+          TextSpan(
+            text: 'Domine sua\n',
+            style: AppTypography.displayLarge.copyWith(
+              color: AppSemanticColors.textPrimary,
             ),
           ),
-          const SizedBox(height: 16),
-          const Text(
-            'Seu hub de assistentes inteligentes para viver melhor, gerenciar finanças e cuidar da casa.',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: AppColors.textLabel,
-              fontSize: 15,
-              height: 1.6,
+          TextSpan(
+            text: 'independência',
+            style: AppTypography.displayLarge.copyWith(
+              color: AppSemanticColors.actionPrimary,
             ),
           ),
         ],
       ),
+      textAlign: TextAlign.center,
     );
   }
 
-  Widget _buildAgentHighlights() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
+  Widget _buildSubtitle() {
+    return Text(
+      'Seu hub de assistentes inteligentes para viver melhor, '
+      'gerenciar finanças e cuidar da casa.',
+      textAlign: TextAlign.center,
+      style: AppTypography.bodyMedium.copyWith(
+        color: AppSemanticColors.textSecondary,
+      ),
+    );
+  }
+
+  Widget _buildAgents() {
+    // Os tres agentes permanecem lado a lado na viewport de referencia
+    // (390 x 844). `Expanded` garante que nunca haja overflow horizontal:
+    // o que cede e o tamanho interno de cada card, nunca a linha.
+    return IntrinsicHeight(
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _buildAgentItem(
-            imagePath: 'assets/images/luna.png',
-            name: 'Luna',
-            role: 'Financeiro',
-            bgColor: AppColors.primarySurface,
+          Expanded(
+            child: AgentCard(
+              agent: AppAgent.luna,
+              description: 'Organize suas contas e realize seus planos.',
+            ),
           ),
-          _buildAgentItem(
-            imagePath: 'assets/images/otto.png',
-            name: 'Otto',
-            role: 'Cozinha',
-            bgColor: AppColors.accentSurface,
+          const SizedBox(width: 8),
+          Expanded(
+            child: AgentCard(
+              agent: AppAgent.otto,
+              description: 'Receitas práticas para uma vida mais saudável.',
+            ),
           ),
-          _buildAgentItem(
-            imagePath: 'assets/images/tina.png',
-            name: 'Tina',
-            role: 'Doméstico',
-            bgColor: const Color(0xFFEAF7EF),
+          const SizedBox(width: 8),
+          Expanded(
+            child: AgentCard(
+              agent: AppAgent.tina,
+              description: 'Cuide da sua casa com mais leveza e organização.',
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildAgentItem({
-    required String imagePath,
-    required String name,
-    required String role,
-    required Color bgColor,
-  }) {
+  Widget _buildActions(BuildContext context) {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Container(
-          width: 90,
-          height: 90,
-          decoration: BoxDecoration(
-            color: bgColor,
-            borderRadius: BorderRadius.circular(AppDimens.radiusCard),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.07),
-                blurRadius: 16,
-                offset: const Offset(0, 5),
+        FilledButton(
+          onPressed: () => Navigator.pushReplacementNamed(context, '/login'),
+          child: const Row(
+            children: [
+              // Contrapeso do icone, para o rotulo ficar opticamente centrado.
+              SizedBox(width: AppSizes.iconMd),
+              Expanded(
+                child: Text('Entrar', textAlign: TextAlign.center),
               ),
+              Icon(Icons.arrow_forward_rounded, size: AppSizes.iconMd),
             ],
           ),
-          child: Padding(
-            padding: const EdgeInsets.all(13),
-            child: Image.asset(imagePath, fit: BoxFit.contain),
-          ),
         ),
-        const SizedBox(height: 10),
-        Text(
-          name,
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w700,
-            color: Color(0xFF000000),
-          ),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          role,
-          style: const TextStyle(
-            fontSize: 12,
-            color: Color(0xFF666666),
-          ),
+        const SizedBox(height: 12),
+        OutlinedButton(
+          onPressed: () => Navigator.pushReplacementNamed(context, '/signup'),
+          child: const Text('Criar conta grátis'),
         ),
       ],
     );
   }
 
-  Widget _buildButtons() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          CustomButton(
-            text: 'Entrar',
-            onPressed: () =>
-                Navigator.pushReplacementNamed(context, '/login'),
+  Widget _buildFooter() {
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Expanded(child: Divider(indent: 24, endIndent: 12)),
+            ExcludeSemantics(
+              child: Icon(
+                Icons.favorite_rounded,
+                size: AppSizes.iconSm,
+                color: AppSemanticColors.actionPrimary,
+              ),
+            ),
+            const Expanded(child: Divider(indent: 12, endIndent: 24)),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Text(
+          'Uma vida mais simples começa aqui.',
+          textAlign: TextAlign.center,
+          style: AppTypography.bodySmall.copyWith(
+            color: AppSemanticColors.textSecondary,
           ),
-          const SizedBox(height: 12),
-          CustomButton(
-            text: 'Criar conta grátis',
-            variant: ButtonVariant.outlined,
-            onPressed: () =>
-                Navigator.pushReplacementNamed(context, '/signup'),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

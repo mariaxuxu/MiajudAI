@@ -68,18 +68,25 @@ flutter:
   # Assets
   assets:
     - assets/images/
+    # Entradas de diretorio nao sao recursivas: a subpasta precisa ser declarada.
+    - assets/images/brand/
     - assets/.env
 
   # Localization
   generate: true
 
   # Custom Fonts
-  # fonts:
-  #   - family: CustomFont
-  #     fonts:
-  #       - asset: assets/fonts/CustomFont-Regular.ttf
-  #       - asset: assets/fonts/CustomFont-Bold.ttf
-  #         weight: 700
+  fonts:
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Inter-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Inter-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Inter-Bold.ttf
+          weight: 700
 
 # App Icon Configuration
 flutter_launcher_icons:
