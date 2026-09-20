@@ -25,6 +25,14 @@ abstract final class AppTypography {
   );
 
   // ── Headline — titulo de secao ─────────────────────────────────────────
+  static const TextStyle headlineLarge = TextStyle(
+    fontFamily: fontFamily,
+    fontSize: 24,
+    fontWeight: FontWeight.w700,
+    height: 1.25,
+    letterSpacing: -0.5,
+  );
+
   static const TextStyle headlineMedium = TextStyle(
     fontFamily: fontFamily,
     fontSize: 22,

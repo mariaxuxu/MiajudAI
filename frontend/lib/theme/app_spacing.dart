@@ -8,6 +8,9 @@ abstract final class AppSpacing {
   /// Espacamento padrao entre elementos relacionados (DS: 16px).
   static const double defaultGap = AppPrimitives.space4;
 
+  /// Espaco entre blocos de conteudo dentro de uma mesma secao.
+  static const double blockGap = AppPrimitives.space6;
+
   /// Respiro entre secoes distintas de uma tela.
   static const double sectionGap = AppPrimitives.space8;
 
@@ -16,6 +19,9 @@ abstract final class AppSpacing {
 
   /// Espaco entre itens de uma lista/grade.
   static const double itemGap = AppPrimitives.space3;
+
+  /// Espaco entre o rotulo de um campo e o proprio campo.
+  static const double labelGap = AppPrimitives.space2;
 
   /// Alvo minimo de toque (WCAG 2.2 AA / Material).
   static const double minTouchTarget = 48;

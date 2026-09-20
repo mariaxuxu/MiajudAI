@@ -1,95 +1,74 @@
 // Harness de validacao visual do redesign.
 //
-// Nao testa comportamento: renderiza uma tela na viewport de referencia do
-// Design System (390 x 844) e grava um PNG, para comparacao com o prototipo
-// correspondente em `referencesForNewDesign/`.
+// Renderiza cada tela redesenhada na viewport de referencia do Design System
+// (390 x 844) e em outras larguras, e verifica: sem overflow, quanto do
+// conteudo fica abaixo da dobra e alvos de toque/rotulos de acessibilidade.
+// Opcionalmente grava um PNG para comparacao com o prototipo correspondente
+// em `referencesForNewDesign/`.
 //
 // Uso:
 //   flutter test test/redesign_screenshot_test.dart
-//     -> so as verificacoes de layout (rapido, sai limpo)
+//     -> so as verificacoes de layout (rapido, encerra sozinho)
 //
-//   flutter test test/redesign_screenshot_test.dart //     --dart-define=REDESIGN_CAPTURE=true
-//     -> tambem grava o PNG em `build/redesign_screenshots/`
+//   flutter test test/redesign_screenshot_test.dart --plain-name "login" ^
+//     --dart-define=REDESIGN_CAPTURE=login
+//     -> tambem grava build/redesign_screenshots/<tela>_390x844.png
+//        (valores: splash | login | signup | login-errors | signup-states)
 //
-// A captura e opt-in porque `RenderRepaintBoundary.toImage` deixa o
-// rasterizador ocupado e o processo de teste nao encerra sozinho depois
-// dela. Sem a flag, este arquivo roda normal junto com o resto da suite.
+// A captura e opt-in e limitada a UMA tela por processo: depois de
+// `RenderRepaintBoundary.toImage` o rasterizador fica ocupado, o proximo
+// `pump` nao retorna e o processo nao encerra sozinho. Por isso a imagem e
+// sempre a ULTIMA coisa que cada teste faz, e o `--plain-name` seleciona qual.
 //
-// Duas particularidades deste harness:
-//  - MaterialIcons e as TTFs do Inter sao carregadas a mao. `flutter test`
-//    nao carrega fonte nenhuma por padrao, e sem isto icones e textos saem
-//    como retangulos vazios no PNG.
-//  - so UMA captura de imagem por processo de teste. Uma segunda chamada a
-//    `RenderRepaintBoundary.toImage` no mesmo binding nao retorna, entao as
-//    demais larguras sao verificadas so por layout (overflow e dobra).
+// MaterialIcons e Inter sao carregadas a mao (ver support/test_fonts.dart).
 
 import 'dart:io';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:miajudai/providers/auth_provider.dart';
+import 'package:miajudai/screens/auth/login_screen.dart';
+import 'package:miajudai/screens/auth/signup_screen.dart';
 import 'package:miajudai/screens/splash_screen.dart';
 import 'package:miajudai/widgets/agents/agent_card.dart';
+import 'package:provider/provider.dart';
+
+import 'support/fake_auth_provider.dart';
+import 'support/test_fonts.dart';
 
 const Size kReferenceViewport = Size(390, 844);
 const double kPixelRatio = 2;
 
-/// Gravar o PNG? Ver o cabecalho: a captura impede o processo de encerrar.
-const bool kCapture = bool.fromEnvironment('REDESIGN_CAPTURE');
+/// Qual tela gravar em PNG: 'splash', 'login', 'signup' ou vazio (nenhuma).
+const String kCapture = String.fromEnvironment('REDESIGN_CAPTURE');
 
 const List<String> _assetsToPrecache = [
   'assets/images/brand/logo_mark.png',
+  'assets/images/todos_agents.jpg',
   'assets/images/luna.png',
   'assets/images/otto.png',
   'assets/images/tina.png',
 ];
 
-/// Raiz do SDK, para achar a fonte de icones do Material.
-String get _flutterRoot =>
-    Platform.environment['FLUTTER_ROOT'] ??
-    r'C:\Users\PedroKelvin\AppData\Local\flutter-sdk';
+const List<Size> _otherViewports = [
+  Size(320, 640), // menor Android comum
+  Size(360, 800),
+  Size(430, 932), // iPhone Pro Max
+];
 
-Future<void> _loadFonts() async {
-  final inter = FontLoader('Inter');
-  for (final w in ['Regular', 'Medium', 'SemiBold', 'Bold']) {
-    final bytes = File('assets/fonts/Inter-$w.ttf').readAsBytesSync();
-    inter.addFont(Future.value(ByteData.view(bytes.buffer)));
-  }
-  await inter.load();
-
-  final iconsFile = File(
-    '$_flutterRoot/bin/cache/artifacts/material_fonts/'
-    'materialicons-regular.otf',
-  );
-  if (iconsFile.existsSync()) {
-    final icons = FontLoader('MaterialIcons')
-      ..addFont(
-        Future.value(ByteData.view(iconsFile.readAsBytesSync().buffer)),
-      );
-    await icons.load();
-  } else {
-    // ignore: avoid_print
-    print(
-      'AVISO: MaterialIcons nao encontrada em ${iconsFile.path} — '
-      'os icones sairao como retangulos vazios no PNG.',
-    );
-  }
-}
-
-/// Monta [screen] uma unica vez e devolve um verificador de viewports.
-///
-/// ORDEM IMPORTA: `RenderRepaintBoundary.toImage` deixa o rasterizador ocupado
-/// e o primeiro `pump` posterior nao retorna. Por isso a captura da imagem e
-/// sempre a ULTIMA coisa que este arquivo faz.
+/// Monta [screen] uma unica vez e devolve a chave do RepaintBoundary.
 Future<GlobalKey> _mount(WidgetTester tester, Widget screen) async {
   final key = GlobalKey();
 
   await tester.pumpWidget(
     RepaintBoundary(
       key: key,
-      child: MaterialApp(debugShowCheckedModeBanner: false, home: screen),
+      child: ChangeNotifierProvider<AuthProvider>.value(
+        value: FakeAuthProvider(),
+        child: MaterialApp(debugShowCheckedModeBanner: false, home: screen),
+      ),
     ),
   );
 
@@ -114,7 +93,7 @@ Future<double> _settleAt(WidgetTester tester, Size viewport) async {
   tester.view.devicePixelRatio = kPixelRatio;
 
   // Pumps explicitos em vez de pumpAndSettle: o relogio falso precisa avancar
-  // alem da animacao de entrada (650ms), senao a captura sai com o
+  // alem das animacoes de entrada (ate ~580ms), senao a captura sai com o
   // FadeTransition ainda em opacidade zero.
   await tester.pump();
   await tester.pump(const Duration(milliseconds: 700));
@@ -125,8 +104,8 @@ Future<double> _settleAt(WidgetTester tester, Size viewport) async {
   expect(
     problem,
     isNull,
-    reason: 'overflow em ${viewport.width.toInt()}x'
-        '${viewport.height.toInt()}: $problem',
+    reason: 'overflow em ${viewport.width.toInt()}x${viewport.height.toInt()}: '
+        '$problem',
   );
 
   return tester
@@ -135,25 +114,26 @@ Future<double> _settleAt(WidgetTester tester, Size viewport) async {
       .maxScrollExtent;
 }
 
-/// Os tres AgentCards compartilham a mesma coordenada vertical?
-void _expectAgentsSideBySide(WidgetTester tester, Size viewport) {
-  final finder = find.byType(AgentCard);
-  expect(finder.evaluate().length, 3);
-
-  final tops = finder
-      .evaluate()
-      .map((e) => tester.getTopLeft(find.byWidget(e.widget)).dy)
-      .toSet();
-
-  expect(
-    tops.length,
-    1,
-    reason: 'os 3 AgentCards deveriam estar lado a lado em '
-        '${viewport.width.toInt()}px, nao empilhados',
-  );
+/// Deixa animacoes disparadas por um toque terminarem antes de capturar.
+///
+/// Um unico `pump(duracao)` NAO basta: o relogio avanca antes do frame que
+/// inicia a animacao, entao o fade-in do texto de erro do `InputDecorator`
+/// ainda esta em opacidade zero na captura (o espaco e reservado, o texto nao
+/// aparece). O primeiro `pump()` inicia a animacao; o segundo a conclui.
+Future<void> _pumpAfterTap(WidgetTester tester) async {
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 400));
 }
 
-Future<void> _writePng(WidgetTester tester, GlobalKey key, String name) async {
+/// Alvos de toque >= 48dp e rotulo em todo controle tocavel.
+Future<void> _expectAccessibleTapTargets(WidgetTester tester) async {
+  final handle = tester.ensureSemantics();
+  await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
+  await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
+  handle.dispose();
+}
+
+Future<void> _writePng(GlobalKey key, String name) async {
   final boundary =
       key.currentContext!.findRenderObject()! as RenderRepaintBoundary;
   final image = await boundary.toImage(pixelRatio: kPixelRatio);
@@ -169,59 +149,130 @@ Future<void> _writePng(WidgetTester tester, GlobalKey key, String name) async {
   print('SCREENSHOT -> ${file.absolute.path}');
 }
 
-void main() {
-  setUpAll(_loadFonts);
+/// Roda a bateria comum a todas as telas e devolve a dobra na referencia.
+///
+/// A captura de imagem, quando pedida, e feita por quem chama, por ultimo.
+Future<({GlobalKey key, double belowFold})> _checkScreen(
+  WidgetTester tester,
+  String label,
+  Widget screen, {
+  void Function()? extraChecks,
+}) async {
+  addTearDown(tester.view.reset);
+  final key = await _mount(tester, screen);
 
-  testWidgets('fase 1 — tela publica', (tester) async {
-    addTearDown(tester.view.reset);
-
-    final key = await _mount(tester, const SplashScreen());
-
-    // 1) Larguras alternativas primeiro: nenhuma pode gerar overflow, e os
-    //    tres agentes tem de continuar lado a lado em todas.
-    for (final viewport in const [
-      Size(320, 640), // menor Android comum
-      Size(360, 800),
-      Size(430, 932), // iPhone Pro Max
-    ]) {
-      final belowFold = await _settleAt(tester, viewport);
-      _expectAgentsSideBySide(tester, viewport);
-
-      // ignore: avoid_print
-      print(
-        'VIEWPORT ${viewport.width.toInt()}x${viewport.height.toInt()} '
-        '| sem overflow | 3 cards lado a lado '
-        '| abaixo da dobra: ${belowFold.toStringAsFixed(1)}px',
-      );
-    }
-
-    // 2) Viewport de referencia do Design System.
-    final belowFold = await _settleAt(tester, kReferenceViewport);
-    _expectAgentsSideBySide(tester, kReferenceViewport);
-
+  for (final viewport in _otherViewports) {
+    final belowFold = await _settleAt(tester, viewport);
+    extraChecks?.call();
     // ignore: avoid_print
     print(
-      'VIEWPORT 390x844 (referencia) | sem overflow | 3 cards lado a lado '
-      '| abaixo da dobra: ${belowFold.toStringAsFixed(1)}px',
+      '$label ${viewport.width.toInt()}x${viewport.height.toInt()} '
+      '| sem overflow | abaixo da dobra: ${belowFold.toStringAsFixed(1)}px',
+    );
+  }
+
+  final belowFold = await _settleAt(tester, kReferenceViewport);
+  extraChecks?.call();
+  // ignore: avoid_print
+  print(
+    '$label 390x844 (referencia) | sem overflow '
+    '| abaixo da dobra: ${belowFold.toStringAsFixed(1)}px',
+  );
+
+  return (key: key, belowFold: belowFold);
+}
+
+void _expectAgentsSideBySide(WidgetTester tester) {
+  final finder = find.byType(AgentCard);
+  expect(finder.evaluate().length, 3);
+
+  final tops = finder
+      .evaluate()
+      .map((e) => tester.getTopLeft(find.byWidget(e.widget)).dy)
+      .toSet();
+
+  expect(tops.length, 1, reason: 'os 3 AgentCards devem ficar lado a lado');
+}
+
+void main() {
+  setUpAll(loadRedesignFonts);
+
+  testWidgets('splash', (tester) async {
+    final r = await _checkScreen(
+      tester,
+      'splash',
+      const SplashScreen(),
+      extraChecks: () => _expectAgentsSideBySide(tester),
     );
 
-    // Criterio da Fase 1: a composicao inteira cabe em 390x844, como no
-    // prototipo — nada de rodape abaixo da dobra na viewport de referencia.
-    expect(
-      belowFold,
-      0.0,
-      reason: 'o conteudo deveria caber inteiro em 390x844',
-    );
+    // Fase 1: a composicao inteira cabe em 390x844, como no prototipo.
+    expect(r.belowFold, 0.0, reason: 'a splash deve caber em 390x844');
 
-    // 3) Captura por ultimo — depois disto nenhum pump retorna.
-    if (kCapture) {
-      await _writePng(tester, key, 'fase1_tela_publica_390x844');
-    } else {
-      // ignore: avoid_print
-      print(
-        'captura de imagem desligada — use '
-        '--dart-define=REDESIGN_CAPTURE=true para gravar o PNG',
-      );
+    if (kCapture == 'splash') await _writePng(r.key, 'splash_390x844');
+  });
+
+  testWidgets('login', (tester) async {
+    final r = await _checkScreen(tester, 'login', const LoginScreen());
+
+    // O login deve caber inteiro em 390x844, ilustracao inclusive.
+    expect(r.belowFold, 0.0, reason: 'o login deve caber em 390x844');
+
+    await _expectAccessibleTapTargets(tester);
+
+    if (kCapture == 'login') await _writePng(r.key, 'login_390x844');
+  });
+
+  testWidgets('signup', (tester) async {
+    final r = await _checkScreen(tester, 'signup', const SignupScreen());
+
+    await _expectAccessibleTapTargets(tester);
+
+    if (kCapture == 'signup') await _writePng(r.key, 'signup_390x844');
+  });
+
+  // Estados: mensagens de validacao e medidor de forca de senha. Cobrem o que
+  // o estado inicial nao mostra (contraste do texto de erro, cores do medidor).
+  testWidgets('login errors', (tester) async {
+    addTearDown(tester.view.reset);
+    final key = await _mount(tester, const LoginScreen());
+    await _settleAt(tester, kReferenceViewport);
+
+    await tester.enterText(find.byType(TextFormField).at(0), 'nao-e-email');
+    await tester.enterText(find.byType(TextFormField).at(1), '123');
+    await tester.tap(find.byType(FilledButton));
+    await _pumpAfterTap(tester);
+
+    expect(find.text('Email inválido'), findsOneWidget);
+    expect(find.text('Mínimo 6 caracteres'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    if (kCapture == 'login-errors') {
+      await _writePng(key, 'login_errors_390x844');
+    }
+  });
+
+  testWidgets('signup states', (tester) async {
+    addTearDown(tester.view.reset);
+    final key = await _mount(tester, const SignupScreen());
+    await _settleAt(tester, kReferenceViewport);
+
+    // nome vazio, email invalido, senha "Boa" (3 barras), confirmacao errada
+    await tester.enterText(find.byType(TextFormField).at(1), 'ana@');
+    await tester.enterText(find.byType(TextFormField).at(2), 'Abc123');
+    await tester.enterText(find.byType(TextFormField).at(3), 'diferente');
+    await tester.pump();
+    await tester.ensureVisible(find.byType(FilledButton));
+    await tester.tap(find.byType(FilledButton));
+    await _pumpAfterTap(tester);
+
+    expect(find.text('Informe seu nome'), findsOneWidget);
+    expect(find.text('Email inválido'), findsOneWidget);
+    expect(find.text('Boa'), findsOneWidget);
+    expect(find.text('As senhas não coincidem'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    if (kCapture == 'signup-states') {
+      await _writePng(key, 'signup_states_390x844');
     }
   });
 }

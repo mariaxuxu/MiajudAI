@@ -38,6 +38,11 @@ abstract final class AppTheme {
       useMaterial3: true,
       colorScheme: colorScheme,
       fontFamily: AppTypography.fontFamily,
+      // O Flutter aplica VisualDensity.compact por padrao em web/desktop, o
+      // que tira 8dp dos minimos (botao de 48 vira 40). O Design System exige
+      // 48dp em qualquer plataforma, entao a densidade e fixada aqui.
+      visualDensity: VisualDensity.standard,
+      materialTapTargetSize: MaterialTapTargetSize.padded,
       scaffoldBackgroundColor: AppSemanticColors.background,
       textTheme: _textTheme,
       filledButtonTheme: _filledButtonTheme,
@@ -172,7 +177,7 @@ abstract final class AppTheme {
     filled: true,
     fillColor: AppSemanticColors.surface,
     hintStyle: AppTypography.bodyMedium.copyWith(
-      color: AppSemanticColors.textTertiary,
+      color: AppSemanticColors.textSecondary,
     ),
     labelStyle: AppTypography.labelMedium.copyWith(
       color: AppSemanticColors.textSecondary,

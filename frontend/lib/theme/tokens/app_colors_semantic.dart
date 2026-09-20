@@ -55,6 +55,13 @@ abstract final class AppSemanticColors {
   static const Color feedbackErrorSubtle = AppPrimitives.red50;
   static const Color onFeedbackError = AppPrimitives.red700;
 
+  /// Fundos SOLIDOS que carregam texto/icone branco (ex.: snackbars).
+  /// Os tons 500 acima nao atingem AA com branco (2.5:1 e 3.8:1); estes 700
+  /// sim (5.5:1 e 6.5:1). Ainda assim sempre acompanhados de icone + texto.
+  static const Color feedbackSuccessSolid = AppPrimitives.emerald700;
+  static const Color feedbackErrorSolid = AppPrimitives.red700;
+  static const Color onFeedbackSolid = AppPrimitives.white;
+
   // ── Foco (acessibilidade: anel de foco sempre visivel) ─────────────────
   static const Color focusRing = AppPrimitives.blue600;
 

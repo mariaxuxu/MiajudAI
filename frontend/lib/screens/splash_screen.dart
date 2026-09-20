@@ -6,6 +6,7 @@ import '../theme/app_typography.dart';
 import '../theme/tokens/app_colors_semantic.dart';
 import '../widgets/agents/agent_card.dart';
 import '../widgets/brand/app_logo.dart';
+import '../widgets/common/app_primary_button.dart';
 import '../widgets/common/app_screen_scaffold.dart';
 import '../widgets/common/brand_note.dart';
 
@@ -167,18 +168,10 @@ class _SplashScreenState extends State<SplashScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        FilledButton(
+        AppPrimaryButton(
+          label: 'Entrar',
+          trailingIcon: Icons.arrow_forward_rounded,
           onPressed: () => Navigator.pushReplacementNamed(context, '/login'),
-          child: const Row(
-            children: [
-              // Contrapeso do icone, para o rotulo ficar opticamente centrado.
-              SizedBox(width: AppSizes.iconMd),
-              Expanded(
-                child: Text('Entrar', textAlign: TextAlign.center),
-              ),
-              Icon(Icons.arrow_forward_rounded, size: AppSizes.iconMd),
-            ],
-          ),
         ),
         const SizedBox(height: 12),
         OutlinedButton(
