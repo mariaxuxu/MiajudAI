@@ -18,11 +18,20 @@ class AppFormField extends StatelessWidget {
     required this.label,
     required this.controller,
     this.hint,
+    this.keyboardType,
+    this.prefixText,
   });
 
   final String label;
   final TextEditingController controller;
   final String? hint;
+
+  /// Teclado exibido (ex.: numerico decimal). Nao filtra nem valida o texto.
+  final TextInputType? keyboardType;
+
+  /// Texto fixo antes do valor digitado (ex.: `R$ `). E so apresentacao: nao
+  /// entra no texto do [controller].
+  final String? prefixText;
 
   @override
   Widget build(BuildContext context) {
@@ -44,10 +53,21 @@ class AppFormField extends StatelessWidget {
           label: label,
           child: TextField(
             controller: controller,
+            keyboardType: keyboardType,
             style: AppTypography.bodyMedium.copyWith(
               color: AppSemanticColors.textPrimary,
             ),
-            decoration: InputDecoration(hintText: hint),
+            decoration: InputDecoration(
+              hintText: hint,
+              // Sem rotulo flutuante, o Flutter so exibe o prefixo com o campo
+              // focado ou preenchido; `always` o mantem visivel junto ao hint.
+              floatingLabelBehavior:
+                  prefixText != null ? FloatingLabelBehavior.always : null,
+              prefixText: prefixText,
+              prefixStyle: AppTypography.bodyMedium.copyWith(
+                color: AppSemanticColors.textSecondaryStrong,
+              ),
+            ),
           ),
         ),
       ],

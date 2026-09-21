@@ -15,7 +15,8 @@
 //     -> tambem grava build/redesign_screenshots/<tela>_390x844.png
 //        (valores: splash | login | signup | login-errors | signup-states | home |
 //         home-scrolled | luna | luna-chat | luna-error | accounts-empty |
-//         accounts | accounts-sheet | accounts-dialog | accounts-snackbar)
+//         accounts | accounts-sheet | accounts-dialog | accounts-snackbar |
+//         income-empty | income | income-sheet | income-edit | income-dialog)
 //
 // A captura e opt-in e limitada a UMA tela por processo: depois de
 // `RenderRepaintBoundary.toImage` o rasterizador fica ocupado, o proximo
@@ -30,15 +31,18 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:miajudai/models/chat_message.dart';
 import 'package:miajudai/models/user_model.dart';
 import 'package:miajudai/providers/account_provider.dart';
 import 'package:miajudai/providers/auth_provider.dart';
 import 'package:miajudai/providers/chat_provider.dart';
+import 'package:miajudai/providers/income_provider.dart';
 import 'package:miajudai/screens/accounts_screen.dart';
 import 'package:miajudai/screens/auth/login_screen.dart';
 import 'package:miajudai/screens/auth/signup_screen.dart';
 import 'package:miajudai/screens/chat/financial_chat_screen.dart';
+import 'package:miajudai/screens/income_screen.dart';
 import 'package:miajudai/screens/splash_screen.dart';
 import 'package:miajudai/screens/welcome_screen.dart';
 import 'package:miajudai/widgets/agents/agent_card.dart';
@@ -46,6 +50,7 @@ import 'package:provider/provider.dart';
 
 import 'support/fake_account_provider.dart';
 import 'support/fake_auth_provider.dart';
+import 'support/fake_income_provider.dart';
 import 'support/fake_chat_provider.dart';
 import 'support/test_fonts.dart';
 
@@ -55,7 +60,8 @@ const double kPixelRatio = 2;
 /// Qual tela gravar em PNG: 'splash', 'login', 'signup', 'home',
 /// 'home-scrolled', 'login-errors', 'signup-states', 'luna', 'luna-chat',
 /// 'luna-error', 'accounts-empty', 'accounts', 'accounts-sheet',
-/// 'accounts-dialog', 'accounts-snackbar' ou vazio (nenhuma).
+/// 'accounts-dialog', 'accounts-snackbar', 'income-empty', 'income',
+/// 'income-sheet', 'income-edit', 'income-dialog' ou vazio (nenhuma).
 const String kCapture = String.fromEnvironment('REDESIGN_CAPTURE');
 
 const List<String> _assetsToPrecache = [
@@ -79,6 +85,7 @@ Future<GlobalKey> _mount(
   void Function(FakeAuthProvider auth)? setup,
   ChatProvider? chat,
   AccountProvider? accounts,
+  IncomeProvider? income,
 }) async {
   // O binding de teste troca toda sombra por um bloco solido (deterministico
   // para golden tests). Nas capturas, que sao comparadas a olho com o
@@ -100,6 +107,8 @@ Future<GlobalKey> _mount(
             ChangeNotifierProvider<ChatProvider>.value(value: chat),
           if (accounts != null)
             ChangeNotifierProvider<AccountProvider>.value(value: accounts),
+          if (income != null)
+            ChangeNotifierProvider<IncomeProvider>.value(value: income),
         ],
         child: MaterialApp(debugShowCheckedModeBanner: false, home: screen),
       ),
@@ -194,6 +203,7 @@ Future<({GlobalKey key, double belowFold})> _checkScreen(
   void Function(FakeAuthProvider auth)? setup,
   ChatProvider? chat,
   AccountProvider? accounts,
+  IncomeProvider? income,
 }) async {
   addTearDown(tester.view.reset);
   final key = await _mount(
@@ -202,6 +212,7 @@ Future<({GlobalKey key, double belowFold})> _checkScreen(
     setup: setup,
     chat: chat,
     accounts: accounts,
+    income: income,
   );
 
   for (final viewport in _otherViewports) {
@@ -265,7 +276,10 @@ List<ChatMessage> _sampleConversation() {
 }
 
 void main() {
-  setUpAll(loadRedesignFonts);
+  setUpAll(() async {
+    await loadRedesignFonts();
+    await initializeDateFormatting('pt_BR');
+  });
 
   testWidgets('splash', (tester) async {
     final r = await _checkScreen(
@@ -516,6 +530,191 @@ void main() {
 
     if (kCapture == 'accounts-snackbar') {
       await _writePng(key, 'accounts_snackbar_390x844');
+    }
+  });
+
+  // Receitas (fase B): vazio, com registros, texto ampliado, sheets e dialogo.
+  FakeIncomeProvider withIncomes() => FakeIncomeProvider()
+    ..total = 8420.5
+    ..items = [
+      fakeIncome(
+        id: 1,
+        description: 'Salário mensal',
+        amount: 5200,
+        date: DateTime(2026, 9, 5),
+      ),
+      fakeIncome(
+        id: 2,
+        description:
+            'Freelance: identidade visual para cliente com nome bem comprido',
+        amount: 2450.5,
+        type: 'freelance',
+        date: DateTime(2026, 9, 12),
+      ),
+      fakeIncome(
+        id: 3,
+        description: 'Dividendos',
+        amount: 620,
+        type: 'investment',
+        date: DateTime(2026, 9, 15),
+      ),
+      fakeIncome(
+        id: 4,
+        description: 'Presente',
+        amount: 150,
+        type: 'gift',
+        date: DateTime(2026, 9, 18),
+      ),
+    ];
+
+  FakeAccountProvider withTwoAccounts() => FakeAccountProvider()
+    ..items = [
+      fakeAccount(id: 7, name: 'Conta Corrente Nubank', balance: 1320),
+      fakeAccount(id: 9, name: 'Reserva', type: 'savings', balance: 3500.5),
+    ];
+
+  testWidgets('income empty', (tester) async {
+    final r = await _checkScreen(
+      tester,
+      'income-empty',
+      const IncomeScreen(),
+      income: FakeIncomeProvider(),
+      accounts: FakeAccountProvider(),
+    );
+    await _expectAccessibleTapTargets(tester);
+
+    if (kCapture == 'income-empty') {
+      await _writePng(r.key, 'income_empty_390x844');
+    }
+  });
+
+  testWidgets('income', (tester) async {
+    final r = await _checkScreen(
+      tester,
+      'income',
+      const IncomeScreen(),
+      income: withIncomes(),
+      accounts: FakeAccountProvider(),
+    );
+    await _expectAccessibleTapTargets(tester);
+
+    if (kCapture == 'income') await _writePng(r.key, 'income_390x844');
+  });
+
+  // Texto ampliado: o layout tem de ceder (rolar/quebrar), nunca estourar.
+  testWidgets('income large text', (tester) async {
+    addTearDown(tester.view.reset);
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    tester.platformDispatcher.textScaleFactorTestValue = 1.6;
+    await _mount(
+      tester,
+      const IncomeScreen(),
+      income: withIncomes(),
+      accounts: FakeAccountProvider(),
+    );
+    for (final viewport in [..._otherViewports, kReferenceViewport]) {
+      await _settleAt(tester, viewport);
+    }
+  });
+
+  testWidgets('income sheet', (tester) async {
+    addTearDown(tester.view.reset);
+    final key = await _mount(
+      tester,
+      const IncomeScreen(),
+      income: FakeIncomeProvider(),
+      accounts: withTwoAccounts(),
+    );
+    await _settleAt(tester, kReferenceViewport);
+
+    await tester.tap(find.byType(FloatingActionButton));
+    await _pumpAfterTap(tester);
+    await _pumpAfterTap(tester);
+    expect(find.text('Nova Receita'), findsOneWidget);
+
+    for (final viewport in _otherViewports) {
+      tester.view.physicalSize = viewport * kPixelRatio;
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(tester.takeException(), isNull, reason: 'sheet em $viewport');
+    }
+
+    // Menor tela com o teclado aberto: os campos rolam, nada estoura.
+    tester.view.physicalSize = const Size(320, 640) * kPixelRatio;
+    tester.view.viewInsets = const FakeViewPadding(bottom: 500);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(tester.takeException(), isNull, reason: 'sheet com teclado');
+    tester.view.resetViewInsets();
+
+    tester.view.physicalSize = kReferenceViewport * kPixelRatio;
+    await _pumpAfterTap(tester);
+    await _expectAccessibleTapTargets(tester);
+
+    if (kCapture == 'income-sheet') {
+      await _writePng(key, 'income_sheet_390x844');
+    }
+  });
+
+  testWidgets('income edit sheet', (tester) async {
+    addTearDown(tester.view.reset);
+    final key = await _mount(
+      tester,
+      const IncomeScreen(),
+      income: withIncomes(),
+      accounts: FakeAccountProvider(),
+    );
+    await _settleAt(tester, kReferenceViewport);
+
+    await tester.tap(find.byTooltip('Editar Dividendos'));
+    await _pumpAfterTap(tester);
+    await _pumpAfterTap(tester);
+    expect(find.text('Editar Receita'), findsOneWidget);
+
+    for (final viewport in _otherViewports) {
+      tester.view.physicalSize = viewport * kPixelRatio;
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(tester.takeException(), isNull, reason: 'edicao em $viewport');
+    }
+
+    tester.view.physicalSize = kReferenceViewport * kPixelRatio;
+    await _pumpAfterTap(tester);
+    await _expectAccessibleTapTargets(tester);
+
+    if (kCapture == 'income-edit') {
+      await _writePng(key, 'income_edit_390x844');
+    }
+  });
+
+  testWidgets('income dialog', (tester) async {
+    addTearDown(tester.view.reset);
+    final key = await _mount(
+      tester,
+      const IncomeScreen(),
+      income: withIncomes(),
+      accounts: FakeAccountProvider(),
+    );
+    await _settleAt(tester, kReferenceViewport);
+
+    await tester.tap(find.byTooltip('Remover Dividendos'));
+    await _pumpAfterTap(tester);
+    await _pumpAfterTap(tester);
+    expect(find.text('Deletar receita?'), findsOneWidget);
+
+    for (final viewport in _otherViewports) {
+      tester.view.physicalSize = viewport * kPixelRatio;
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(tester.takeException(), isNull, reason: 'dialogo em $viewport');
+    }
+
+    tester.view.physicalSize = kReferenceViewport * kPixelRatio;
+    await _pumpAfterTap(tester);
+    await _expectAccessibleTapTargets(tester);
+
+    if (kCapture == 'income-dialog') {
+      await _writePng(key, 'income_dialog_390x844');
     }
   });
 

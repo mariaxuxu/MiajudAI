@@ -5,6 +5,15 @@ import '../../theme/app_typography.dart';
 import '../../theme/tokens/app_colors_semantic.dart';
 import '../../theme/tokens/app_primitives.dart';
 
+/// Peso visual da chamada para acao de um [EmptyStateCard].
+enum EmptyStateActionStyle {
+  /// Contorno azul: acao secundaria (padrao).
+  outlined,
+
+  /// Preenchida: a acao principal da tela vazia.
+  filled,
+}
+
 /// Card de estado vazio: arte decorativa, titulo, descricao e, opcionalmente,
 /// uma chamada para acao.
 ///
@@ -19,6 +28,7 @@ class EmptyStateCard extends StatelessWidget {
     required this.message,
     this.actionLabel,
     this.onAction,
+    this.actionStyle = EmptyStateActionStyle.outlined,
   }) : assert(
           (actionLabel == null) == (onAction == null),
           'actionLabel e onAction andam juntos',
@@ -29,6 +39,7 @@ class EmptyStateCard extends StatelessWidget {
   final String message;
   final String? actionLabel;
   final VoidCallback? onAction;
+  final EmptyStateActionStyle actionStyle;
 
   static final ButtonStyle _actionStyle = ButtonStyle(
     foregroundColor: const WidgetStatePropertyAll(
@@ -80,12 +91,19 @@ class EmptyStateCard extends StatelessWidget {
           ),
           if (actionLabel != null) ...[
             const SizedBox(height: AppSpacing.blockGap),
-            OutlinedButton.icon(
-              onPressed: onAction,
-              style: _actionStyle,
-              icon: const Icon(Icons.add_rounded, size: AppSizes.iconLg),
-              label: Text(actionLabel),
-            ),
+            if (actionStyle == EmptyStateActionStyle.filled)
+              FilledButton.icon(
+                onPressed: onAction,
+                icon: const Icon(Icons.add_rounded, size: AppSizes.iconLg),
+                label: Text(actionLabel),
+              )
+            else
+              OutlinedButton.icon(
+                onPressed: onAction,
+                style: _actionStyle,
+                icon: const Icon(Icons.add_rounded, size: AppSizes.iconLg),
+                label: Text(actionLabel),
+              ),
           ],
         ],
       ),

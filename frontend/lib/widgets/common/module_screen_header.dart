@@ -60,7 +60,11 @@ class ModuleScreenHeader extends StatelessWidget {
             ],
           ),
         ),
-        ...actions,
+        // Respiro entre o titulo (que pode quebrar) e as acoes.
+        for (final action in actions) ...[
+          const SizedBox(width: AppSpacing.labelGap),
+          action,
+        ],
       ],
     );
   }
