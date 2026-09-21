@@ -30,11 +30,28 @@ void main() {
       service.publishEvent('screen_opened', screenName: 'accounts');
 
       expect(service.bufferSize, 1);
-      expect(service.bufferedEvents.single, {
-        'action': 'screen_opened',
-        'screen_name': 'accounts',
-        'metadata': <String, dynamic>{},
-      });
+      final event = service.bufferedEvents.single;
+      expect(event['action'], 'screen_opened');
+      expect(event['screen_name'], 'accounts');
+      expect(event['metadata'], <String, dynamic>{});
+      expect(event['client_event_id'], isA<String>());
+      expect(event['client_event_id'], isNotEmpty);
+      service.dispose();
+    });
+
+    test('assigns a unique client_event_id to every event', () {
+      final service = EventsService.forTest(
+        client: MockClient((_) async => http.Response('{}', 200)),
+      );
+      service.setToken('jwt');
+
+      service.publishEvent('screen_opened');
+      service.publishEvent('screen_opened');
+
+      final ids = service.bufferedEvents
+          .map((e) => e['client_event_id'])
+          .toSet();
+      expect(ids, hasLength(2));
       service.dispose();
     });
 

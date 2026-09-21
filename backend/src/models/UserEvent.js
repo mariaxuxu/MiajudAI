@@ -9,6 +9,10 @@ export default function defineUserEventModel(sequelize) {
         primaryKey: true,
         defaultValue: DataTypes.UUIDV4,
       },
+      client_event_id: {
+        type: DataTypes.UUID,
+        allowNull: false,
+      },
       user_id: {
         type: DataTypes.INTEGER,
         allowNull: false,

@@ -25,13 +25,12 @@ void main() {
 
     observer.didPush(_route('/accounts'), null);
 
-    expect(events.bufferedEvents, [
-      {
-        'action': 'screen_opened',
-        'screen_name': 'accounts',
-        'metadata': <String, dynamic>{},
-      },
-    ]);
+    final event = events.bufferedEvents.single;
+    expect(event['action'], 'screen_opened');
+    expect(event['screen_name'], 'accounts');
+    expect(event['metadata'], <String, dynamic>{});
+    expect(event['client_event_id'], isA<String>());
+    expect(event['client_event_id'], isNotEmpty);
     events.dispose();
   });
 

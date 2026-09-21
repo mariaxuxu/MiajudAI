@@ -10,6 +10,8 @@ class ValidationError extends Error {
 
 const MAX_ACTION_LENGTH = 100;
 const MAX_SCREEN_NAME_LENGTH = 100;
+const UUID_REGEX =
+  /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
 
 export const MAX_BATCH_SIZE = 100;
 
@@ -21,6 +23,16 @@ export const validateUserEvent = (event) => {
 
   if (typeof event.action !== 'string' || event.action.trim() === '') {
     throw new ValidationError('action', 'Action is required and must be a non-empty string');
+  }
+
+  if (
+    typeof event.client_event_id !== 'string' ||
+    !UUID_REGEX.test(event.client_event_id)
+  ) {
+    throw new ValidationError(
+      'client_event_id',
+      'Client event ID is required and must be a valid UUID'
+    );
   }
 
   if (event.action.length > MAX_ACTION_LENGTH) {
@@ -50,12 +62,15 @@ export const storeUserEvents = async (userId, events) => {
 
   const records = events.map((event) => ({
     user_id: userId,
+    client_event_id: event.client_event_id,
     action: event.action.trim(),
     screen_name: event.screen_name?.trim() || null,
     metadata: event.metadata || {},
   }));
 
-  return UserEvent.bulkCreate(records);
+  // ignoreDuplicates turns a retried batch into a no-op: any event whose
+  // client_event_id already exists is skipped instead of inserted again.
+  return UserEvent.bulkCreate(records, { ignoreDuplicates: true });
 };
 
 export default {

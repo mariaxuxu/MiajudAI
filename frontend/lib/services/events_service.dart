@@ -3,6 +3,9 @@ import 'dart:convert';
 
 import 'package:flutter/widgets.dart';
 import 'package:http/http.dart' as http;
+import 'package:uuid/data.dart';
+import 'package:uuid/rng.dart';
+import 'package:uuid/uuid.dart';
 
 import '../config/constants.dart';
 
@@ -32,6 +35,8 @@ class EventsService {
         _maxRetries = maxRetries;
 
   static final EventsService _instance = EventsService._();
+  static const Uuid _uuid = Uuid();
+  static final MathRNG _rng = MathRNG();
 
   factory EventsService() => _instance;
 
@@ -101,6 +106,7 @@ class EventsService {
     if (_token == null) return;
 
     final event = <String, dynamic>{
+      'client_event_id': _uuid.v4(config: V4Options(null, _rng)),
       'action': action,
       if (screenName != null && screenName.isNotEmpty)
         'screen_name': screenName,

@@ -9,15 +9,24 @@ const { validateUserEvent, storeUserEvents, MAX_BATCH_SIZE } = await import(
   '../../src/services/userEventsService.js'
 );
 
+const CLIENT_EVENT_ID = '11111111-1111-4111-8111-111111111111';
+
 describe('userEventsService', () => {
   describe('validateUserEvent', () => {
-    it('accepts a minimal event (only action)', () => {
-      expect(() => validateUserEvent({ action: 'screen_opened' })).not.toThrow();
+    it('accepts a minimal event (action + client_event_id)', () => {
+      expect(() =>
+        validateUserEvent({ action: 'screen_opened', client_event_id: CLIENT_EVENT_ID })
+      ).not.toThrow();
     });
 
     it('accepts a full event with screen_name and metadata', () => {
       expect(() =>
-        validateUserEvent({ action: 'expense_added', screen_name: 'expenses', metadata: { expense_id: 1 } })
+        validateUserEvent({
+          action: 'expense_added',
+          client_event_id: CLIENT_EVENT_ID,
+          screen_name: 'expenses',
+          metadata: { expense_id: 1 },
+        })
       ).not.toThrow();
     });
 
@@ -31,37 +40,57 @@ describe('userEventsService', () => {
     });
 
     it('rejects an empty action', () => {
-      expect(() => validateUserEvent({ action: '' })).toThrow('Action is required');
-      expect(() => validateUserEvent({ action: '   ' })).toThrow('Action is required');
+      expect(() => validateUserEvent({ action: '', client_event_id: CLIENT_EVENT_ID })).toThrow('Action is required');
+      expect(() => validateUserEvent({ action: '   ', client_event_id: CLIENT_EVENT_ID })).toThrow('Action is required');
     });
 
     it('rejects a non-string action', () => {
-      expect(() => validateUserEvent({ action: 42 })).toThrow('Action is required');
+      expect(() => validateUserEvent({ action: 42, client_event_id: CLIENT_EVENT_ID })).toThrow('Action is required');
     });
 
     it('rejects an action longer than 100 chars', () => {
-      expect(() => validateUserEvent({ action: 'a'.repeat(101) })).toThrow('at most 100');
+      expect(() => validateUserEvent({ action: 'a'.repeat(101), client_event_id: CLIENT_EVENT_ID })).toThrow('at most 100');
     });
 
     it('accepts an action exactly 100 chars', () => {
-      expect(() => validateUserEvent({ action: 'a'.repeat(100) })).not.toThrow();
+      expect(() => validateUserEvent({ action: 'a'.repeat(100), client_event_id: CLIENT_EVENT_ID })).not.toThrow();
     });
 
     it('rejects a screen_name longer than 100 chars', () => {
-      expect(() => validateUserEvent({ action: 'x', screen_name: 's'.repeat(101) })).toThrow('Screen name must be at most 100');
+      expect(() =>
+        validateUserEvent({ action: 'x', client_event_id: CLIENT_EVENT_ID, screen_name: 's'.repeat(101) })
+      ).toThrow('Screen name must be at most 100');
     });
 
     it('rejects a non-string screen_name', () => {
-      expect(() => validateUserEvent({ action: 'x', screen_name: 42 })).toThrow('Screen name must be a string');
+      expect(() =>
+        validateUserEvent({ action: 'x', client_event_id: CLIENT_EVENT_ID, screen_name: 42 })
+      ).toThrow('Screen name must be a string');
     });
 
     it('rejects non-object metadata', () => {
-      expect(() => validateUserEvent({ action: 'x', metadata: [1, 2] })).toThrow('Metadata must be an object');
-      expect(() => validateUserEvent({ action: 'x', metadata: 'text' })).toThrow('Metadata must be an object');
+      expect(() =>
+        validateUserEvent({ action: 'x', client_event_id: CLIENT_EVENT_ID, metadata: [1, 2] })
+      ).toThrow('Metadata must be an object');
+      expect(() =>
+        validateUserEvent({ action: 'x', client_event_id: CLIENT_EVENT_ID, metadata: 'text' })
+      ).toThrow('Metadata must be an object');
     });
 
     it('allows null metadata and screen_name', () => {
-      expect(() => validateUserEvent({ action: 'x', screen_name: null, metadata: null })).not.toThrow();
+      expect(() =>
+        validateUserEvent({ action: 'x', client_event_id: CLIENT_EVENT_ID, screen_name: null, metadata: null })
+      ).not.toThrow();
+    });
+
+    it('rejects a missing client_event_id', () => {
+      expect(() => validateUserEvent({ action: 'x' })).toThrow('Client event ID is required');
+    });
+
+    it('rejects a malformed client_event_id', () => {
+      expect(() =>
+        validateUserEvent({ action: 'x', client_event_id: 'not-a-uuid' })
+      ).toThrow('Client event ID is required');
     });
   });
 
@@ -71,14 +100,17 @@ describe('userEventsService', () => {
       getDatabase.mockReturnValue({ UserEvent: { bulkCreate } });
 
       const created = await storeUserEvents(42, [
-        { action: ' screen_opened ', screen_name: ' accounts ', metadata: {} },
-        { action: 'user_logged_in' },
+        { action: ' screen_opened ', client_event_id: CLIENT_EVENT_ID, screen_name: ' accounts ', metadata: {} },
+        { action: 'user_logged_in', client_event_id: '22222222-2222-4222-8222-222222222222' },
       ]);
 
-      expect(bulkCreate).toHaveBeenCalledWith([
-        { user_id: 42, action: 'screen_opened', screen_name: 'accounts', metadata: {} },
-        { user_id: 42, action: 'user_logged_in', screen_name: null, metadata: {} },
-      ]);
+      expect(bulkCreate).toHaveBeenCalledWith(
+        [
+          { user_id: 42, client_event_id: CLIENT_EVENT_ID, action: 'screen_opened', screen_name: 'accounts', metadata: {} },
+          { user_id: 42, client_event_id: '22222222-2222-4222-8222-222222222222', action: 'user_logged_in', screen_name: null, metadata: {} },
+        ],
+        { ignoreDuplicates: true }
+      );
       expect(created).toHaveLength(2);
     });
   });
