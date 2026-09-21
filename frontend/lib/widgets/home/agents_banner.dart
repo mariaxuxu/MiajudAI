@@ -9,8 +9,7 @@ import '../common/cropped_asset_image.dart';
 /// Faixa de apresentacao dos agentes de IA na home.
 ///
 /// E informativa: nao recebe toque nem navega. O acesso aos agentes continua
-/// sendo pelo menu inferior. A seta circular e ORNAMENTO (fidelidade ao
-/// prototipo): sem `onTap`, fora da arvore de semantica.
+/// sendo pelo menu inferior.
 class AgentsBanner extends StatelessWidget {
   const AgentsBanner({super.key});
 
@@ -39,8 +38,6 @@ class AgentsBanner extends StatelessWidget {
               blendInto: AppSemanticColors.moduleAiSoft,
             ),
           ),
-          const SizedBox(width: AppSpacing.labelGap),
-          const _DecorativeChevron(),
         ],
       ),
     );
@@ -86,31 +83,6 @@ class AgentsBanner extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-/// Ornamento. Sem [GestureDetector], sem [InkWell], sem [Semantics].
-class _DecorativeChevron extends StatelessWidget {
-  const _DecorativeChevron();
-
-  @override
-  Widget build(BuildContext context) {
-    return ExcludeSemantics(
-      child: Container(
-        width: 40,
-        height: 40,
-        decoration: const BoxDecoration(
-          color: AppSemanticColors.surface,
-          shape: BoxShape.circle,
-          boxShadow: AppPrimitives.shadowSm,
-        ),
-        child: const Icon(
-          Icons.chevron_right_rounded,
-          size: AppSizes.iconLg,
-          color: AppSemanticColors.textPrimary,
-        ),
-      ),
     );
   }
 }

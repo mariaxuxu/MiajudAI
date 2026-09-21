@@ -12,6 +12,7 @@ import '../widgets/common/app_screen_scaffold.dart';
 import '../widgets/common/cropped_asset_image.dart';
 import '../widgets/common/speech_bubble.dart';
 import '../widgets/dialogs/logout_dialog.dart';
+import '../widgets/dialogs/under_construction_dialog.dart';
 import '../widgets/home/agents_banner.dart';
 import '../widgets/home/quick_action_card.dart';
 import '../widgets/navigation/agent_bottom_nav.dart';
@@ -182,14 +183,26 @@ class _WelcomeScreenState extends State<WelcomeScreen>
         title: 'Área Doméstica',
         description: 'Gerenciar sua casa e tarefas',
         tone: AppTone.green,
-        onTap: () {},
+        onTap: () => UnderConstructionDialog.show(
+          context,
+          agentName: 'Área Doméstica',
+          agentRole: 'Gerenciar sua casa e tarefas',
+          imagePath: AppAgent.tina.assetPath,
+          agentColor: AppTone.green.foreground,
+        ),
       ),
       _CardData(
         icon: Icons.handyman_outlined,
         title: 'Serviços Externos',
         description: 'Encontre prestadores de serviços',
         tone: AppTone.cyan,
-        onTap: () {},
+        onTap: () => UnderConstructionDialog.show(
+          context,
+          agentName: 'Serviços Externos',
+          agentRole: 'Encontre prestadores de serviços',
+          imagePath: 'assets/images/brand/logo_mark.png',
+          agentColor: AppTone.cyan.foreground,
+        ),
       ),
     ];
 

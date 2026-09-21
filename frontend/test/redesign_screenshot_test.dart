@@ -22,7 +22,8 @@
 //         invoice-dashboard | invoice-dashboard-empty | invoice-choice |
 //         invoice-installment | invoice-fixed | invoice-dialog |
 //         calendar-empty | calendar | calendar-sheet | calendar-dialog |
-//         diary-empty | diary | diary-form | diary-form-end)
+//         diary-empty | diary | diary-form | diary-form-end |
+//         home-domestic | home-services)
 //
 // A captura e opt-in e limitada a UMA tela por processo: depois de
 // `RenderRepaintBoundary.toImage` o rasterizador fica ocupado, o proximo
@@ -87,7 +88,7 @@ const double kPixelRatio = 2;
 /// 'invoice-dashboard-empty', 'invoice-choice', 'invoice-installment',
 /// 'invoice-fixed', 'invoice-dialog', 'calendar-empty', 'calendar',
 /// 'calendar-sheet', 'calendar-dialog', 'diary-empty', 'diary', 'diary-form',
-/// 'diary-form-end' ou vazio (nenhuma).
+/// 'diary-form-end', 'home-domestic', 'home-services' ou vazio (nenhuma).
 const String kCapture = String.fromEnvironment('REDESIGN_CAPTURE');
 
 const List<String> _assetsToPrecache = [
@@ -391,6 +392,48 @@ void main() {
       await _writePng(r.key, 'home_390x844');
     }
   });
+
+  // Os cards "Area Domestica" e "Servicos Externos" abrem o aviso de "em
+  // construcao" (o mesmo de Otto e Tina).
+  for (final card in [
+    (
+      title: 'Área Doméstica',
+      capture: 'home-domestic',
+      png: 'home_domestic_390x844',
+    ),
+    (
+      title: 'Serviços Externos',
+      capture: 'home-services',
+      png: 'home_services_390x844',
+    ),
+  ]) {
+    testWidgets('home ${card.capture} dialog', (tester) async {
+      addTearDown(tester.view.reset);
+      final key =
+          await _mount(tester, const WelcomeScreen(), setup: _loginAsPedro);
+      await _settleAt(tester, kReferenceViewport);
+
+      await tester.ensureVisible(find.text(card.title));
+      await tester.pump();
+      await tester.tap(find.text(card.title));
+      await _pumpAfterTap(tester);
+      await _pumpAfterTap(tester);
+      expect(find.text('Em construção'), findsOneWidget);
+
+      for (final viewport in _otherViewports) {
+        tester.view.physicalSize = viewport * kPixelRatio;
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
+        expect(tester.takeException(), isNull, reason: 'dialogo em $viewport');
+      }
+
+      tester.view.physicalSize = kReferenceViewport * kPixelRatio;
+      await _pumpAfterTap(tester);
+      await _expectAccessibleTapTargets(tester);
+
+      if (kCapture == card.capture) await _writePng(key, card.png);
+    });
+  }
 
   // A home rolada ate o fim: mostra a ultima fileira de cards e o banner.
   testWidgets('home scrolled', (tester) async {

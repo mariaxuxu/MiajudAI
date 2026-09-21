@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:miajudai/models/user_model.dart';
 import 'package:miajudai/screens/welcome_screen.dart';
+import 'package:miajudai/widgets/home/agents_banner.dart';
 
 import 'support/pump_screen.dart';
 import 'support/test_fonts.dart';
@@ -60,18 +61,59 @@ void main() {
         await _tapText(tester, entry.key);
 
         expect(env.log.events, [entry.value]);
+        expect(find.text('Em construção'), findsNothing);
       });
     }
 
-    for (final title in ['Área Doméstica', 'Serviços Externos']) {
-      testWidgets('"$title" stays a no-op', (tester) async {
+    // Excecao pedida de proposito: estes dois cards passam a abrir o MESMO
+    // aviso de "em construcao" que Otto e Tina usam, sem navegar.
+    const underConstruction = {
+      'Área Doméstica': 'Gerenciar sua casa e tarefas',
+      'Serviços Externos': 'Encontre prestadores de serviços',
+    };
+
+    for (final entry in underConstruction.entries) {
+      testWidgets('"${entry.key}" shows the under-construction notice', (
+        tester,
+      ) async {
         final env = await pumpScreen(tester, const WelcomeScreen());
 
-        await _tapText(tester, title);
+        await _tapText(tester, entry.key);
 
-        expect(env.log.events, isEmpty);
+        expect(find.text('Em construção'), findsOneWidget);
+        expect(
+            find.text('Estamos construindo algo incrível!\n'
+                'Em breve este agente estará disponível para te ajudar.'),
+            findsOneWidget);
+        // O titulo e o subtitulo do aviso vem do card (o card continua la).
+        expect(find.text(entry.key), findsNWidgets(2));
+        expect(find.text(entry.value), findsNWidgets(2));
+        // So a rota do proprio aviso (sem nome): nenhuma tela nomeada abre.
+        expect(env.log.events, ['push null']);
+
+        await tester.tap(find.text('Entendido'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Em construção'), findsNothing);
+        expect(find.text(entry.key), findsOneWidget);
+        expect(env.log.events, ['push null', 'pop null']);
       });
     }
+
+    testWidgets('the notice of the two cards does not leak to the others', (
+      tester,
+    ) async {
+      await pumpScreen(tester, const WelcomeScreen());
+
+      await _tapText(tester, 'Área Doméstica');
+      await tester.tap(find.text('Entendido'));
+      await tester.pumpAndSettle();
+      await _tapText(tester, 'Serviços Externos');
+
+      expect(find.text('Em construção'), findsOneWidget);
+      expect(find.text('Serviços Externos'), findsNWidgets(2));
+      expect(find.text('Área Doméstica'), findsOneWidget);
+    });
 
     testWidgets('all six cards are still shown', (tester) async {
       await pumpScreen(tester, const WelcomeScreen());
@@ -85,6 +127,52 @@ void main() {
       ]) {
         expect(find.text(t), findsOneWidget, reason: t);
       }
+    });
+  });
+
+  group('agents banner', () {
+    testWidgets('has no chevron: the whole banner is not a button', (
+      tester,
+    ) async {
+      await pumpScreen(tester, const WelcomeScreen());
+
+      final banner = find.byType(AgentsBanner);
+      expect(banner, findsOneWidget);
+      expect(
+        find.descendant(
+          of: banner,
+          matching: find.byIcon(Icons.chevron_right_rounded),
+        ),
+        findsNothing,
+      );
+      // A seta que resta na tela e a dos seis atalhos, que sao tocaveis.
+      expect(find.byIcon(Icons.chevron_right_rounded), findsNWidgets(6));
+    });
+
+    testWidgets('keeps its texts and stays non-interactive', (tester) async {
+      final env = await pumpScreen(tester, const WelcomeScreen());
+
+      for (final text in [
+        'Seus agentes de IA',
+        'Converse com Luna, Otto ou Tina',
+        'Dicas, respostas e um apoio real para o seu dia a dia.',
+      ]) {
+        expect(find.text(text), findsOneWidget, reason: text);
+      }
+      final banner = find.byType(AgentsBanner);
+      for (final type in [InkWell, GestureDetector, IconButton]) {
+        expect(
+          find.descendant(of: banner, matching: find.byType(type)),
+          findsNothing,
+          reason: '$type',
+        );
+      }
+
+      await tester.ensureVisible(find.text('Seus agentes de IA'));
+      await tester.tap(find.text('Seus agentes de IA'), warnIfMissed: false);
+      await tester.pumpAndSettle();
+      expect(env.log.events, isEmpty);
+      expect(find.text('Em construção'), findsNothing);
     });
   });
 
