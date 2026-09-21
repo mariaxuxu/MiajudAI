@@ -8,8 +8,8 @@ import '../../theme/tokens/app_colors_semantic.dart';
 /// A cor identifica o dominio, mas o significado nunca depende so dela: todo
 /// card traz rotulo e texto proprios.
 ///
-/// Nasce com `income` (receitas, verde). Despesas (vermelho), parcelas e
-/// gastos fixos (ambar) entram quando as suas fases precisarem.
+/// `income` (receitas, verde) e `expense` (despesas, vermelho). Parcelas e
+/// gastos fixos (ambar) entram quando a sua fase precisar.
 enum FinanceTone {
   income(
     background: AppSemanticColors.feedbackSuccessSubtle,
@@ -18,6 +18,14 @@ enum FinanceTone {
     tone: AppTone.green,
     value: AppSemanticColors.onFeedbackSuccess,
     accent: AppSemanticColors.feedbackSuccess,
+  ),
+  expense(
+    background: AppSemanticColors.feedbackErrorSubtle,
+    // red500 a 20%.
+    border: Color(0x33EF4444),
+    tone: AppTone.red,
+    value: AppSemanticColors.onFeedbackError,
+    accent: AppSemanticColors.feedbackError,
   );
 
   const FinanceTone({
