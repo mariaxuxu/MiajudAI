@@ -10,6 +10,7 @@ import '../theme/tokens/app_primitives.dart';
 import '../widgets/brand/app_logo.dart';
 import '../widgets/common/app_screen_scaffold.dart';
 import '../widgets/common/cropped_asset_image.dart';
+import '../widgets/common/speech_bubble.dart';
 import '../widgets/dialogs/logout_dialog.dart';
 import '../widgets/home/agents_banner.dart';
 import '../widgets/home/quick_action_card.dart';
@@ -317,7 +318,7 @@ class _HomeHero extends StatelessWidget {
                   alignment: Alignment.topLeft,
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 120),
-                    child: const _SpeechBubble(
+                    child: const SpeechBubble(
                       text: 'Pequenas decisões hoje, uma vida melhor amanhã.',
                     ),
                   ),
@@ -327,48 +328,6 @@ class _HomeHero extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _SpeechBubble extends StatelessWidget {
-  const _SpeechBubble({required this.text});
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: AppSemanticColors.surface,
-        borderRadius: BorderRadius.circular(AppRadius.card),
-        boxShadow: AppPrimitives.shadowMd,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            text,
-            style: AppTypography.labelSmall.copyWith(
-              color: AppSemanticColors.textSecondaryStrong,
-              fontWeight: FontWeight.w400,
-            ),
-          ),
-          const SizedBox(height: 6),
-          ExcludeSemantics(
-            child: Container(
-              width: 28,
-              height: 2,
-              decoration: BoxDecoration(
-                color: AppSemanticColors.actionPrimary,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

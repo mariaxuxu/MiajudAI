@@ -13,7 +13,8 @@
 //   flutter test test/redesign_screenshot_test.dart --plain-name "login" ^
 //     --dart-define=REDESIGN_CAPTURE=login
 //     -> tambem grava build/redesign_screenshots/<tela>_390x844.png
-//        (valores: splash | login | signup | login-errors | signup-states | home | home-scrolled)
+//        (valores: splash | login | signup | login-errors | signup-states | home |
+//         home-scrolled | luna | luna-chat | luna-error)
 //
 // A captura e opt-in e limitada a UMA tela por processo: depois de
 // `RenderRepaintBoundary.toImage` o rasterizador fica ocupado, o proximo
@@ -28,23 +29,28 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:miajudai/models/chat_message.dart';
 import 'package:miajudai/models/user_model.dart';
 import 'package:miajudai/providers/auth_provider.dart';
+import 'package:miajudai/providers/chat_provider.dart';
 import 'package:miajudai/screens/auth/login_screen.dart';
 import 'package:miajudai/screens/auth/signup_screen.dart';
+import 'package:miajudai/screens/chat/financial_chat_screen.dart';
 import 'package:miajudai/screens/splash_screen.dart';
 import 'package:miajudai/screens/welcome_screen.dart';
 import 'package:miajudai/widgets/agents/agent_card.dart';
 import 'package:provider/provider.dart';
 
 import 'support/fake_auth_provider.dart';
+import 'support/fake_chat_provider.dart';
 import 'support/test_fonts.dart';
 
 const Size kReferenceViewport = Size(390, 844);
 const double kPixelRatio = 2;
 
 /// Qual tela gravar em PNG: 'splash', 'login', 'signup', 'home',
-/// 'login-errors', 'signup-states' ou vazio (nenhuma).
+/// 'home-scrolled', 'login-errors', 'signup-states', 'luna', 'luna-chat',
+/// 'luna-error' ou vazio (nenhuma).
 const String kCapture = String.fromEnvironment('REDESIGN_CAPTURE');
 
 const List<String> _assetsToPrecache = [
@@ -66,6 +72,7 @@ Future<GlobalKey> _mount(
   WidgetTester tester,
   Widget screen, {
   void Function(FakeAuthProvider auth)? setup,
+  ChatProvider? chat,
 }) async {
   final key = GlobalKey();
   final auth = FakeAuthProvider();
@@ -74,8 +81,12 @@ Future<GlobalKey> _mount(
   await tester.pumpWidget(
     RepaintBoundary(
       key: key,
-      child: ChangeNotifierProvider<AuthProvider>.value(
-        value: auth,
+      child: MultiProvider(
+        providers: [
+          ChangeNotifierProvider<AuthProvider>.value(value: auth),
+          if (chat != null)
+            ChangeNotifierProvider<ChatProvider>.value(value: chat),
+        ],
         child: MaterialApp(debugShowCheckedModeBanner: false, home: screen),
       ),
     ),
@@ -167,9 +178,10 @@ Future<({GlobalKey key, double belowFold})> _checkScreen(
   Widget screen, {
   void Function()? extraChecks,
   void Function(FakeAuthProvider auth)? setup,
+  ChatProvider? chat,
 }) async {
   addTearDown(tester.view.reset);
-  final key = await _mount(tester, screen, setup: setup);
+  final key = await _mount(tester, screen, setup: setup, chat: chat);
 
   for (final viewport in _otherViewports) {
     final belowFold = await _settleAt(tester, viewport);
@@ -211,6 +223,24 @@ void _loginAsPedro(FakeAuthProvider auth) {
     fullName: 'Pedro Kelvin',
     createdAt: DateTime(2024),
   );
+}
+
+List<ChatMessage> _sampleConversation() {
+  final at = DateTime(2026, 1, 5, 14, 32);
+  return [
+    ChatMessage(text: 'Qual meu saldo atual?', isUser: true, timestamp: at),
+    ChatMessage(
+      text: 'Seu saldo somado nas contas é de R\$ 4.820,00. A conta corrente '
+          'tem R\$ 1.320,00 e a poupança, R\$ 3.500,00.',
+      isUser: false,
+      timestamp: at,
+    ),
+    ChatMessage(
+      text: 'Onde estou gastando mais?',
+      isUser: true,
+      timestamp: at.add(const Duration(minutes: 1)),
+    ),
+  ];
 }
 
 void main() {
@@ -281,6 +311,48 @@ void main() {
     if (kCapture == 'home-scrolled') {
       await _writePng(key, 'home_scrolled_390x844');
     }
+  });
+
+  // Chat da Luna: estado inicial (sugestoes), conversa e erro.
+  testWidgets('luna', (tester) async {
+    final r = await _checkScreen(
+      tester,
+      'luna',
+      const FinancialChatScreen(),
+      chat: FakeChatProvider(),
+    );
+
+    // O estado inicial cabe inteiro em 390x844, como no prototipo.
+    expect(r.belowFold, 0.0, reason: 'o chat vazio deve caber em 390x844');
+
+    await _expectAccessibleTapTargets(tester);
+
+    if (kCapture == 'luna') await _writePng(r.key, 'luna_390x844');
+  });
+
+  testWidgets('luna chat', (tester) async {
+    final chat = FakeChatProvider()
+      ..items = _sampleConversation()
+      ..loading = true;
+    addTearDown(tester.view.reset);
+    final key = await _mount(tester, const FinancialChatScreen(), chat: chat);
+    await _settleAt(tester, kReferenceViewport);
+    expect(tester.takeException(), isNull);
+
+    if (kCapture == 'luna-chat') await _writePng(key, 'luna_chat_390x844');
+  });
+
+  testWidgets('luna error', (tester) async {
+    final chat = FakeChatProvider()
+      ..items = _sampleConversation().take(1).toList()
+      ..errorMessage =
+          'Não foi possível conectar ao assistente. Tente novamente.';
+    addTearDown(tester.view.reset);
+    final key = await _mount(tester, const FinancialChatScreen(), chat: chat);
+    await _settleAt(tester, kReferenceViewport);
+    expect(tester.takeException(), isNull);
+
+    if (kCapture == 'luna-error') await _writePng(key, 'luna_error_390x844');
   });
 
   // Estados: mensagens de validacao e medidor de forca de senha. Cobrem o que

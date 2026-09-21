@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:miajudai/providers/auth_provider.dart';
+import 'package:miajudai/providers/chat_provider.dart';
 import 'package:provider/provider.dart';
 
 import 'fake_auth_provider.dart';
@@ -22,6 +23,9 @@ class RouteLog extends NavigatorObserver {
       events.add('pop ${route.settings.name}');
 }
 
+/// Texto da tela de origem montada por [pumpScreen] quando `pushed` e true.
+const String kOriginScreenText = 'ORIGEM';
+
 /// Monta [screen] na viewport de referencia (390x844) com um
 /// [FakeAuthProvider] e um [RouteLog].
 ///
@@ -30,10 +34,17 @@ class RouteLog extends NavigatorObserver {
 ///
 /// [setup] configura o provider ANTES do primeiro frame (a home, por exemplo,
 /// le o usuario no `build`).
+///
+/// [chat], quando informado, tambem e provido a arvore (telas de chat).
+///
+/// [pushed] monta a tela EMPILHADA sobre uma pagina "ORIGEM" em vez de como
+/// raiz, para que "voltar" (`Navigator.pop`) tenha para onde voltar.
 Future<({FakeAuthProvider auth, RouteLog log})> pumpScreen(
   WidgetTester tester,
   Widget screen, {
   void Function(FakeAuthProvider auth)? setup,
+  ChatProvider? chat,
+  bool pushed = false,
 }) async {
   tester.view.physicalSize = const Size(390, 844) * 2;
   tester.view.devicePixelRatio = 2;
@@ -42,12 +53,20 @@ Future<({FakeAuthProvider auth, RouteLog log})> pumpScreen(
   final auth = FakeAuthProvider();
   setup?.call(auth);
   final log = RouteLog();
+  final navigatorKey = GlobalKey<NavigatorState>();
 
   await tester.pumpWidget(
-    ChangeNotifierProvider<AuthProvider>.value(
-      value: auth,
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider<AuthProvider>.value(value: auth),
+        if (chat != null)
+          ChangeNotifierProvider<ChatProvider>.value(value: chat),
+      ],
       child: MaterialApp(
-        home: screen,
+        navigatorKey: navigatorKey,
+        home: pushed
+            ? const Scaffold(body: Center(child: Text(kOriginScreenText)))
+            : screen,
         navigatorObservers: [log],
         onGenerateRoute: (settings) => MaterialPageRoute<void>(
           settings: settings,
@@ -58,6 +77,14 @@ Future<({FakeAuthProvider auth, RouteLog log})> pumpScreen(
     ),
   );
   await tester.pumpAndSettle();
+
+  if (pushed) {
+    navigatorKey.currentState!.push(
+      MaterialPageRoute<void>(builder: (_) => screen),
+    );
+    await tester.pumpAndSettle();
+  }
+
   log.events.clear();
   return (auth: auth, log: log);
 }

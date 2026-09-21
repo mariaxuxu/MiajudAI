@@ -16,6 +16,9 @@ class FakeAuthProvider extends ChangeNotifier implements AuthProvider {
   /// Usuario logado; a home le `user?.fullName` para a saudacao.
   UserModel? currentUser;
 
+  /// Token enviado nas chamadas autenticadas (o chat le `authToken`).
+  String? token = 'test-token';
+
   /// Quantas vezes `logout()` foi chamado.
   int logoutCalls = 0;
 
@@ -39,6 +42,9 @@ class FakeAuthProvider extends ChangeNotifier implements AuthProvider {
 
   @override
   UserModel? get user => currentUser;
+
+  @override
+  String? get authToken => token;
 
   @override
   Future<void> logout() async {
