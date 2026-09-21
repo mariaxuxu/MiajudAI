@@ -20,6 +20,7 @@ class AppFormField extends StatelessWidget {
     this.hint,
     this.keyboardType,
     this.prefixText,
+    this.autofocus = false,
   });
 
   final String label;
@@ -32,6 +33,10 @@ class AppFormField extends StatelessWidget {
   /// Texto fixo antes do valor digitado (ex.: `R$ `). E so apresentacao: nao
   /// entra no texto do [controller].
   final String? prefixText;
+
+  /// Abre o campo com o foco (e o teclado) ja nele. Quem usa so liga quando o
+  /// formulario tem um unico campo e o usuario vai digitar de imediato.
+  final bool autofocus;
 
   @override
   Widget build(BuildContext context) {
@@ -53,6 +58,7 @@ class AppFormField extends StatelessWidget {
           label: label,
           child: TextField(
             controller: controller,
+            autofocus: autofocus,
             keyboardType: keyboardType,
             style: AppTypography.bodyMedium.copyWith(
               color: AppSemanticColors.textPrimary,

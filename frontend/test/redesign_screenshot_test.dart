@@ -20,7 +20,8 @@
 //         expenses-empty | expenses | expenses-tab | expenses-sheet |
 //         expenses-edit | expenses-dialog | invoice-empty | invoice |
 //         invoice-dashboard | invoice-dashboard-empty | invoice-choice |
-//         invoice-installment | invoice-fixed | invoice-dialog)
+//         invoice-installment | invoice-fixed | invoice-dialog |
+//         calendar-empty | calendar | calendar-sheet | calendar-dialog)
 //
 // A captura e opt-in e limitada a UMA tela por processo: depois de
 // `RenderRepaintBoundary.toImage` o rasterizador fica ocupado, o proximo
@@ -41,6 +42,7 @@ import 'package:miajudai/models/user_model.dart';
 import 'package:miajudai/providers/account_provider.dart';
 import 'package:miajudai/providers/auth_provider.dart';
 import 'package:miajudai/providers/chat_provider.dart';
+import 'package:miajudai/providers/event_provider.dart';
 import 'package:miajudai/providers/expense_provider.dart';
 import 'package:miajudai/providers/fixed_cost_provider.dart';
 import 'package:miajudai/providers/income_provider.dart';
@@ -48,6 +50,7 @@ import 'package:miajudai/providers/installment_provider.dart';
 import 'package:miajudai/screens/accounts_screen.dart';
 import 'package:miajudai/screens/auth/login_screen.dart';
 import 'package:miajudai/screens/auth/signup_screen.dart';
+import 'package:miajudai/screens/calendar_screen.dart';
 import 'package:miajudai/screens/chat/financial_chat_screen.dart';
 import 'package:miajudai/screens/expenses_screen.dart';
 import 'package:miajudai/screens/income_screen.dart';
@@ -59,6 +62,7 @@ import 'package:provider/provider.dart';
 
 import 'support/fake_account_provider.dart';
 import 'support/fake_auth_provider.dart';
+import 'support/fake_event_provider.dart';
 import 'support/fake_expense_provider.dart';
 import 'support/fake_fixed_cost_provider.dart';
 import 'support/fake_income_provider.dart';
@@ -77,7 +81,8 @@ const double kPixelRatio = 2;
 /// 'expenses', 'expenses-tab', 'expenses-sheet', 'expenses-edit',
 /// 'expenses-dialog', 'invoice-empty', 'invoice', 'invoice-dashboard',
 /// 'invoice-dashboard-empty', 'invoice-choice', 'invoice-installment',
-/// 'invoice-fixed', 'invoice-dialog' ou vazio (nenhuma).
+/// 'invoice-fixed', 'invoice-dialog', 'calendar-empty', 'calendar',
+/// 'calendar-sheet', 'calendar-dialog' ou vazio (nenhuma).
 const String kCapture = String.fromEnvironment('REDESIGN_CAPTURE');
 
 const List<String> _assetsToPrecache = [
@@ -105,6 +110,7 @@ Future<GlobalKey> _mount(
   ExpenseProvider? expenses,
   InstallmentProvider? installments,
   FixedCostProvider? fixedCosts,
+  EventProvider? events,
 }) async {
   // O binding de teste troca toda sombra por um bloco solido (deterministico
   // para golden tests). Nas capturas, que sao comparadas a olho com o
@@ -138,6 +144,8 @@ Future<GlobalKey> _mount(
             ChangeNotifierProvider<FixedCostProvider>.value(
               value: fixedCosts,
             ),
+          if (events != null)
+            ChangeNotifierProvider<EventProvider>.value(value: events),
         ],
         child: MaterialApp(debugShowCheckedModeBanner: false, home: screen),
       ),
@@ -242,6 +250,7 @@ Future<({GlobalKey key, double belowFold})> _checkScreen(
   ExpenseProvider? expenses,
   InstallmentProvider? installments,
   FixedCostProvider? fixedCosts,
+  EventProvider? events,
 }) async {
   addTearDown(tester.view.reset);
   final key = await _mount(
@@ -254,6 +263,7 @@ Future<({GlobalKey key, double belowFold})> _checkScreen(
     expenses: expenses,
     installments: installments,
     fixedCosts: fixedCosts,
+    events: events,
   );
 
   for (final viewport in _otherViewports) {
@@ -1278,6 +1288,125 @@ void main() {
 
     if (kCapture == 'invoice-dialog') {
       await _writePng(key, 'invoice_dialog_390x844');
+    }
+  });
+
+  // Calendario. Os compromissos ficam em "hoje", o dia que a tela abre
+  // selecionado, para a lista aparecer sem interacao.
+  FakeEventProvider withEvents() {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    return FakeEventProvider()
+      ..items = [
+        fakeEvent(id: 1, title: 'Consulta médica', date: today),
+        fakeEvent(id: 2, title: 'Reunião de pais na escola', date: today),
+        fakeEvent(
+          id: 3,
+          title: 'Aniversário da Ana',
+          date: DateTime(now.year, now.month, now.day == 12 ? 13 : 12),
+        ),
+        fakeEvent(
+          id: 4,
+          title: 'Pagar seguro',
+          date: DateTime(now.year, now.month, now.day == 3 ? 4 : 3),
+        ),
+      ];
+  }
+
+  testWidgets('calendar empty', (tester) async {
+    final r = await _checkScreen(
+      tester,
+      'calendar-empty',
+      const CalendarScreen(),
+      events: FakeEventProvider(),
+    );
+    await _expectAccessibleTapTargets(tester);
+
+    if (kCapture == 'calendar-empty') {
+      await _writePng(r.key, 'calendar_empty_390x844');
+    }
+  });
+
+  testWidgets('calendar', (tester) async {
+    final r = await _checkScreen(
+      tester,
+      'calendar',
+      const CalendarScreen(),
+      events: withEvents(),
+    );
+    await _expectAccessibleTapTargets(tester);
+
+    if (kCapture == 'calendar') await _writePng(r.key, 'calendar_390x844');
+  });
+
+  // Texto ampliado: o layout tem de ceder (rolar/quebrar), nunca estourar.
+  testWidgets('calendar large text', (tester) async {
+    addTearDown(tester.view.reset);
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    tester.platformDispatcher.textScaleFactorTestValue = 1.6;
+    await _mount(tester, const CalendarScreen(), events: withEvents());
+    for (final viewport in [..._otherViewports, kReferenceViewport]) {
+      await _settleAt(tester, viewport);
+    }
+  });
+
+  testWidgets('calendar sheet', (tester) async {
+    addTearDown(tester.view.reset);
+    final key = await _mount(
+      tester,
+      const CalendarScreen(),
+      events: FakeEventProvider(),
+    );
+    await _settleAt(tester, kReferenceViewport);
+
+    await tester.tap(find.byType(FloatingActionButton));
+    await _pumpAfterTap(tester);
+    await _pumpAfterTap(tester);
+    expect(find.text('Novo Compromisso'), findsOneWidget);
+
+    for (final viewport in _otherViewports) {
+      tester.view.physicalSize = viewport * kPixelRatio;
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(tester.takeException(), isNull, reason: 'sheet em $viewport');
+    }
+
+    tester.view.physicalSize = kReferenceViewport * kPixelRatio;
+    await _pumpAfterTap(tester);
+    await _expectAccessibleTapTargets(tester);
+
+    if (kCapture == 'calendar-sheet') {
+      await _writePng(key, 'calendar_sheet_390x844');
+    }
+  });
+
+  testWidgets('calendar dialog', (tester) async {
+    addTearDown(tester.view.reset);
+    final key = await _mount(
+      tester,
+      const CalendarScreen(),
+      events: withEvents(),
+    );
+    await _settleAt(tester, kReferenceViewport);
+
+    await tester.tap(find.byTooltip('Remover Consulta médica'));
+    await _pumpAfterTap(tester);
+    await _pumpAfterTap(tester);
+    expect(find.text('Deletar compromisso?'), findsOneWidget);
+
+    for (final viewport in _otherViewports) {
+      tester.view.physicalSize = viewport * kPixelRatio;
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(tester.takeException(), isNull, reason: 'dialogo em $viewport');
+    }
+
+    tester.view.physicalSize = kReferenceViewport * kPixelRatio;
+    await _pumpAfterTap(tester);
+    await _expectAccessibleTapTargets(tester);
+
+    if (kCapture == 'calendar-dialog') {
+      await _writePng(key, 'calendar_dialog_390x844');
     }
   });
 
