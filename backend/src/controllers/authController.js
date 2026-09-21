@@ -1,8 +1,6 @@
 import authService from '../services/authService.js';
 import { HTTP_STATUS, ERROR_MESSAGES } from '../utils/constants.js';
 
-const devUsers = {};
-
 export const verifyToken = async (req, res) => {
   console.log(`\n[AUTH] POST /auth/verify-token - ${new Date().toISOString()}`);
   try {
@@ -26,42 +24,29 @@ export const verifyToken = async (req, res) => {
 
     if (process.env.NODE_ENV === 'development') {
       const email = decodedToken.email || idToken;
-      const userId = `user_${Date.now()}`;
+      const name = decodedToken.name || fullName || 'Usuário';
 
-      if (!devUsers[email]) {
-        devUsers[email] = {
-          id: userId,
-          firebase_uid: decodedToken.uid,
+      // Dev fallback: register/find a REAL user in the database so the JWT
+      // carries an integer user id that satisfies the foreign keys.
+      console.log(`[AUTH] ⏳ (dev) Looking up user by email: ${email}`);
+      let user = await authService.getUserByEmail(email);
+
+      if (!user) {
+        console.log(`[AUTH] ⏳ (dev) Registering new user...`);
+        user = await authService.registerUser(
+          decodedToken.uid || `dev_${Date.now()}`,
           email,
-          full_name: decodedToken.name || fullName || 'Usuário',
-          phone: null,
-          avatar_url: null,
-          gender: null,
-          birth_date: null,
-          birth_country: null,
-          birth_state: null,
-          birth_city: null,
-          nationality: null,
-          marital_status: null,
-          emergency_contact_1_name: null,
-          emergency_contact_1_phone: null,
-          emergency_contact_2_name: null,
-          emergency_contact_2_phone: null,
-          emergency_contact_3_name: null,
-          emergency_contact_3_phone: null,
-          created_at: new Date(),
-          updated_at: new Date(),
-          last_activity: new Date(),
-        };
+          name
+        );
+        console.log(`[AUTH] ✅ (dev) User registered: id=${user.id}`);
       }
 
-      const user = devUsers[email];
       const jwtToken = authService.generateJWT(user.id, user.email);
 
       return res.status(HTTP_STATUS.OK).json({
         success: true,
         token: jwtToken,
-        user,
+        user: user.toJSON(),
       });
     }
 

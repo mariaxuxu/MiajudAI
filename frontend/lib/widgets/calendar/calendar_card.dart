@@ -180,6 +180,15 @@ class _CalendarCardState extends State<CalendarCard> {
           color: AppSemanticColors.actionPrimary,
           borderRadius: _dayRadius,
         ),
+        // Todas as decorações de dia precisam ser retângulos com o mesmo raio:
+        // o table_calendar anima a célula com DecorationTween e, se um lado
+        // for círculo (default do pacote) e o outro retângulo com
+        // borderRadius, o tween quebra ("circle cannot have a border radius").
+        // Retângulos transparentes ficam idênticos ao default, mas mantêm o
+        // tween válido nas transições default -> hoje/selecionado.
+        defaultDecoration: BoxDecoration(borderRadius: _dayRadius),
+        weekendDecoration: BoxDecoration(borderRadius: _dayRadius),
+        outsideDecoration: BoxDecoration(borderRadius: _dayRadius),
         markersMaxCount: 1,
         markerSize: 5,
         // Sem alinhamento automatico o marcador fica colado na base da
