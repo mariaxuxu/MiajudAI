@@ -68,6 +68,9 @@ abstract final class AppSemanticColors {
   // ── Modulos ────────────────────────────────────────────────────────────
   static const Color moduleAi = AppPrimitives.violet500;
   static const Color moduleAiSubtle = AppPrimitives.violet50;
+
+  /// Fundo lilas de destaques de IA (ex.: banner dos agentes).
+  static const Color moduleAiSoft = AppPrimitives.violet100;
   static const Color onModuleAi = AppPrimitives.violet700;
 
   static const Color moduleCleaning = AppPrimitives.cyan500;
@@ -132,4 +135,34 @@ enum AppAgent {
 
   /// Cor de texto legivel sobre [surface] (contraste AA).
   final Color onSurface;
+}
+
+/// Par de cores de um modulo/atalho: fundo tonal + cor do icone.
+///
+/// Serve para atalhos e cards que mudam de cor por significado (financas,
+/// diario, casa...) sem cada tela escolher hex. O icone usa o tom 600, que
+/// fica >= 3:1 sobre o fundo 100; o significado nunca depende so da cor,
+/// porque todo atalho tem titulo em texto.
+enum AppTone {
+  blue(
+    surface: AppPrimitives.blue100,
+    foreground: AppPrimitives.blue600,
+  ),
+  violet(
+    surface: AppPrimitives.violet100,
+    foreground: AppPrimitives.violet600,
+  ),
+  green(
+    surface: AppPrimitives.emerald100,
+    foreground: AppPrimitives.emerald600,
+  ),
+  cyan(
+    surface: AppPrimitives.cyan100,
+    foreground: AppPrimitives.cyan600,
+  );
+
+  const AppTone({required this.surface, required this.foreground});
+
+  final Color surface;
+  final Color foreground;
 }

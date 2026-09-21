@@ -6,60 +6,11 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:miajudai/providers/auth_provider.dart';
 import 'package:miajudai/screens/auth/login_screen.dart';
 import 'package:miajudai/screens/auth/signup_screen.dart';
-import 'package:provider/provider.dart';
 
-import 'support/fake_auth_provider.dart';
+import 'support/pump_screen.dart';
 import 'support/test_fonts.dart';
-
-/// Registra como cada navegacao aconteceu (push, replace ou pop).
-class _RouteLog extends NavigatorObserver {
-  final List<String> events = [];
-
-  @override
-  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) =>
-      events.add('push ${route.settings.name}');
-
-  @override
-  void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) =>
-      events.add('replace ${newRoute?.settings.name}');
-
-  @override
-  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) =>
-      events.add('pop ${route.settings.name}');
-}
-
-Future<({FakeAuthProvider auth, _RouteLog log})> _pump(
-  WidgetTester tester,
-  Widget screen,
-) async {
-  tester.view.physicalSize = const Size(390, 844) * 2;
-  tester.view.devicePixelRatio = 2;
-  addTearDown(tester.view.reset);
-
-  final auth = FakeAuthProvider();
-  final log = _RouteLog();
-
-  await tester.pumpWidget(
-    ChangeNotifierProvider<AuthProvider>.value(
-      value: auth,
-      child: MaterialApp(
-        home: screen,
-        navigatorObservers: [log],
-        onGenerateRoute: (settings) => MaterialPageRoute<void>(
-          settings: settings,
-          builder: (_) =>
-              Scaffold(body: Center(child: Text('DESTINO ${settings.name}'))),
-        ),
-      ),
-    ),
-  );
-  await tester.pumpAndSettle();
-  log.events.clear();
-  return (auth: auth, log: log);
-}
 
 Finder _field(int index) => find.byType(TextFormField).at(index);
 
@@ -82,7 +33,7 @@ void main() {
     testWidgets('empty submit shows validation messages and skips login', (
       tester,
     ) async {
-      final env = await _pump(tester, const LoginScreen());
+      final env = await pumpScreen(tester, const LoginScreen());
 
       await _tapPrimary(tester);
 
@@ -94,7 +45,7 @@ void main() {
     testWidgets('invalid email and short password keep their messages', (
       tester,
     ) async {
-      final env = await _pump(tester, const LoginScreen());
+      final env = await pumpScreen(tester, const LoginScreen());
 
       await tester.enterText(_field(0), 'abc');
       await tester.enterText(_field(1), '123');
@@ -108,7 +59,7 @@ void main() {
     testWidgets('valid submit calls login with the trimmed email', (
       tester,
     ) async {
-      final env = await _pump(tester, const LoginScreen());
+      final env = await pumpScreen(tester, const LoginScreen());
 
       await tester.enterText(_field(0), '  user@mail.com  ');
       await tester.enterText(_field(1), 'secret1');
@@ -124,7 +75,7 @@ void main() {
     testWidgets('authenticated login replaces the route with /welcome', (
       tester,
     ) async {
-      final env = await _pump(tester, const LoginScreen());
+      final env = await pumpScreen(tester, const LoginScreen());
       env.auth.authenticated = true;
 
       await tester.enterText(_field(0), 'user@mail.com');
@@ -136,7 +87,7 @@ void main() {
     });
 
     testWidgets('failed login shows the same error message', (tester) async {
-      final env = await _pump(tester, const LoginScreen());
+      final env = await pumpScreen(tester, const LoginScreen());
       env.auth.errorMessage = 'qualquer erro do provider';
 
       await tester.enterText(_field(0), 'user@mail.com');
@@ -151,7 +102,7 @@ void main() {
     });
 
     testWidgets('"Criar conta gratuita" PUSHES /signup', (tester) async {
-      final env = await _pump(tester, const LoginScreen());
+      final env = await pumpScreen(tester, const LoginScreen());
 
       await tester.tap(find.text('Criar conta gratuita'));
       await tester.pumpAndSettle();
@@ -160,7 +111,7 @@ void main() {
     });
 
     testWidgets('back arrow REPLACES the route with /', (tester) async {
-      final env = await _pump(tester, const LoginScreen());
+      final env = await pumpScreen(tester, const LoginScreen());
 
       await tester.tap(find.byTooltip('Voltar'));
       await tester.pumpAndSettle();
@@ -171,7 +122,7 @@ void main() {
     testWidgets('password visibility toggle still flips obscureText', (
       tester,
     ) async {
-      await _pump(tester, const LoginScreen());
+      await pumpScreen(tester, const LoginScreen());
 
       expect(_isObscured(tester, 1), isTrue);
       await tester.tap(find.byTooltip('Mostrar senha'));
@@ -183,7 +134,7 @@ void main() {
     testWidgets('loading disables the button and blocks a second submit', (
       tester,
     ) async {
-      final env = await _pump(tester, const LoginScreen());
+      final env = await pumpScreen(tester, const LoginScreen());
 
       await tester.enterText(_field(0), 'user@mail.com');
       await tester.enterText(_field(1), 'secret1');
@@ -200,7 +151,7 @@ void main() {
     });
 
     testWidgets('forgot-password link is present', (tester) async {
-      await _pump(tester, const LoginScreen());
+      await pumpScreen(tester, const LoginScreen());
       expect(find.widgetWithText(TextButton, 'Esqueci minha senha'),
           findsOneWidget);
     });
@@ -210,7 +161,7 @@ void main() {
     testWidgets('empty submit shows all four required messages', (
       tester,
     ) async {
-      final env = await _pump(tester, const SignupScreen());
+      final env = await pumpScreen(tester, const SignupScreen());
 
       await _tapPrimary(tester);
 
@@ -222,7 +173,7 @@ void main() {
     });
 
     testWidgets('mismatched confirmation keeps its message', (tester) async {
-      final env = await _pump(tester, const SignupScreen());
+      final env = await pumpScreen(tester, const SignupScreen());
 
       await tester.enterText(_field(0), 'Ana');
       await tester.enterText(_field(1), 'ana@mail.com');
@@ -237,7 +188,7 @@ void main() {
     testWidgets('strength indicator appears, updates and disappears', (
       tester,
     ) async {
-      await _pump(tester, const SignupScreen());
+      await pumpScreen(tester, const SignupScreen());
 
       expect(find.text('Muito fraca'), findsNothing);
 
@@ -258,7 +209,7 @@ void main() {
     testWidgets('valid submit calls signup with the trimmed values', (
       tester,
     ) async {
-      final env = await _pump(tester, const SignupScreen());
+      final env = await pumpScreen(tester, const SignupScreen());
 
       await tester.enterText(_field(0), '  Ana Silva ');
       await tester.enterText(_field(1), ' ana@mail.com ');
@@ -277,7 +228,7 @@ void main() {
     testWidgets('authenticated signup replaces the route with /welcome', (
       tester,
     ) async {
-      final env = await _pump(tester, const SignupScreen());
+      final env = await pumpScreen(tester, const SignupScreen());
       env.auth.authenticated = true;
 
       await tester.enterText(_field(0), 'Ana');
@@ -293,7 +244,7 @@ void main() {
     testWidgets('failed signup shows the provider error message', (
       tester,
     ) async {
-      final env = await _pump(tester, const SignupScreen());
+      final env = await pumpScreen(tester, const SignupScreen());
       env.auth.errorMessage = 'Email já cadastrado';
 
       await tester.enterText(_field(0), 'Ana');
@@ -309,7 +260,7 @@ void main() {
     testWidgets('"Entrar" link replaces with /login when it cannot pop', (
       tester,
     ) async {
-      final env = await _pump(tester, const SignupScreen());
+      final env = await pumpScreen(tester, const SignupScreen());
 
       await tester.ensureVisible(find.text('Entrar'));
       await tester.tap(find.text('Entrar'));
@@ -319,7 +270,7 @@ void main() {
     });
 
     testWidgets('back arrow REPLACES the route with /', (tester) async {
-      final env = await _pump(tester, const SignupScreen());
+      final env = await pumpScreen(tester, const SignupScreen());
 
       await tester.tap(find.byTooltip('Voltar'));
       await tester.pumpAndSettle();

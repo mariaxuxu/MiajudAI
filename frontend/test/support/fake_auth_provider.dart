@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:miajudai/models/user_model.dart';
 import 'package:miajudai/providers/auth_provider.dart';
 
 /// `AuthProvider` de teste.
@@ -11,6 +12,12 @@ class FakeAuthProvider extends ChangeNotifier implements AuthProvider {
   bool loading = false;
   bool authenticated = false;
   String? errorMessage;
+
+  /// Usuario logado; a home le `user?.fullName` para a saudacao.
+  UserModel? currentUser;
+
+  /// Quantas vezes `logout()` foi chamado.
+  int logoutCalls = 0;
 
   final List<({String email, String password})> loginCalls = [];
   final List<({String email, String password, String fullName})> signupCalls =
@@ -29,6 +36,14 @@ class FakeAuthProvider extends ChangeNotifier implements AuthProvider {
 
   @override
   String? get error => errorMessage;
+
+  @override
+  UserModel? get user => currentUser;
+
+  @override
+  Future<void> logout() async {
+    logoutCalls++;
+  }
 
   @override
   Future<void> login({required String email, required String password}) async {

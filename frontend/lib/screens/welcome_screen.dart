@@ -1,10 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import '../config/constants.dart';
 import '../config/routes.dart';
 import '../providers/auth_provider.dart';
+import '../theme/app_spacing.dart';
+import '../theme/app_typography.dart';
+import '../theme/tokens/app_colors_semantic.dart';
+import '../theme/tokens/app_primitives.dart';
+import '../widgets/brand/app_logo.dart';
+import '../widgets/common/app_screen_scaffold.dart';
+import '../widgets/common/cropped_asset_image.dart';
 import '../widgets/dialogs/logout_dialog.dart';
+import '../widgets/home/agents_banner.dart';
+import '../widgets/home/quick_action_card.dart';
 import '../widgets/navigation/agent_bottom_nav.dart';
 
 class WelcomeScreen extends StatefulWidget {
@@ -57,343 +65,309 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   Widget build(BuildContext context) {
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
         statusBarBrightness: Brightness.light,
         statusBarIconBrightness: Brightness.dark,
       ),
     );
 
-    return Scaffold(
-      backgroundColor: AppColors.accentSurface,
-      body: SafeArea(
-        bottom: false,
-        child: Column(
-          children: [
-            _buildHeader(context),
-            Expanded(
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-                child: _buildBody(context),
-              ),
-            ),
-          ],
-        ),
-      ),
+    return AppScreenScaffold(
+      contentAlignment: Alignment.topCenter,
       bottomNavigationBar: const AgentBottomNav(),
-    );
-  }
-
-  Widget _buildHeader(BuildContext context) {
-    return Container(
-      color: AppColors.background,
-      padding: const EdgeInsets.fromLTRB(8, 12, 12, 16),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              const SizedBox.shrink(),
-              const Expanded(
-                child: Text(
-                  'MiAjudAI',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.primary,
-                    letterSpacing: -0.5,
-                  ),
-                ),
+          _buildHeader(context),
+          const SizedBox(height: AppSpacing.blockGap),
+          _buildHero(),
+          const SizedBox(height: AppSpacing.sectionGap),
+          Semantics(
+            header: true,
+            child: Text(
+              'Acesso rápido',
+              style: AppTypography.headlineSmall.copyWith(
+                color: AppSemanticColors.textPrimary,
               ),
-              IconButton(
-                onPressed: () => LogoutDialog.show(
-                  context,
-                  onConfirm: () async {
-                    await context.read<AuthProvider>().logout();
-                    if (!context.mounted) return;
-                    Navigator.pushReplacementNamed(context, '/');
-                  },
-                ),
-                icon: const Icon(Icons.logout_rounded,
-                    color: AppColors.textLabel, size: 22),
-                tooltip: 'Sair',
-              ),
-            ],
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
-            child: Consumer<AuthProvider>(
-              builder: (_, auth, __) {
-                final firstName = _getFirstName(auth.user?.fullName);
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Olá',
-                      style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textDark,
-                        letterSpacing: -0.2,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    const Text(
-                      'No que posso te ajudar hoje?',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: AppColors.textLabel,
-                      ),
-                    ),
-                  ],
-                );
-              },
             ),
           ),
+          const SizedBox(height: AppSpacing.itemGap),
+          _buildQuickActions(context),
+          const SizedBox(height: AppSpacing.defaultGap),
+          const AgentsBanner(),
         ],
       ),
     );
   }
 
-  Widget _buildBody(BuildContext context) {
+  Widget _buildHeader(BuildContext context) {
+    return Row(
+      children: [
+        const AppLogo(variant: AppLogoVariant.wordmark, wordmarkFontSize: 26),
+        const Spacer(),
+        DecoratedBox(
+          decoration: const BoxDecoration(
+            color: AppSemanticColors.surface,
+            shape: BoxShape.circle,
+            boxShadow: AppPrimitives.shadowSm,
+          ),
+          child: IconButton(
+            onPressed: () => LogoutDialog.show(
+              context,
+              onConfirm: () async {
+                await context.read<AuthProvider>().logout();
+                if (!context.mounted) return;
+                Navigator.pushReplacementNamed(context, '/');
+              },
+            ),
+            icon: const Icon(
+              Icons.logout_rounded,
+              size: AppSizes.iconLg,
+              color: AppSemanticColors.actionPrimary,
+            ),
+            tooltip: 'Sair',
+            constraints: const BoxConstraints.tightFor(
+              width: AppSpacing.minTouchTarget,
+              height: AppSpacing.minTouchTarget,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHero() {
+    return Consumer<AuthProvider>(
+      builder: (_, auth, __) {
+        final firstName = _getFirstName(auth.user?.fullName);
+        return _HomeHero(
+          greeting: firstName.isEmpty ? 'Olá!' : 'Olá, $firstName!',
+        );
+      },
+    );
+  }
+
+  Widget _buildQuickActions(BuildContext context) {
     final cards = [
       _CardData(
         icon: Icons.calendar_today_outlined,
         title: 'Calendário',
         description: 'Veja e organize seus compromissos',
-        color: AppColors.accent,
+        tone: AppTone.blue,
         onTap: () => Navigator.pushNamed(context, AppRoutes.calendar),
       ),
       _CardData(
         icon: Icons.menu_book_outlined,
         title: 'Meu Diário',
         description: 'Registre seus pensamentos e humor',
-        color: const Color(0xFF7C3AED),
+        tone: AppTone.violet,
         onTap: () => Navigator.pushNamed(context, AppRoutes.diary),
       ),
       _CardData(
         icon: Icons.account_balance_wallet_outlined,
         title: 'Finanças',
         description: 'Contas, receitas e despesas',
-        color: AppColors.primary,
+        tone: AppTone.blue,
         onTap: () => Navigator.pushNamed(context, AppRoutes.accounts),
       ),
       _CardData(
         icon: Icons.receipt_long_outlined,
         title: 'Dashboard / Fatura',
         description: 'Parcelas e gastos fixos mensais',
-        color: AppColors.primary,
+        tone: AppTone.blue,
         onTap: () => Navigator.pushNamed(context, AppRoutes.invoiceDashboard),
       ),
       _CardData(
-        icon: Icons.home_repair_service_outlined,
+        icon: Icons.home_outlined,
         title: 'Área Doméstica',
         description: 'Gerenciar sua casa e tarefas',
-        color: AppColors.tina,
+        tone: AppTone.green,
         onTap: () {},
       ),
       _CardData(
         icon: Icons.handyman_outlined,
         title: 'Serviços Externos',
         description: 'Encontre prestadores de serviços',
-        color: const Color(0xFF0891B2),
+        tone: AppTone.cyan,
         onTap: () {},
       ),
     ];
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SizedBox(height: 20),
-        const Text(
-          'Acesso rápido',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
-            color: AppColors.textDark,
-            letterSpacing: -0.2,
+    Widget cell(int i) => FadeTransition(
+          opacity: _cardFades[i],
+          child: QuickActionCard(
+            icon: cards[i].icon,
+            title: cards[i].title,
+            description: cards[i].description,
+            tone: cards[i].tone,
+            onTap: cards[i].onTap,
           ),
-        ),
-        const SizedBox(height: 14),
-        ...cards.asMap().entries.map((entry) {
-          final i = entry.key;
-          final card = entry.value;
-          return FadeTransition(
-            opacity: _cardFades[i],
-            child: Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: _FeatureCard(data: card),
-            ),
-          );
-        }),
-        const SizedBox(height: 8),
-        _buildAgentBanner(context),
-      ],
-    );
-  }
+        );
 
-  Widget _buildAgentBanner(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [AppColors.primary, Color(0xFF2E6B8A)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(AppDimens.radiusCard),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.25),
-            blurRadius: 20,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    // Duas colunas. IntrinsicHeight iguala a altura dos dois cards da linha
+    // (os titulos podem quebrar em duas linhas).
+    return Column(
+      children: [
+        for (var i = 0; i < cards.length; i += 2) ...[
+          if (i > 0) const SizedBox(height: AppSpacing.itemGap),
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Text(
-                  'Seus agentes de IA',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.2,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Use o menu abaixo para conversar com Luna, Otto ou Tina.',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.75),
-                    fontSize: 13,
-                    height: 1.4,
-                  ),
+                Expanded(child: cell(i)),
+                const SizedBox(width: AppSpacing.itemGap),
+                Expanded(
+                  child: i + 1 < cards.length
+                      ? cell(i + 1)
+                      : const SizedBox.shrink(),
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 16),
-          // Imagem conjunta dos 3 agentes
-          ClipRRect(
-            borderRadius: BorderRadius.circular(AppDimens.radiusMedium),
-            child: Image.asset(
-              'assets/images/todos_agents.jpg',
-              width: 100,
-              height: 76,
-              fit: BoxFit.cover,
-            ),
-          ),
         ],
-      ),
+      ],
     );
   }
-
 }
 
 class _CardData {
   final IconData icon;
   final String title;
   final String description;
-  final Color color;
+  final AppTone tone;
   final VoidCallback onTap;
 
   const _CardData({
     required this.icon,
     required this.title,
     required this.description,
-    required this.color,
+    required this.tone,
     required this.onTap,
   });
 }
 
-class _FeatureCard extends StatefulWidget {
-  final _CardData data;
-  const _FeatureCard({required this.data});
+/// Saudacao e titulo a esquerda; Luna e um balao de marca a direita.
+/// A ilustracao e ornamental.
+class _HomeHero extends StatelessWidget {
+  const _HomeHero({required this.greeting});
 
-  @override
-  State<_FeatureCard> createState() => _FeatureCardState();
-}
+  final String greeting;
 
-class _FeatureCardState extends State<_FeatureCard> {
-  bool _pressed = false;
+  static const double _artHeight = 196;
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: (_) => setState(() => _pressed = true),
-      onTapUp: (_) {
-        setState(() => _pressed = false);
-        widget.data.onTap();
-      },
-      onTapCancel: () => setState(() => _pressed = false),
-      child: AnimatedScale(
-        scale: _pressed ? 0.97 : 1.0,
-        duration: const Duration(milliseconds: 120),
-        curve: Curves.easeOut,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 120),
-          padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(
-            color: _pressed ? const Color(0xFFF8F9FA) : Colors.white,
-            borderRadius: BorderRadius.circular(AppDimens.radiusLarge),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: _pressed ? 0.04 : 0.07),
-                blurRadius: _pressed ? 8 : 16,
-                offset: const Offset(0, 3),
-              ),
-            ],
-          ),
-          child: Row(
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          flex: 10,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 52,
-                height: 52,
-                decoration: BoxDecoration(
-                  color: widget.data.color.withValues(alpha: 0.09),
-                  borderRadius: BorderRadius.circular(AppDimens.radiusMedium),
-                ),
-                child: Icon(widget.data.icon, color: widget.data.color, size: 26),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      widget.data.title,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textDark,
-                        letterSpacing: -0.1,
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      widget.data.description,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: AppColors.textLabel,
-                        height: 1.3,
-                      ),
-                    ),
-                  ],
+              Text(
+                greeting,
+                style: AppTypography.bodyLarge.copyWith(
+                  color: AppSemanticColors.textSecondary,
                 ),
               ),
-              Icon(
-                Icons.arrow_forward_ios_rounded,
-                color: widget.data.color.withValues(alpha: 0.7),
-                size: 14,
+              const SizedBox(height: 4),
+              Semantics(
+                header: true,
+                child: Text(
+                  'No que posso\nte ajudar hoje?',
+                  style: AppTypography.headlineLarge.copyWith(
+                    color: AppSemanticColors.textPrimary,
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.labelGap),
+              Text(
+                'Organize sua rotina, cuide da sua casa e tenha mais controle '
+                'da sua vida.',
+                style: AppTypography.bodyMedium.copyWith(
+                  color: AppSemanticColors.textSecondary,
+                ),
               ),
             ],
           ),
         ),
+        const SizedBox(width: AppSpacing.labelGap),
+        Expanded(
+          flex: 9,
+          child: SizedBox(
+            height: _artHeight,
+            child: Stack(
+              children: [
+                Align(
+                  alignment: Alignment.bottomRight,
+                  child: SizedBox(
+                    height: 108,
+                    child: const CroppedAssetImage(
+                      // Luna. PNG com transparencia. Caixa util medida no arquivo:
+                      // x 0,051-0,804 e y 0,074-0,958 (margem de ~3% em volta).
+                      asset: 'assets/images/luna.png',
+                      assetSize: Size(2048, 2048),
+                      widthFactor: 0.78,
+                      heightFactor: 0.91,
+                      anchor: Alignment(-0.66, 0.36),
+                    ),
+                  ),
+                ),
+                Align(
+                  alignment: Alignment.topLeft,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 120),
+                    child: const _SpeechBubble(
+                      text: 'Pequenas decisões hoje, uma vida melhor amanhã.',
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SpeechBubble extends StatelessWidget {
+  const _SpeechBubble({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: AppSemanticColors.surface,
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        boxShadow: AppPrimitives.shadowMd,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            text,
+            style: AppTypography.labelSmall.copyWith(
+              color: AppSemanticColors.textSecondaryStrong,
+              fontWeight: FontWeight.w400,
+            ),
+          ),
+          const SizedBox(height: 6),
+          ExcludeSemantics(
+            child: Container(
+              width: 28,
+              height: 2,
+              decoration: BoxDecoration(
+                color: AppSemanticColors.actionPrimary,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

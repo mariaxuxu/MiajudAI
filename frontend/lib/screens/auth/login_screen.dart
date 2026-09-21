@@ -12,6 +12,7 @@ import '../../widgets/auth/auth_screen_header.dart';
 import '../../widgets/common/app_primary_button.dart';
 import '../../widgets/common/app_screen_scaffold.dart';
 import '../../widgets/common/brand_note.dart';
+import '../../widgets/common/cropped_asset_image.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -204,7 +205,19 @@ class _LoginScreenState extends State<LoginScreen>
               ),
             ),
           ),
-          Expanded(flex: 3, child: _AgentsGroupArt()),
+          Expanded(
+            flex: 3,
+            child: CroppedAssetImage(
+              // Grupo de agentes. JPEG de fundo branco: dissolvido no fundo da
+              // tela e recortado nas margens (ver CroppedAssetImage).
+              asset: 'assets/images/todos_agents.jpg',
+              assetSize: Size(1421, 1536),
+              widthFactor: 0.82,
+              heightFactor: 0.72,
+              anchor: Alignment(-0.24, 0),
+              blendInto: AppSemanticColors.background,
+            ),
+          ),
         ],
       ),
     );
@@ -277,50 +290,6 @@ class _LoginScreenState extends State<LoginScreen>
       builder: (_) => Theme(
         data: AppTheme.light,
         child: const _ForgotPasswordSheet(),
-      ),
-    );
-  }
-}
-
-/// Grupo de agentes (Otto, Tina e Luna) exibido no rodape do Login.
-///
-/// O arquivo e um JPEG de fundo branco e com margens generosas. Em vez de
-/// edita-lo, o fundo e dissolvido com `BlendMode.multiply` sobre a cor de
-/// fundo da tela (branco x fundo = fundo) e a margem e cortada por layout.
-/// Os fatores abaixo delimitam a area util da arte.
-class _AgentsGroupArt extends StatelessWidget {
-  const _AgentsGroupArt();
-
-  static const String _asset = 'assets/images/todos_agents.jpg';
-  static const double _imageWidth = 1421;
-  static const double _imageHeight = 1536;
-
-  // Fracao do JPEG que contem a arte e onde o recorte se ancora.
-  static const double _widthFactor = 0.82;
-  static const double _heightFactor = 0.72;
-  static const double _anchorX = -0.24;
-
-  @override
-  Widget build(BuildContext context) {
-    return ExcludeSemantics(
-      child: AspectRatio(
-        aspectRatio:
-            (_widthFactor * _imageWidth) / (_heightFactor * _imageHeight),
-        child: ClipRect(
-          child: FractionallySizedBox(
-            widthFactor: 1 / _widthFactor,
-            heightFactor: 1 / _heightFactor,
-            alignment: const Alignment(_anchorX, 0),
-            child: Image.asset(
-              _asset,
-              fit: BoxFit.fill,
-              filterQuality: FilterQuality.medium,
-              color: AppSemanticColors.background,
-              colorBlendMode: BlendMode.multiply,
-              excludeFromSemantics: true,
-            ),
-          ),
-        ),
       ),
     );
   }

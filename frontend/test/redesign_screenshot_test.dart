@@ -13,7 +13,7 @@
 //   flutter test test/redesign_screenshot_test.dart --plain-name "login" ^
 //     --dart-define=REDESIGN_CAPTURE=login
 //     -> tambem grava build/redesign_screenshots/<tela>_390x844.png
-//        (valores: splash | login | signup | login-errors | signup-states)
+//        (valores: splash | login | signup | login-errors | signup-states | home | home-scrolled)
 //
 // A captura e opt-in e limitada a UMA tela por processo: depois de
 // `RenderRepaintBoundary.toImage` o rasterizador fica ocupado, o proximo
@@ -28,10 +28,12 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:miajudai/models/user_model.dart';
 import 'package:miajudai/providers/auth_provider.dart';
 import 'package:miajudai/screens/auth/login_screen.dart';
 import 'package:miajudai/screens/auth/signup_screen.dart';
 import 'package:miajudai/screens/splash_screen.dart';
+import 'package:miajudai/screens/welcome_screen.dart';
 import 'package:miajudai/widgets/agents/agent_card.dart';
 import 'package:provider/provider.dart';
 
@@ -41,7 +43,8 @@ import 'support/test_fonts.dart';
 const Size kReferenceViewport = Size(390, 844);
 const double kPixelRatio = 2;
 
-/// Qual tela gravar em PNG: 'splash', 'login', 'signup' ou vazio (nenhuma).
+/// Qual tela gravar em PNG: 'splash', 'login', 'signup', 'home',
+/// 'login-errors', 'signup-states' ou vazio (nenhuma).
 const String kCapture = String.fromEnvironment('REDESIGN_CAPTURE');
 
 const List<String> _assetsToPrecache = [
@@ -59,14 +62,20 @@ const List<Size> _otherViewports = [
 ];
 
 /// Monta [screen] uma unica vez e devolve a chave do RepaintBoundary.
-Future<GlobalKey> _mount(WidgetTester tester, Widget screen) async {
+Future<GlobalKey> _mount(
+  WidgetTester tester,
+  Widget screen, {
+  void Function(FakeAuthProvider auth)? setup,
+}) async {
   final key = GlobalKey();
+  final auth = FakeAuthProvider();
+  setup?.call(auth);
 
   await tester.pumpWidget(
     RepaintBoundary(
       key: key,
       child: ChangeNotifierProvider<AuthProvider>.value(
-        value: FakeAuthProvider(),
+        value: auth,
         child: MaterialApp(debugShowCheckedModeBanner: false, home: screen),
       ),
     ),
@@ -157,9 +166,10 @@ Future<({GlobalKey key, double belowFold})> _checkScreen(
   String label,
   Widget screen, {
   void Function()? extraChecks,
+  void Function(FakeAuthProvider auth)? setup,
 }) async {
   addTearDown(tester.view.reset);
-  final key = await _mount(tester, screen);
+  final key = await _mount(tester, screen, setup: setup);
 
   for (final viewport in _otherViewports) {
     final belowFold = await _settleAt(tester, viewport);
@@ -192,6 +202,15 @@ void _expectAgentsSideBySide(WidgetTester tester) {
       .toSet();
 
   expect(tops.length, 1, reason: 'os 3 AgentCards devem ficar lado a lado');
+}
+
+void _loginAsPedro(FakeAuthProvider auth) {
+  auth.currentUser = UserModel(
+    id: '1',
+    email: 'pedro@mail.com',
+    fullName: 'Pedro Kelvin',
+    createdAt: DateTime(2024),
+  );
 }
 
 void main() {
@@ -228,6 +247,40 @@ void main() {
     await _expectAccessibleTapTargets(tester);
 
     if (kCapture == 'signup') await _writePng(r.key, 'signup_390x844');
+  });
+
+  testWidgets('home', (tester) async {
+    final r = await _checkScreen(
+      tester,
+      'home',
+      const WelcomeScreen(),
+      setup: _loginAsPedro,
+    );
+
+    // A home tem 6 cards + banner: rolar e esperado. O que importa e que a
+    // navegacao inferior (fora do scroll) e os controles sejam acessiveis.
+    await _expectAccessibleTapTargets(tester);
+
+    if (kCapture == 'home') {
+      await _writePng(r.key, 'home_390x844');
+    }
+  });
+
+  // A home rolada ate o fim: mostra a ultima fileira de cards e o banner.
+  testWidgets('home scrolled', (tester) async {
+    addTearDown(tester.view.reset);
+    final key =
+        await _mount(tester, const WelcomeScreen(), setup: _loginAsPedro);
+    await _settleAt(tester, kReferenceViewport);
+
+    await tester.drag(find.byType(Scrollable).first, const Offset(0, -900));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(tester.takeException(), isNull);
+
+    if (kCapture == 'home-scrolled') {
+      await _writePng(key, 'home_scrolled_390x844');
+    }
   });
 
   // Estados: mensagens de validacao e medidor de forca de senha. Cobrem o que

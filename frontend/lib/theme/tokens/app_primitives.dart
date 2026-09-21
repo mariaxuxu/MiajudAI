@@ -30,7 +30,9 @@ abstract final class AppPrimitives {
 
   // ── Feedback ───────────────────────────────────────────────────────────
   static const Color emerald50 = Color(0xFFECFDF5);
+  static const Color emerald100 = Color(0xFFD1FAE5);
   static const Color emerald500 = Color(0xFF10B981); // Success do DS
+  static const Color emerald600 = Color(0xFF059669);
   static const Color emerald700 = Color(0xFF047857);
 
   static const Color amber50 = Color(0xFFFFFBEB);
@@ -43,11 +45,15 @@ abstract final class AppPrimitives {
 
   // ── Modulos ────────────────────────────────────────────────────────────
   static const Color violet50 = Color(0xFFF5F3FF);
+  static const Color violet100 = Color(0xFFEDE9FE);
   static const Color violet500 = Color(0xFF8B5CF6); // AI do DS
+  static const Color violet600 = Color(0xFF7C3AED);
   static const Color violet700 = Color(0xFF6D28D9);
 
   static const Color cyan50 = Color(0xFFECFEFF);
+  static const Color cyan100 = Color(0xFFCFFAFE);
   static const Color cyan500 = Color(0xFF06B6D4); // Cleaning do DS
+  static const Color cyan600 = Color(0xFF0891B2);
   static const Color cyan700 = Color(0xFF0E7490);
 
   // ── Escala de espacamento: grid base 4px ───────────────────────────────

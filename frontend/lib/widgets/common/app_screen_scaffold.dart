@@ -28,6 +28,7 @@ class AppScreenScaffold extends StatelessWidget {
     required this.child,
     this.footer,
     this.contentAlignment = Alignment.center,
+    this.bottomNavigationBar,
     this.showBackdrop = true,
     this.horizontalPadding = AppSpacing.screenGutter,
     this.topPadding = 12,
@@ -42,6 +43,11 @@ class AppScreenScaffold extends StatelessWidget {
   /// Onde o [child] fica quando sobra altura e nao ha [footer].
   final Alignment contentAlignment;
 
+  /// Navegacao inferior da area autenticada. Quando presente, o corpo se
+  /// estende por tras dela (`extendBody`) para o fundo decorativo aparecer
+  /// atras de uma barra flutuante, e o conteudo e mantido acima dela.
+  final Widget? bottomNavigationBar;
+
   final bool showBackdrop;
   final double horizontalPadding;
   final double topPadding;
@@ -53,6 +59,8 @@ class AppScreenScaffold extends StatelessWidget {
       data: AppTheme.light,
       child: Scaffold(
         backgroundColor: AppSemanticColors.background,
+        extendBody: bottomNavigationBar != null,
+        bottomNavigationBar: bottomNavigationBar,
         body: Stack(
           children: [
             if (showBackdrop) const Positioned.fill(child: AppBackdrop()),
