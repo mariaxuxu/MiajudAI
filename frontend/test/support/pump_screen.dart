@@ -4,7 +4,9 @@ import 'package:miajudai/providers/account_provider.dart';
 import 'package:miajudai/providers/auth_provider.dart';
 import 'package:miajudai/providers/chat_provider.dart';
 import 'package:miajudai/providers/expense_provider.dart';
+import 'package:miajudai/providers/fixed_cost_provider.dart';
 import 'package:miajudai/providers/income_provider.dart';
+import 'package:miajudai/providers/installment_provider.dart';
 import 'package:provider/provider.dart';
 
 import 'fake_auth_provider.dart';
@@ -40,8 +42,8 @@ const String kOriginScreenText = 'ORIGEM';
 ///
 /// [chat], quando informado, tambem e provido a arvore (telas de chat).
 ///
-/// [accounts], [income] e [expenses], quando informados, sao providos a
-/// arvore (telas de financas).
+/// [accounts], [income], [expenses], [installments] e [fixedCosts], quando
+/// informados, sao providos a arvore (telas de financas).
 ///
 /// [pushed] monta a tela EMPILHADA sobre uma pagina "ORIGEM" em vez de como
 /// raiz, para que "voltar" (`Navigator.pop`) tenha para onde voltar.
@@ -53,6 +55,8 @@ Future<({FakeAuthProvider auth, RouteLog log})> pumpScreen(
   AccountProvider? accounts,
   IncomeProvider? income,
   ExpenseProvider? expenses,
+  InstallmentProvider? installments,
+  FixedCostProvider? fixedCosts,
   bool pushed = false,
 }) async {
   tester.view.physicalSize = const Size(390, 844) * 2;
@@ -76,6 +80,12 @@ Future<({FakeAuthProvider auth, RouteLog log})> pumpScreen(
           ChangeNotifierProvider<IncomeProvider>.value(value: income),
         if (expenses != null)
           ChangeNotifierProvider<ExpenseProvider>.value(value: expenses),
+        if (installments != null)
+          ChangeNotifierProvider<InstallmentProvider>.value(
+            value: installments,
+          ),
+        if (fixedCosts != null)
+          ChangeNotifierProvider<FixedCostProvider>.value(value: fixedCosts),
       ],
       child: MaterialApp(
         navigatorKey: navigatorKey,

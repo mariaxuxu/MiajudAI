@@ -7,10 +7,13 @@ import '../../theme/tokens/app_colors_semantic.dart';
 
 /// Confirmacao de acao destrutiva no visual do Design System.
 ///
-/// Mesma assinatura e mesmo fluxo de `DeleteConfirmDialog.show`: fecha o
-/// dialogo e SO ENTAO chama [onConfirm]. Existe ao lado do legado porque
-/// `DeleteConfirmDialog` ainda serve telas nao redesenhadas; cada fase
-/// posterior troca o import e, no fim, o legado sai.
+/// [show] tem a mesma assinatura e o mesmo fluxo de `DeleteConfirmDialog.show`:
+/// fecha o dialogo e SO ENTAO chama `onConfirm`. [showAwaiting] e a variante
+/// das telas cujo dialogo legado espera a remocao terminar antes de fechar
+/// (Parcelas e Gastos Fixos): o visual e o mesmo, so muda quando o dialogo fecha.
+///
+/// Existe ao lado do legado porque `DeleteConfirmDialog` ainda serve telas nao
+/// redesenhadas; cada fase posterior troca o import e, no fim, o legado sai.
 ///
 /// Um dialogo e uma rota nova e nao herda o `Theme` local da tela, entao o
 /// [AppTheme] e reaplicado aqui.
@@ -21,6 +24,47 @@ abstract final class AppConfirmDialog {
     required String message,
     String confirmLabel = 'Deletar',
     required VoidCallback onConfirm,
+  }) {
+    return _show(
+      context,
+      title: title,
+      message: message,
+      confirmLabel: confirmLabel,
+      onConfirmPressed: (dialogContext) {
+        Navigator.pop(dialogContext);
+        onConfirm();
+      },
+    );
+  }
+
+  /// Chama [onConfirm], ESPERA ele terminar e so entao fecha o dialogo (se ele
+  /// ainda estiver montado). Enquanto espera, o dialogo continua aberto; se
+  /// [onConfirm] falhar, o erro segue adiante e o dialogo nao fecha.
+  static Future<void> showAwaiting(
+    BuildContext context, {
+    required String title,
+    required String message,
+    String confirmLabel = 'Deletar',
+    required Future<void> Function() onConfirm,
+  }) {
+    return _show(
+      context,
+      title: title,
+      message: message,
+      confirmLabel: confirmLabel,
+      onConfirmPressed: (dialogContext) async {
+        await onConfirm();
+        if (dialogContext.mounted) Navigator.pop(dialogContext);
+      },
+    );
+  }
+
+  static Future<void> _show(
+    BuildContext context, {
+    required String title,
+    required String message,
+    required String confirmLabel,
+    required void Function(BuildContext dialogContext) onConfirmPressed,
   }) {
     return showDialog<void>(
       context: context,
@@ -95,10 +139,7 @@ abstract final class AppConfirmDialog {
                     const SizedBox(width: AppSpacing.itemGap),
                     Expanded(
                       child: FilledButton(
-                        onPressed: () {
-                          Navigator.pop(dialogContext);
-                          onConfirm();
-                        },
+                        onPressed: () => onConfirmPressed(dialogContext),
                         style: FilledButton.styleFrom(
                           backgroundColor: AppSemanticColors.feedbackErrorSolid,
                           foregroundColor: AppSemanticColors.onFeedbackSolid,

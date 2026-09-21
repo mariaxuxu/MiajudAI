@@ -172,6 +172,17 @@ enum AppTone {
   red(
     surface: AppPrimitives.red100,
     foreground: AppPrimitives.red600,
+  ),
+  // O icone usa o tom 700 (nao 600): o amber600 fica em 2.9:1 sobre o fundo
+  // 100, abaixo dos 3:1 exigidos de um icone; o 700 chega a 4.5:1.
+  amber(
+    surface: AppPrimitives.amber100,
+    foreground: AppPrimitives.amber700,
+  ),
+  // Neutro: totais e blocos sem identidade de dominio (ex.: total do mes).
+  slate(
+    surface: AppPrimitives.slate200,
+    foreground: AppPrimitives.slate600,
   );
 
   const AppTone({required this.surface, required this.foreground});

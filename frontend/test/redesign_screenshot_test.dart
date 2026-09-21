@@ -18,7 +18,9 @@
 //         accounts | accounts-sheet | accounts-dialog | accounts-snackbar |
 //         income-empty | income | income-sheet | income-edit | income-dialog |
 //         expenses-empty | expenses | expenses-tab | expenses-sheet |
-//         expenses-edit | expenses-dialog)
+//         expenses-edit | expenses-dialog | invoice-empty | invoice |
+//         invoice-dashboard | invoice-dashboard-empty | invoice-choice |
+//         invoice-installment | invoice-fixed | invoice-dialog)
 //
 // A captura e opt-in e limitada a UMA tela por processo: depois de
 // `RenderRepaintBoundary.toImage` o rasterizador fica ocupado, o proximo
@@ -40,13 +42,16 @@ import 'package:miajudai/providers/account_provider.dart';
 import 'package:miajudai/providers/auth_provider.dart';
 import 'package:miajudai/providers/chat_provider.dart';
 import 'package:miajudai/providers/expense_provider.dart';
+import 'package:miajudai/providers/fixed_cost_provider.dart';
 import 'package:miajudai/providers/income_provider.dart';
+import 'package:miajudai/providers/installment_provider.dart';
 import 'package:miajudai/screens/accounts_screen.dart';
 import 'package:miajudai/screens/auth/login_screen.dart';
 import 'package:miajudai/screens/auth/signup_screen.dart';
 import 'package:miajudai/screens/chat/financial_chat_screen.dart';
 import 'package:miajudai/screens/expenses_screen.dart';
 import 'package:miajudai/screens/income_screen.dart';
+import 'package:miajudai/screens/invoice_dashboard_screen.dart';
 import 'package:miajudai/screens/splash_screen.dart';
 import 'package:miajudai/screens/welcome_screen.dart';
 import 'package:miajudai/widgets/agents/agent_card.dart';
@@ -55,7 +60,9 @@ import 'package:provider/provider.dart';
 import 'support/fake_account_provider.dart';
 import 'support/fake_auth_provider.dart';
 import 'support/fake_expense_provider.dart';
+import 'support/fake_fixed_cost_provider.dart';
 import 'support/fake_income_provider.dart';
+import 'support/fake_installment_provider.dart';
 import 'support/fake_chat_provider.dart';
 import 'support/test_fonts.dart';
 
@@ -68,7 +75,9 @@ const double kPixelRatio = 2;
 /// 'accounts-dialog', 'accounts-snackbar', 'income-empty', 'income',
 /// 'income-sheet', 'income-edit', 'income-dialog', 'expenses-empty',
 /// 'expenses', 'expenses-tab', 'expenses-sheet', 'expenses-edit',
-/// 'expenses-dialog' ou vazio (nenhuma).
+/// 'expenses-dialog', 'invoice-empty', 'invoice', 'invoice-dashboard',
+/// 'invoice-dashboard-empty', 'invoice-choice', 'invoice-installment',
+/// 'invoice-fixed', 'invoice-dialog' ou vazio (nenhuma).
 const String kCapture = String.fromEnvironment('REDESIGN_CAPTURE');
 
 const List<String> _assetsToPrecache = [
@@ -94,6 +103,8 @@ Future<GlobalKey> _mount(
   AccountProvider? accounts,
   IncomeProvider? income,
   ExpenseProvider? expenses,
+  InstallmentProvider? installments,
+  FixedCostProvider? fixedCosts,
 }) async {
   // O binding de teste troca toda sombra por um bloco solido (deterministico
   // para golden tests). Nas capturas, que sao comparadas a olho com o
@@ -119,6 +130,14 @@ Future<GlobalKey> _mount(
             ChangeNotifierProvider<IncomeProvider>.value(value: income),
           if (expenses != null)
             ChangeNotifierProvider<ExpenseProvider>.value(value: expenses),
+          if (installments != null)
+            ChangeNotifierProvider<InstallmentProvider>.value(
+              value: installments,
+            ),
+          if (fixedCosts != null)
+            ChangeNotifierProvider<FixedCostProvider>.value(
+              value: fixedCosts,
+            ),
         ],
         child: MaterialApp(debugShowCheckedModeBanner: false, home: screen),
       ),
@@ -221,6 +240,8 @@ Future<({GlobalKey key, double belowFold})> _checkScreen(
   AccountProvider? accounts,
   IncomeProvider? income,
   ExpenseProvider? expenses,
+  InstallmentProvider? installments,
+  FixedCostProvider? fixedCosts,
 }) async {
   addTearDown(tester.view.reset);
   final key = await _mount(
@@ -231,6 +252,8 @@ Future<({GlobalKey key, double belowFold})> _checkScreen(
     accounts: accounts,
     income: income,
     expenses: expenses,
+    installments: installments,
+    fixedCosts: fixedCosts,
   );
 
   for (final viewport in _otherViewports) {
@@ -948,6 +971,313 @@ void main() {
 
     if (kCapture == 'expenses-dialog') {
       await _writePng(key, 'expenses_dialog_390x844');
+    }
+  });
+
+  // Dashboard / Fatura (fase D): as duas abas, vazio e com dados, texto
+  // ampliado, sheets e dialogo. Os dados sao relativos a hoje porque a tela
+  // abre no mes corrente.
+  DateTime monthsAgo(int n, [int day = 12]) {
+    final now = DateTime.now();
+    return DateTime(now.year, now.month - n, day);
+  }
+
+  FakeInstallmentProvider withInstallments() => FakeInstallmentProvider()
+    ..items = [
+      fakeInstallment(
+        id: 1,
+        name: 'iPhone 15 Pro',
+        merchantName: 'Apple Store',
+        totalAmount: 7200,
+        totalInstallments: 12,
+        dueDayOfMonth: 10,
+        startDate: monthsAgo(2),
+      ),
+      fakeInstallment(
+        id: 2,
+        name: 'Geladeira com nome bem comprido para testar a quebra de linha',
+        totalAmount: 2400,
+        totalInstallments: 6,
+        dueDayOfMonth: 5,
+        startDate: monthsAgo(0, 3),
+        paymentMethod: 'pix',
+      ),
+      fakeInstallment(
+        id: 3,
+        name: 'Curso de inglês',
+        totalAmount: 900,
+        totalInstallments: 3,
+        dueDayOfMonth: 20,
+        startDate: monthsAgo(1, 25),
+        paymentMethod: 'debit_card',
+      ),
+    ];
+
+  FakeFixedCostProvider withFixedCosts() => FakeFixedCostProvider()
+    ..items = [
+      fakeFixedCost(
+        id: 1,
+        name: 'Netflix',
+        amount: 55.9,
+        category: 'streaming',
+        createdAt: monthsAgo(3),
+      ),
+      fakeFixedCost(
+        id: 2,
+        name: 'Aluguel do apartamento',
+        amount: 1800,
+        dueDayOfMonth: 5,
+        category: 'rent',
+        createdAt: monthsAgo(6),
+      ),
+      fakeFixedCost(
+        id: 3,
+        name: 'Conta de luz',
+        amount: 210.5,
+        dueDayOfMonth: 28,
+        category: 'utility',
+        createdAt: monthsAgo(1),
+      ),
+    ];
+
+  Future<void> openDashboardTab(WidgetTester tester) async {
+    await tester.tap(find.text('Dashboard').first);
+    await _pumpAfterTap(tester);
+    await _pumpAfterTap(tester);
+  }
+
+  testWidgets('invoice empty', (tester) async {
+    final r = await _checkScreen(
+      tester,
+      'invoice-empty',
+      const InvoiceDashboardScreen(),
+      installments: FakeInstallmentProvider(),
+      fixedCosts: FakeFixedCostProvider(),
+    );
+    await _expectAccessibleTapTargets(tester);
+
+    if (kCapture == 'invoice-empty') {
+      await _writePng(r.key, 'invoice_empty_390x844');
+    }
+  });
+
+  testWidgets('invoice', (tester) async {
+    final r = await _checkScreen(
+      tester,
+      'invoice',
+      const InvoiceDashboardScreen(),
+      installments: withInstallments(),
+      fixedCosts: withFixedCosts(),
+    );
+    await _expectAccessibleTapTargets(tester);
+
+    if (kCapture == 'invoice') await _writePng(r.key, 'invoice_390x844');
+  });
+
+  testWidgets('invoice dashboard', (tester) async {
+    addTearDown(tester.view.reset);
+    final key = await _mount(
+      tester,
+      const InvoiceDashboardScreen(),
+      installments: withInstallments(),
+      fixedCosts: withFixedCosts(),
+    );
+    await _settleAt(tester, kReferenceViewport);
+    await openDashboardTab(tester);
+
+    for (final viewport in [..._otherViewports, kReferenceViewport]) {
+      await _settleAt(tester, viewport);
+    }
+    await _expectAccessibleTapTargets(tester);
+
+    if (kCapture == 'invoice-dashboard') {
+      await _writePng(key, 'invoice_dashboard_390x844');
+    }
+  });
+
+  testWidgets('invoice dashboard empty', (tester) async {
+    addTearDown(tester.view.reset);
+    final key = await _mount(
+      tester,
+      const InvoiceDashboardScreen(),
+      installments: FakeInstallmentProvider(),
+      fixedCosts: FakeFixedCostProvider(),
+    );
+    await _settleAt(tester, kReferenceViewport);
+    await openDashboardTab(tester);
+
+    for (final viewport in [..._otherViewports, kReferenceViewport]) {
+      await _settleAt(tester, viewport);
+    }
+    await _expectAccessibleTapTargets(tester);
+
+    if (kCapture == 'invoice-dashboard-empty') {
+      await _writePng(key, 'invoice_dashboard_empty_390x844');
+    }
+  });
+
+  // Texto ampliado: o layout tem de ceder (rolar/quebrar), nunca estourar.
+  testWidgets('invoice large text', (tester) async {
+    addTearDown(tester.view.reset);
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    tester.platformDispatcher.textScaleFactorTestValue = 1.6;
+    await _mount(
+      tester,
+      const InvoiceDashboardScreen(),
+      installments: withInstallments(),
+      fixedCosts: withFixedCosts(),
+    );
+    for (final viewport in [..._otherViewports, kReferenceViewport]) {
+      await _settleAt(tester, viewport);
+    }
+    await openDashboardTab(tester);
+    for (final viewport in [..._otherViewports, kReferenceViewport]) {
+      await _settleAt(tester, viewport);
+    }
+  });
+
+  testWidgets('invoice choice sheet', (tester) async {
+    addTearDown(tester.view.reset);
+    final key = await _mount(
+      tester,
+      const InvoiceDashboardScreen(),
+      installments: FakeInstallmentProvider(),
+      fixedCosts: FakeFixedCostProvider(),
+    );
+    await _settleAt(tester, kReferenceViewport);
+
+    await tester.tap(find.byType(FloatingActionButton));
+    await _pumpAfterTap(tester);
+    await _pumpAfterTap(tester);
+    expect(find.text('Adicionar'), findsOneWidget);
+
+    for (final viewport in _otherViewports) {
+      tester.view.physicalSize = viewport * kPixelRatio;
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(tester.takeException(), isNull, reason: 'sheet em $viewport');
+    }
+
+    tester.view.physicalSize = kReferenceViewport * kPixelRatio;
+    await _pumpAfterTap(tester);
+    await _expectAccessibleTapTargets(tester);
+
+    if (kCapture == 'invoice-choice') {
+      await _writePng(key, 'invoice_choice_390x844');
+    }
+  });
+
+  testWidgets('invoice installment sheet', (tester) async {
+    addTearDown(tester.view.reset);
+    final key = await _mount(
+      tester,
+      const InvoiceDashboardScreen(),
+      installments: FakeInstallmentProvider(),
+      fixedCosts: FakeFixedCostProvider(),
+    );
+    await _settleAt(tester, kReferenceViewport);
+
+    await tester.tap(find.byType(FloatingActionButton));
+    await _pumpAfterTap(tester);
+    await _pumpAfterTap(tester);
+    await tester.tap(find.widgetWithText(FilledButton, 'Parcela'));
+    await _pumpAfterTap(tester);
+    await _pumpAfterTap(tester);
+    expect(find.text('Nova Parcela'), findsOneWidget);
+
+    for (final viewport in _otherViewports) {
+      tester.view.physicalSize = viewport * kPixelRatio;
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(tester.takeException(), isNull, reason: 'sheet em $viewport');
+    }
+
+    // Menor tela com o teclado aberto: os campos rolam, nada estoura.
+    tester.view.physicalSize = const Size(320, 640) * kPixelRatio;
+    tester.view.viewInsets = const FakeViewPadding(bottom: 500);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(tester.takeException(), isNull, reason: 'sheet com teclado');
+    tester.view.resetViewInsets();
+
+    tester.view.physicalSize = kReferenceViewport * kPixelRatio;
+    await _pumpAfterTap(tester);
+    await _expectAccessibleTapTargets(tester);
+
+    if (kCapture == 'invoice-installment') {
+      await _writePng(key, 'invoice_installment_390x844');
+    }
+  });
+
+  testWidgets('invoice fixed cost sheet', (tester) async {
+    addTearDown(tester.view.reset);
+    final key = await _mount(
+      tester,
+      const InvoiceDashboardScreen(),
+      installments: FakeInstallmentProvider(),
+      fixedCosts: FakeFixedCostProvider(),
+    );
+    await _settleAt(tester, kReferenceViewport);
+
+    await tester.tap(find.byType(FloatingActionButton));
+    await _pumpAfterTap(tester);
+    await _pumpAfterTap(tester);
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Gasto Fixo'));
+    await _pumpAfterTap(tester);
+    await _pumpAfterTap(tester);
+    expect(find.text('Novo Gasto Fixo'), findsOneWidget);
+
+    for (final viewport in _otherViewports) {
+      tester.view.physicalSize = viewport * kPixelRatio;
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(tester.takeException(), isNull, reason: 'sheet em $viewport');
+    }
+
+    tester.view.physicalSize = const Size(320, 640) * kPixelRatio;
+    tester.view.viewInsets = const FakeViewPadding(bottom: 500);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(tester.takeException(), isNull, reason: 'sheet com teclado');
+    tester.view.resetViewInsets();
+
+    tester.view.physicalSize = kReferenceViewport * kPixelRatio;
+    await _pumpAfterTap(tester);
+    await _expectAccessibleTapTargets(tester);
+
+    if (kCapture == 'invoice-fixed') {
+      await _writePng(key, 'invoice_fixed_390x844');
+    }
+  });
+
+  testWidgets('invoice dialog', (tester) async {
+    addTearDown(tester.view.reset);
+    final key = await _mount(
+      tester,
+      const InvoiceDashboardScreen(),
+      installments: withInstallments(),
+      fixedCosts: withFixedCosts(),
+    );
+    await _settleAt(tester, kReferenceViewport);
+
+    await tester.tap(find.byTooltip('Remover Apple Store'));
+    await _pumpAfterTap(tester);
+    await _pumpAfterTap(tester);
+    expect(find.text('Remover Parcela?'), findsOneWidget);
+
+    for (final viewport in _otherViewports) {
+      tester.view.physicalSize = viewport * kPixelRatio;
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(tester.takeException(), isNull, reason: 'dialogo em $viewport');
+    }
+
+    tester.view.physicalSize = kReferenceViewport * kPixelRatio;
+    await _pumpAfterTap(tester);
+    await _expectAccessibleTapTargets(tester);
+
+    if (kCapture == 'invoice-dialog') {
+      await _writePng(key, 'invoice_dialog_390x844');
     }
   });
 
