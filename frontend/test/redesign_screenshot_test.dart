@@ -14,7 +14,8 @@
 //     --dart-define=REDESIGN_CAPTURE=login
 //     -> tambem grava build/redesign_screenshots/<tela>_390x844.png
 //        (valores: splash | login | signup | login-errors | signup-states | home |
-//         home-scrolled | luna | luna-chat | luna-error)
+//         home-scrolled | luna | luna-chat | luna-error | accounts-empty |
+//         accounts | accounts-sheet | accounts-dialog | accounts-snackbar)
 //
 // A captura e opt-in e limitada a UMA tela por processo: depois de
 // `RenderRepaintBoundary.toImage` o rasterizador fica ocupado, o proximo
@@ -31,8 +32,10 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:miajudai/models/chat_message.dart';
 import 'package:miajudai/models/user_model.dart';
+import 'package:miajudai/providers/account_provider.dart';
 import 'package:miajudai/providers/auth_provider.dart';
 import 'package:miajudai/providers/chat_provider.dart';
+import 'package:miajudai/screens/accounts_screen.dart';
 import 'package:miajudai/screens/auth/login_screen.dart';
 import 'package:miajudai/screens/auth/signup_screen.dart';
 import 'package:miajudai/screens/chat/financial_chat_screen.dart';
@@ -41,6 +44,7 @@ import 'package:miajudai/screens/welcome_screen.dart';
 import 'package:miajudai/widgets/agents/agent_card.dart';
 import 'package:provider/provider.dart';
 
+import 'support/fake_account_provider.dart';
 import 'support/fake_auth_provider.dart';
 import 'support/fake_chat_provider.dart';
 import 'support/test_fonts.dart';
@@ -50,7 +54,8 @@ const double kPixelRatio = 2;
 
 /// Qual tela gravar em PNG: 'splash', 'login', 'signup', 'home',
 /// 'home-scrolled', 'login-errors', 'signup-states', 'luna', 'luna-chat',
-/// 'luna-error' ou vazio (nenhuma).
+/// 'luna-error', 'accounts-empty', 'accounts', 'accounts-sheet',
+/// 'accounts-dialog', 'accounts-snackbar' ou vazio (nenhuma).
 const String kCapture = String.fromEnvironment('REDESIGN_CAPTURE');
 
 const List<String> _assetsToPrecache = [
@@ -73,7 +78,14 @@ Future<GlobalKey> _mount(
   Widget screen, {
   void Function(FakeAuthProvider auth)? setup,
   ChatProvider? chat,
+  AccountProvider? accounts,
 }) async {
+  // O binding de teste troca toda sombra por um bloco solido (deterministico
+  // para golden tests). Nas capturas, que sao comparadas a olho com o
+  // prototipo, as sombras reais importam; so as verificacoes de layout ficam
+  // com o comportamento padrao.
+  if (kCapture.isNotEmpty) debugDisableShadows = false;
+
   final key = GlobalKey();
   final auth = FakeAuthProvider();
   setup?.call(auth);
@@ -86,6 +98,8 @@ Future<GlobalKey> _mount(
           ChangeNotifierProvider<AuthProvider>.value(value: auth),
           if (chat != null)
             ChangeNotifierProvider<ChatProvider>.value(value: chat),
+          if (accounts != null)
+            ChangeNotifierProvider<AccountProvider>.value(value: accounts),
         ],
         child: MaterialApp(debugShowCheckedModeBanner: false, home: screen),
       ),
@@ -179,9 +193,16 @@ Future<({GlobalKey key, double belowFold})> _checkScreen(
   void Function()? extraChecks,
   void Function(FakeAuthProvider auth)? setup,
   ChatProvider? chat,
+  AccountProvider? accounts,
 }) async {
   addTearDown(tester.view.reset);
-  final key = await _mount(tester, screen, setup: setup, chat: chat);
+  final key = await _mount(
+    tester,
+    screen,
+    setup: setup,
+    chat: chat,
+    accounts: accounts,
+  );
 
   for (final viewport in _otherViewports) {
     final belowFold = await _settleAt(tester, viewport);
@@ -353,6 +374,149 @@ void main() {
     expect(tester.takeException(), isNull);
 
     if (kCapture == 'luna-error') await _writePng(key, 'luna_error_390x844');
+  });
+
+  // Financas (fase A): estado vazio, com contas, sheet, dialogo e aviso.
+  FakeAccountProvider withAccounts() => FakeAccountProvider()
+    ..items = [
+      fakeAccount(id: 1, name: 'Conta Corrente Nubank', balance: 1320),
+      fakeAccount(
+        id: 2,
+        name: 'Reserva de emergencia com nome bem comprido',
+        type: 'savings',
+        balance: 123456.78,
+      ),
+      fakeAccount(id: 3, name: 'Cartao', type: 'credit_card', balance: -89.9),
+    ];
+
+  testWidgets('accounts empty', (tester) async {
+    final r = await _checkScreen(
+      tester,
+      'accounts-empty',
+      const AccountsScreen(),
+      accounts: FakeAccountProvider(),
+    );
+    await _expectAccessibleTapTargets(tester);
+
+    if (kCapture == 'accounts-empty') {
+      await _writePng(r.key, 'accounts_empty_390x844');
+    }
+  });
+
+  testWidgets('accounts', (tester) async {
+    final r = await _checkScreen(
+      tester,
+      'accounts',
+      const AccountsScreen(),
+      accounts: withAccounts(),
+    );
+    await _expectAccessibleTapTargets(tester);
+
+    if (kCapture == 'accounts') await _writePng(r.key, 'accounts_390x844');
+  });
+
+  // Texto ampliado: o layout tem de ceder (rolar/quebrar), nunca estourar.
+  testWidgets('accounts large text', (tester) async {
+    addTearDown(tester.view.reset);
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    tester.platformDispatcher.textScaleFactorTestValue = 1.6;
+    await _mount(tester, const AccountsScreen(), accounts: withAccounts());
+    for (final viewport in [..._otherViewports, kReferenceViewport]) {
+      await _settleAt(tester, viewport);
+    }
+  });
+
+  testWidgets('accounts sheet', (tester) async {
+    addTearDown(tester.view.reset);
+    final key = await _mount(
+      tester,
+      const AccountsScreen(),
+      accounts: FakeAccountProvider(),
+    );
+    await _settleAt(tester, kReferenceViewport);
+
+    await tester.tap(find.byType(FloatingActionButton));
+    await _pumpAfterTap(tester);
+    await _pumpAfterTap(tester);
+    expect(find.text('Nova Conta'), findsOneWidget);
+
+    for (final viewport in _otherViewports) {
+      tester.view.physicalSize = viewport * kPixelRatio;
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(tester.takeException(), isNull, reason: 'sheet em $viewport');
+    }
+
+    // Menor tela com o teclado aberto: os campos rolam, nada estoura.
+    tester.view.physicalSize = const Size(320, 640) * kPixelRatio;
+    tester.view.viewInsets = const FakeViewPadding(bottom: 500);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(tester.takeException(), isNull, reason: 'sheet com teclado');
+    tester.view.resetViewInsets();
+
+    tester.view.physicalSize = kReferenceViewport * kPixelRatio;
+    await _pumpAfterTap(tester);
+    await _expectAccessibleTapTargets(tester);
+
+    if (kCapture == 'accounts-sheet') {
+      await _writePng(key, 'accounts_sheet_390x844');
+    }
+  });
+
+  testWidgets('accounts dialog', (tester) async {
+    addTearDown(tester.view.reset);
+    final key = await _mount(
+      tester,
+      const AccountsScreen(),
+      accounts: withAccounts(),
+    );
+    await _settleAt(tester, kReferenceViewport);
+
+    await tester.tap(find.byTooltip('Remover Conta Corrente Nubank'));
+    await _pumpAfterTap(tester);
+    await _pumpAfterTap(tester);
+    expect(find.text('Deletar conta?'), findsOneWidget);
+
+    for (final viewport in _otherViewports) {
+      tester.view.physicalSize = viewport * kPixelRatio;
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(tester.takeException(), isNull, reason: 'dialogo em $viewport');
+    }
+
+    tester.view.physicalSize = kReferenceViewport * kPixelRatio;
+    await _pumpAfterTap(tester);
+    await _expectAccessibleTapTargets(tester);
+
+    if (kCapture == 'accounts-dialog') {
+      await _writePng(key, 'accounts_dialog_390x844');
+    }
+  });
+
+  testWidgets('accounts snackbar', (tester) async {
+    addTearDown(tester.view.reset);
+    final key = await _mount(
+      tester,
+      const AccountsScreen(),
+      accounts: FakeAccountProvider(),
+    );
+    await _settleAt(tester, kReferenceViewport);
+
+    await tester.tap(find.byType(FloatingActionButton));
+    await _pumpAfterTap(tester);
+    await _pumpAfterTap(tester);
+    await tester.enterText(find.byType(TextField).first, 'Nubank');
+    await tester.tap(find.widgetWithText(FilledButton, 'Criar conta'));
+    await _pumpAfterTap(tester);
+    await _pumpAfterTap(tester);
+
+    expect(find.text('Conta criada!'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    if (kCapture == 'accounts-snackbar') {
+      await _writePng(key, 'accounts_snackbar_390x844');
+    }
   });
 
   // Estados: mensagens de validacao e medidor de forca de senha. Cobrem o que

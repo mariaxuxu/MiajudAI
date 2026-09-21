@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:miajudai/providers/account_provider.dart';
 import 'package:miajudai/providers/auth_provider.dart';
 import 'package:miajudai/providers/chat_provider.dart';
 import 'package:provider/provider.dart';
@@ -37,6 +38,8 @@ const String kOriginScreenText = 'ORIGEM';
 ///
 /// [chat], quando informado, tambem e provido a arvore (telas de chat).
 ///
+/// [accounts], quando informado, e provido a arvore (telas de financas).
+///
 /// [pushed] monta a tela EMPILHADA sobre uma pagina "ORIGEM" em vez de como
 /// raiz, para que "voltar" (`Navigator.pop`) tenha para onde voltar.
 Future<({FakeAuthProvider auth, RouteLog log})> pumpScreen(
@@ -44,6 +47,7 @@ Future<({FakeAuthProvider auth, RouteLog log})> pumpScreen(
   Widget screen, {
   void Function(FakeAuthProvider auth)? setup,
   ChatProvider? chat,
+  AccountProvider? accounts,
   bool pushed = false,
 }) async {
   tester.view.physicalSize = const Size(390, 844) * 2;
@@ -61,6 +65,8 @@ Future<({FakeAuthProvider auth, RouteLog log})> pumpScreen(
         ChangeNotifierProvider<AuthProvider>.value(value: auth),
         if (chat != null)
           ChangeNotifierProvider<ChatProvider>.value(value: chat),
+        if (accounts != null)
+          ChangeNotifierProvider<AccountProvider>.value(value: accounts),
       ],
       child: MaterialApp(
         navigatorKey: navigatorKey,

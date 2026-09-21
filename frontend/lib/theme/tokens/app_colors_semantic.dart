@@ -17,6 +17,15 @@ abstract final class AppSemanticColors {
   static const Color border = AppPrimitives.slate200;
   static const Color borderStrong = AppPrimitives.slate300;
 
+  /// Superficie de enfase (cards de destaque, ex.: hero de saldo). Gradiente
+  /// de [surfaceStrong] para [surfaceStrongDeep].
+  static const Color surfaceStrong = AppPrimitives.navy700;
+  static const Color surfaceStrongDeep = AppPrimitives.navy800;
+  static const Color onSurfaceStrong = AppPrimitives.white;
+
+  /// Texto de apoio sobre [surfaceStrong]. Branco a 80%: contraste ~7:1.
+  static const Color onSurfaceStrongMuted = Color(0xCCFFFFFF);
+
   // ── Acao ───────────────────────────────────────────────────────────────
   static const Color actionPrimary = AppPrimitives.blue600;
   static const Color actionPrimaryHover = AppPrimitives.blue700;
@@ -159,6 +168,10 @@ enum AppTone {
   cyan(
     surface: AppPrimitives.cyan100,
     foreground: AppPrimitives.cyan600,
+  ),
+  red(
+    surface: AppPrimitives.red100,
+    foreground: AppPrimitives.red600,
   );
 
   const AppTone({required this.surface, required this.foreground});

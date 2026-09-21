@@ -17,6 +17,10 @@ abstract final class AppPrimitives {
 
   // ── Navy (texto forte / marca) ─────────────────────────────────────────
   static const Color navy900 = Color(0xFF0F172A); // Brand Navy do DS
+  // Navy de marca das superficies de enfase (hero de saldo). Amostrado do
+  // prototipo: #174663 no topo esquerdo, #143450 na base.
+  static const Color navy700 = Color(0xFF174663);
+  static const Color navy800 = Color(0xFF12324E);
 
   // ── Slate (superficies neutras e texto) ────────────────────────────────
   static const Color slate50 = Color(0xFFF8FAFC); // Background do DS
@@ -40,7 +44,9 @@ abstract final class AppPrimitives {
   static const Color amber700 = Color(0xFFB45309);
 
   static const Color red50 = Color(0xFFFEF2F2);
+  static const Color red100 = Color(0xFFFEE2E2);
   static const Color red500 = Color(0xFFEF4444); // Error do DS
+  static const Color red600 = Color(0xFFDC2626);
   static const Color red700 = Color(0xFFB91C1C);
 
   // ── Modulos ────────────────────────────────────────────────────────────

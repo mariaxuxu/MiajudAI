@@ -33,6 +33,9 @@ abstract final class AppRadius {
   static const double control = AppPrimitives.radius12; // botao / input
   static const double chip = AppPrimitives.radius8;
   static const double sheet = AppPrimitives.radius24;
+
+  /// Cards de destaque (hero de saldo).
+  static const double hero = AppPrimitives.radius24;
   static const double full = AppPrimitives.radiusFull;
 }
 

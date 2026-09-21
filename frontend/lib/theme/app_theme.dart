@@ -50,6 +50,13 @@ abstract final class AppTheme {
       textButtonTheme: _textButtonTheme,
       inputDecorationTheme: _inputDecorationTheme,
       cardTheme: _cardTheme,
+      floatingActionButtonTheme: const FloatingActionButtonThemeData(
+        backgroundColor: AppSemanticColors.actionPrimary,
+        foregroundColor: AppSemanticColors.onAction,
+        elevation: 4,
+        highlightElevation: 6,
+        shape: CircleBorder(),
+      ),
       dividerTheme: const DividerThemeData(
         color: AppSemanticColors.border,
         thickness: 1,
