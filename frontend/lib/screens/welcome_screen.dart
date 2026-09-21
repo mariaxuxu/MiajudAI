@@ -106,34 +106,53 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       children: [
         const AppLogo(variant: AppLogoVariant.wordmark, wordmarkFontSize: 26),
         const Spacer(),
-        DecoratedBox(
-          decoration: const BoxDecoration(
-            color: AppSemanticColors.surface,
-            shape: BoxShape.circle,
-            boxShadow: AppPrimitives.shadowSm,
-          ),
-          child: IconButton(
-            onPressed: () => LogoutDialog.show(
-              context,
-              onConfirm: () async {
-                await context.read<AuthProvider>().logout();
-                if (!context.mounted) return;
-                Navigator.pushReplacementNamed(context, '/');
-              },
-            ),
-            icon: const Icon(
-              Icons.logout_rounded,
-              size: AppSizes.iconLg,
-              color: AppSemanticColors.actionPrimary,
-            ),
-            tooltip: 'Sair',
-            constraints: const BoxConstraints.tightFor(
-              width: AppSpacing.minTouchTarget,
-              height: AppSpacing.minTouchTarget,
-            ),
+        _headerIconButton(
+          icon: Icons.person_outline_rounded,
+          tooltip: 'Perfil',
+          onPressed: () =>
+              Navigator.pushNamed(context, AppRoutes.manageAccount),
+        ),
+        const SizedBox(width: AppSpacing.labelGap),
+        _headerIconButton(
+          icon: Icons.logout_rounded,
+          tooltip: 'Sair',
+          onPressed: () => LogoutDialog.show(
+            context,
+            onConfirm: () async {
+              await context.read<AuthProvider>().logout();
+              if (!context.mounted) return;
+              Navigator.pushReplacementNamed(context, '/');
+            },
           ),
         ),
       ],
+    );
+  }
+
+  Widget _headerIconButton({
+    required IconData icon,
+    required String tooltip,
+    required VoidCallback onPressed,
+  }) {
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        color: AppSemanticColors.surface,
+        shape: BoxShape.circle,
+        boxShadow: AppPrimitives.shadowSm,
+      ),
+      child: IconButton(
+        onPressed: onPressed,
+        icon: Icon(
+          icon,
+          size: AppSizes.iconLg,
+          color: AppSemanticColors.actionPrimary,
+        ),
+        tooltip: tooltip,
+        constraints: const BoxConstraints.tightFor(
+          width: AppSpacing.minTouchTarget,
+          height: AppSpacing.minTouchTarget,
+        ),
+      ),
     );
   }
 

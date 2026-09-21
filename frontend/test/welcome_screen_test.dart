@@ -176,6 +176,35 @@ void main() {
     });
   });
 
+  group('profile access', () {
+    testWidgets('the header profile button opens /manage-account', (
+      tester,
+    ) async {
+      final env = await pumpScreen(tester, const WelcomeScreen());
+
+      expect(find.byTooltip('Perfil'), findsOneWidget);
+      expect(tester.getSize(find.byTooltip('Perfil')).shortestSide,
+          greaterThanOrEqualTo(48));
+
+      await tester.tap(find.byTooltip('Perfil'));
+      await tester.pumpAndSettle();
+
+      expect(env.log.events, ['push /manage-account']);
+      expect(env.auth.logoutCalls, 0);
+    });
+
+    testWidgets('profile and logout sit side by side without overflow', (
+      tester,
+    ) async {
+      await pumpScreen(tester, const WelcomeScreen());
+      tester.view.physicalSize = const Size(320, 640) * 2;
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(find.byTooltip('Sair'), findsOneWidget);
+      expect(find.byTooltip('Perfil'), findsOneWidget);
+    });
+  });
+
   group('logout', () {
     testWidgets('cancel closes the dialog and does not log out', (
       tester,

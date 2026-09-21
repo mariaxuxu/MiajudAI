@@ -65,6 +65,13 @@ class FakeAuthProvider extends ChangeNotifier implements AuthProvider {
     signupCalls.add((email: email, password: password, fullName: fullName));
   }
 
+  /// Como o real: troca o usuario pelo devolvido pela API e notifica.
+  @override
+  void updateUserFromResponse(Map<String, dynamic> userData) {
+    currentUser = UserModel.fromJson(userData);
+    notifyListeners();
+  }
+
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

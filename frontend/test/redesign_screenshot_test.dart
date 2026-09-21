@@ -23,7 +23,9 @@
 //         invoice-installment | invoice-fixed | invoice-dialog |
 //         calendar-empty | calendar | calendar-sheet | calendar-dialog |
 //         diary-empty | diary | diary-form | diary-form-end |
-//         home-domestic | home-services)
+//         home-domestic | home-services | profile | profile-personal |
+//         profile-personal-empty | profile-contacts | profile-contacts-empty |
+//         profile-sheet)
 //
 // A captura e opt-in e limitada a UMA tela por processo: depois de
 // `RenderRepaintBoundary.toImage` o rasterizador fica ocupado, o proximo
@@ -59,6 +61,7 @@ import 'package:miajudai/screens/chat/financial_chat_screen.dart';
 import 'package:miajudai/screens/expenses_screen.dart';
 import 'package:miajudai/screens/income_screen.dart';
 import 'package:miajudai/screens/invoice_dashboard_screen.dart';
+import 'package:miajudai/screens/manage_account_screen.dart';
 import 'package:miajudai/screens/splash_screen.dart';
 import 'package:miajudai/screens/welcome_screen.dart';
 import 'package:miajudai/widgets/agents/agent_card.dart';
@@ -88,7 +91,9 @@ const double kPixelRatio = 2;
 /// 'invoice-dashboard-empty', 'invoice-choice', 'invoice-installment',
 /// 'invoice-fixed', 'invoice-dialog', 'calendar-empty', 'calendar',
 /// 'calendar-sheet', 'calendar-dialog', 'diary-empty', 'diary', 'diary-form',
-/// 'diary-form-end', 'home-domestic', 'home-services' ou vazio (nenhuma).
+/// 'diary-form-end', 'home-domestic', 'home-services', 'profile',
+/// 'profile-personal', 'profile-personal-empty', 'profile-contacts',
+/// 'profile-contacts-empty', 'profile-sheet' ou vazio (nenhuma).
 const String kCapture = String.fromEnvironment('REDESIGN_CAPTURE');
 
 const List<String> _assetsToPrecache = [
@@ -1634,6 +1639,140 @@ void main() {
       await _settleAt(tester, viewport);
       await scrollDiaryToEnd(tester);
       expect(tester.takeException(), isNull);
+    }
+  });
+
+  // Perfil / Gerenciar conta: hub e subpaginas (empilhadas pelo proprio hub).
+  UserModel profileUser({bool full = true}) => UserModel(
+        id: '1',
+        email: 'diva@mail.com',
+        fullName: 'Diva',
+        gender: full ? 'Feminino' : null,
+        maritalStatus: full ? 'Solteiro' : null,
+        birthDate: full ? '1990-05-12' : null,
+        birthState: full ? 'SP' : null,
+        birthCity: full ? 'Rua das Flores, 123 - Centro, Sao Paulo' : null,
+        emergencyContact1Name: full ? 'Maria da Silva' : null,
+        emergencyContact1Phone: full ? '(11) 91234-5678' : null,
+        emergencyContact2Name: full ? 'Joao da Silva' : null,
+        emergencyContact2Phone: full ? '(11) 98765-4321' : null,
+        createdAt: DateTime(2024),
+      );
+
+  Future<GlobalKey> openProfilePage(
+    WidgetTester tester, {
+    String? card,
+    bool full = true,
+  }) async {
+    final key = await _mount(
+      tester,
+      const ManageAccountScreen(),
+      setup: (a) => a.currentUser = profileUser(full: full),
+    );
+    await _settleAt(tester, kReferenceViewport);
+    if (card != null) {
+      await tester.tap(find.text(card));
+      await tester.pumpAndSettle();
+    }
+    return key;
+  }
+
+  Future<void> sweepProfile(WidgetTester tester) async {
+    for (final viewport in [..._otherViewports, kReferenceViewport]) {
+      await _settleAt(tester, viewport);
+      expect(tester.takeException(), isNull);
+    }
+  }
+
+  testWidgets('profile hub', (tester) async {
+    addTearDown(tester.view.reset);
+    final key = await openProfilePage(tester);
+    await sweepProfile(tester);
+    await _expectAccessibleTapTargets(tester);
+    if (kCapture == 'profile') await _writePng(key, 'profile_390x844');
+  });
+
+  testWidgets('profile personal info', (tester) async {
+    addTearDown(tester.view.reset);
+    final key = await openProfilePage(tester, card: 'Informações pessoais');
+    await sweepProfile(tester);
+    await _expectAccessibleTapTargets(tester);
+    if (kCapture == 'profile-personal') {
+      await _writePng(key, 'profile_personal_390x844');
+    }
+  });
+
+  testWidgets('profile personal info empty', (tester) async {
+    addTearDown(tester.view.reset);
+    final key = await openProfilePage(
+      tester,
+      card: 'Informações pessoais',
+      full: false,
+    );
+    await sweepProfile(tester);
+    if (kCapture == 'profile-personal-empty') {
+      await _writePng(key, 'profile_personal_empty_390x844');
+    }
+  });
+
+  testWidgets('profile contacts', (tester) async {
+    addTearDown(tester.view.reset);
+    final key = await openProfilePage(tester, card: 'Contatos de emergência');
+    await sweepProfile(tester);
+    await _expectAccessibleTapTargets(tester);
+    if (kCapture == 'profile-contacts') {
+      await _writePng(key, 'profile_contacts_390x844');
+    }
+  });
+
+  testWidgets('profile contacts empty', (tester) async {
+    addTearDown(tester.view.reset);
+    final key = await openProfilePage(
+      tester,
+      card: 'Contatos de emergência',
+      full: false,
+    );
+    await sweepProfile(tester);
+    await _expectAccessibleTapTargets(tester);
+    if (kCapture == 'profile-contacts-empty') {
+      await _writePng(key, 'profile_contacts_empty_390x844');
+    }
+  });
+
+  // Sheet de edicao aberto com o teclado (viewInsets) em todas as larguras.
+  testWidgets('profile edit sheet with keyboard', (tester) async {
+    addTearDown(tester.view.reset);
+    addTearDown(tester.view.resetViewInsets);
+    final key = await openProfilePage(tester, card: 'Informações pessoais');
+    await tester.tap(find.text('Nome completo'));
+    await tester.pumpAndSettle();
+    expect(find.text('Salvar'), findsOneWidget);
+
+    for (final viewport in [..._otherViewports, kReferenceViewport]) {
+      await _settleAt(tester, viewport);
+      tester.view.viewInsets = FakeViewPadding(bottom: 300 * kPixelRatio);
+      await tester.pump();
+      expect(tester.takeException(), isNull);
+      expect(tester.getBottomLeft(find.text('Salvar')).dy,
+          lessThanOrEqualTo(viewport.height - 300));
+    }
+    if (kCapture == 'profile-sheet') {
+      await _writePng(key, 'profile_sheet_390x844');
+    }
+  });
+
+  testWidgets('profile large text', (tester) async {
+    addTearDown(tester.view.reset);
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    tester.platformDispatcher.textScaleFactorTestValue = 1.6;
+    await openProfilePage(tester);
+    await sweepProfile(tester);
+    for (final card in ['Informações pessoais', 'Contatos de emergência']) {
+      await tester.tap(find.text(card));
+      await tester.pumpAndSettle();
+      await sweepProfile(tester);
+      await tester.tap(find.byTooltip('Voltar'));
+      await tester.pumpAndSettle();
     }
   });
 
