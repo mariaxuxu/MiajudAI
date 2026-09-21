@@ -21,7 +21,8 @@
 //         expenses-edit | expenses-dialog | invoice-empty | invoice |
 //         invoice-dashboard | invoice-dashboard-empty | invoice-choice |
 //         invoice-installment | invoice-fixed | invoice-dialog |
-//         calendar-empty | calendar | calendar-sheet | calendar-dialog)
+//         calendar-empty | calendar | calendar-sheet | calendar-dialog |
+//         diary-empty | diary | diary-form | diary-form-end)
 //
 // A captura e opt-in e limitada a UMA tela por processo: depois de
 // `RenderRepaintBoundary.toImage` o rasterizador fica ocupado, o proximo
@@ -42,6 +43,7 @@ import 'package:miajudai/models/user_model.dart';
 import 'package:miajudai/providers/account_provider.dart';
 import 'package:miajudai/providers/auth_provider.dart';
 import 'package:miajudai/providers/chat_provider.dart';
+import 'package:miajudai/providers/diary_provider.dart';
 import 'package:miajudai/providers/event_provider.dart';
 import 'package:miajudai/providers/expense_provider.dart';
 import 'package:miajudai/providers/fixed_cost_provider.dart';
@@ -51,6 +53,7 @@ import 'package:miajudai/screens/accounts_screen.dart';
 import 'package:miajudai/screens/auth/login_screen.dart';
 import 'package:miajudai/screens/auth/signup_screen.dart';
 import 'package:miajudai/screens/calendar_screen.dart';
+import 'package:miajudai/screens/diary_screen.dart';
 import 'package:miajudai/screens/chat/financial_chat_screen.dart';
 import 'package:miajudai/screens/expenses_screen.dart';
 import 'package:miajudai/screens/income_screen.dart';
@@ -62,6 +65,7 @@ import 'package:provider/provider.dart';
 
 import 'support/fake_account_provider.dart';
 import 'support/fake_auth_provider.dart';
+import 'support/fake_diary_provider.dart';
 import 'support/fake_event_provider.dart';
 import 'support/fake_expense_provider.dart';
 import 'support/fake_fixed_cost_provider.dart';
@@ -82,7 +86,8 @@ const double kPixelRatio = 2;
 /// 'expenses-dialog', 'invoice-empty', 'invoice', 'invoice-dashboard',
 /// 'invoice-dashboard-empty', 'invoice-choice', 'invoice-installment',
 /// 'invoice-fixed', 'invoice-dialog', 'calendar-empty', 'calendar',
-/// 'calendar-sheet', 'calendar-dialog' ou vazio (nenhuma).
+/// 'calendar-sheet', 'calendar-dialog', 'diary-empty', 'diary', 'diary-form',
+/// 'diary-form-end' ou vazio (nenhuma).
 const String kCapture = String.fromEnvironment('REDESIGN_CAPTURE');
 
 const List<String> _assetsToPrecache = [
@@ -111,6 +116,7 @@ Future<GlobalKey> _mount(
   InstallmentProvider? installments,
   FixedCostProvider? fixedCosts,
   EventProvider? events,
+  DiaryProvider? diary,
 }) async {
   // O binding de teste troca toda sombra por um bloco solido (deterministico
   // para golden tests). Nas capturas, que sao comparadas a olho com o
@@ -146,6 +152,8 @@ Future<GlobalKey> _mount(
             ),
           if (events != null)
             ChangeNotifierProvider<EventProvider>.value(value: events),
+          if (diary != null)
+            ChangeNotifierProvider<DiaryProvider>.value(value: diary),
         ],
         child: MaterialApp(debugShowCheckedModeBanner: false, home: screen),
       ),
@@ -251,6 +259,7 @@ Future<({GlobalKey key, double belowFold})> _checkScreen(
   InstallmentProvider? installments,
   FixedCostProvider? fixedCosts,
   EventProvider? events,
+  DiaryProvider? diary,
 }) async {
   addTearDown(tester.view.reset);
   final key = await _mount(
@@ -264,6 +273,7 @@ Future<({GlobalKey key, double belowFold})> _checkScreen(
     installments: installments,
     fixedCosts: fixedCosts,
     events: events,
+    diary: diary,
   );
 
   for (final viewport in _otherViewports) {
@@ -1407,6 +1417,180 @@ void main() {
 
     if (kCapture == 'calendar-dialog') {
       await _writePng(key, 'calendar_dialog_390x844');
+    }
+  });
+
+  // Diario. As entradas ficam em "hoje", o dia que a tela abre selecionado.
+  FakeDiaryProvider withDiaryEntries() {
+    final now = DateTime.now();
+    return FakeDiaryProvider()
+      ..items = [
+        fakeDiaryEntry(
+          id: 1,
+          text: 'Dia produtivo no trabalho. Consegui fechar o relatório do '
+              'mês e ainda sobrou tempo para caminhar no fim da tarde.',
+          mood: 'happy',
+          tags: ['finance', 'domestic'],
+          createdAt: DateTime(now.year, now.month, now.day, 14, 32),
+        ),
+        fakeDiaryEntry(
+          id: 2,
+          text: 'Noite tranquila em casa.',
+          mood: 'sad',
+          createdAt: DateTime(now.year, now.month, now.day, 21, 5),
+        ),
+        fakeDiaryEntry(
+          id: 3,
+          text: 'Almoço com a família.',
+          mood: 'neutral',
+          tags: ['food'],
+          createdAt: DateTime(now.year, now.month, now.day == 3 ? 4 : 3, 12, 0),
+        ),
+      ];
+  }
+
+  Future<void> openDiaryForm(WidgetTester tester) async {
+    final cta = find.text('Escrever entrada');
+    final other = find.text('Adicionar outra entrada');
+    final target = cta.evaluate().isNotEmpty ? cta : other;
+    await tester.ensureVisible(target);
+    await tester.pump();
+    await tester.tap(target);
+    await _pumpAfterTap(tester);
+  }
+
+  // Rola ate o fim. Se uma celula do calendario ficar cortada pelo topo da
+  // area rolavel, recua o quanto ela esta cortada: o `androidTapTargetGuideline`
+  // mede o pedaco visivel, e um dia com 6dp de altura nao e um alvo de toque
+  // real, e sim um artefato de onde a rolagem parou.
+  Future<void> scrollDiaryToEnd(WidgetTester tester) async {
+    final scrollable = tester.state<ScrollableState>(
+      find.byType(Scrollable).first,
+    );
+    scrollable.position.jumpTo(scrollable.position.maxScrollExtent);
+    await _pumpAfterTap(tester);
+
+    final viewportTop = tester.getTopLeft(find.byType(Scrollable).first).dy;
+    var cut = 0.0;
+    for (final cell in find
+        .byWidgetPredicate(
+          (w) =>
+              w.key is ValueKey<String> &&
+              (w.key! as ValueKey<String>).value.startsWith('CellContent-'),
+        )
+        .evaluate()) {
+      final tap = find
+          .ancestor(
+            of: find.byWidget(cell.widget),
+            matching: find.byType(GestureDetector),
+          )
+          .first;
+      final rect = tester.getRect(tap);
+      if (rect.top < viewportTop && rect.bottom > viewportTop) {
+        final hidden = viewportTop - rect.top;
+        if (hidden > cut) cut = hidden;
+      }
+    }
+    if (cut > 0) {
+      scrollable.position.jumpTo(scrollable.position.pixels - cut);
+      await _pumpAfterTap(tester);
+    }
+  }
+
+  testWidgets('diary empty', (tester) async {
+    final r = await _checkScreen(
+      tester,
+      'diary-empty',
+      const DiaryScreen(),
+      diary: FakeDiaryProvider(),
+    );
+    await _expectAccessibleTapTargets(tester);
+
+    if (kCapture == 'diary-empty') {
+      await _writePng(r.key, 'diary_empty_390x844');
+    }
+  });
+
+  testWidgets('diary', (tester) async {
+    final r = await _checkScreen(
+      tester,
+      'diary',
+      const DiaryScreen(),
+      diary: withDiaryEntries(),
+    );
+    await _expectAccessibleTapTargets(tester);
+
+    if (kCapture == 'diary') await _writePng(r.key, 'diary_390x844');
+  });
+
+  // Formulario aberto, em todas as larguras.
+  testWidgets('diary form', (tester) async {
+    addTearDown(tester.view.reset);
+    final key = await _mount(
+      tester,
+      const DiaryScreen(),
+      diary: FakeDiaryProvider(),
+    );
+    await _settleAt(tester, kReferenceViewport);
+    await openDiaryForm(tester);
+
+    for (final viewport in [..._otherViewports, kReferenceViewport]) {
+      await _settleAt(tester, viewport);
+    }
+    await _expectAccessibleTapTargets(tester);
+
+    if (kCapture == 'diary-form') {
+      await _writePng(key, 'diary_form_390x844');
+    }
+  });
+
+  // Formulario preenchido, rolado ate o fim, em todas as larguras.
+  testWidgets('diary form end', (tester) async {
+    addTearDown(tester.view.reset);
+    final key = await _mount(
+      tester,
+      const DiaryScreen(),
+      diary: withDiaryEntries(),
+    );
+    await _settleAt(tester, kReferenceViewport);
+    await openDiaryForm(tester);
+    await tester.enterText(
+      find.byType(TextField),
+      'Hoje foi um bom dia, consegui organizar as contas e cuidar de mim.',
+    );
+    await tester.pump();
+    for (final label in ['Feliz', 'Finanças', 'Casa']) {
+      await tester.ensureVisible(find.text(label));
+      await tester.pump();
+      await tester.tap(find.text(label));
+      await _pumpAfterTap(tester);
+    }
+
+    for (final viewport in [..._otherViewports, kReferenceViewport]) {
+      await _settleAt(tester, viewport);
+      await scrollDiaryToEnd(tester);
+    }
+    await _expectAccessibleTapTargets(tester);
+
+    if (kCapture == 'diary-form-end') {
+      await _writePng(key, 'diary_form_end_390x844');
+    }
+  });
+
+  // Texto ampliado: o layout tem de ceder (rolar/quebrar), nunca estourar.
+  testWidgets('diary large text', (tester) async {
+    addTearDown(tester.view.reset);
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    tester.platformDispatcher.textScaleFactorTestValue = 1.6;
+    await _mount(tester, const DiaryScreen(), diary: withDiaryEntries());
+    for (final viewport in [..._otherViewports, kReferenceViewport]) {
+      await _settleAt(tester, viewport);
+    }
+    await openDiaryForm(tester);
+    for (final viewport in [..._otherViewports, kReferenceViewport]) {
+      await _settleAt(tester, viewport);
+      await scrollDiaryToEnd(tester);
+      expect(tester.takeException(), isNull);
     }
   });
 

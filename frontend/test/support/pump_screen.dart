@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:miajudai/providers/account_provider.dart';
 import 'package:miajudai/providers/auth_provider.dart';
 import 'package:miajudai/providers/chat_provider.dart';
+import 'package:miajudai/providers/diary_provider.dart';
 import 'package:miajudai/providers/event_provider.dart';
 import 'package:miajudai/providers/expense_provider.dart';
 import 'package:miajudai/providers/fixed_cost_provider.dart';
@@ -45,7 +46,7 @@ const String kOriginScreenText = 'ORIGEM';
 ///
 /// [accounts], [income], [expenses], [installments] e [fixedCosts], quando
 /// informados, sao providos a arvore (telas de financas); [events], a tela do
-/// calendario.
+/// calendario; [diary], a do diario.
 ///
 /// [pushed] monta a tela EMPILHADA sobre uma pagina "ORIGEM" em vez de como
 /// raiz, para que "voltar" (`Navigator.pop`) tenha para onde voltar.
@@ -60,6 +61,7 @@ Future<({FakeAuthProvider auth, RouteLog log})> pumpScreen(
   InstallmentProvider? installments,
   FixedCostProvider? fixedCosts,
   EventProvider? events,
+  DiaryProvider? diary,
   bool pushed = false,
 }) async {
   tester.view.physicalSize = const Size(390, 844) * 2;
@@ -91,6 +93,8 @@ Future<({FakeAuthProvider auth, RouteLog log})> pumpScreen(
           ChangeNotifierProvider<FixedCostProvider>.value(value: fixedCosts),
         if (events != null)
           ChangeNotifierProvider<EventProvider>.value(value: events),
+        if (diary != null)
+          ChangeNotifierProvider<DiaryProvider>.value(value: diary),
       ],
       child: MaterialApp(
         navigatorKey: navigatorKey,

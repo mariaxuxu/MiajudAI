@@ -21,6 +21,9 @@ class AppFormField extends StatelessWidget {
     this.keyboardType,
     this.prefixText,
     this.autofocus = false,
+    this.maxLines = 1,
+    this.minLines,
+    this.isRequired = false,
   });
 
   final String label;
@@ -38,27 +41,52 @@ class AppFormField extends StatelessWidget {
   /// formulario tem um unico campo e o usuario vai digitar de imediato.
   final bool autofocus;
 
+  /// Linhas maximas do campo (o padrao, 1, e o de um `TextField`). Com mais de
+  /// uma, o campo comeca em [minLines] e cresce ate [maxLines].
+  final int maxLines;
+  final int? minLines;
+
+  /// Marca o campo como obrigatorio: acrescenta um asterisco ao rotulo e
+  /// "obrigatorio" ao que o leitor de tela anuncia. E so apresentacao: nada aqui
+  /// valida ou bloqueia o envio.
+  final bool isRequired;
+
   @override
   Widget build(BuildContext context) {
+    final labelStyle = AppTypography.labelMedium.copyWith(
+      color: AppSemanticColors.textSecondaryStrong,
+    );
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // O rotulo visivel e lido junto com o campo (Semantics abaixo); sem
         // ExcludeSemantics ele seria anunciado duas vezes.
         ExcludeSemantics(
-          child: Text(
-            label,
-            style: AppTypography.labelMedium.copyWith(
-              color: AppSemanticColors.textSecondaryStrong,
-            ),
-          ),
+          child: isRequired
+              ? Text.rich(
+                  TextSpan(
+                    text: label,
+                    children: const [
+                      TextSpan(
+                        text: ' *',
+                        style:
+                            TextStyle(color: AppSemanticColors.onFeedbackError),
+                      ),
+                    ],
+                  ),
+                  style: labelStyle,
+                )
+              : Text(label, style: labelStyle),
         ),
         const SizedBox(height: AppSpacing.labelGap),
         Semantics(
-          label: label,
+          label: isRequired ? '$label, obrigatório' : label,
           child: TextField(
             controller: controller,
             autofocus: autofocus,
+            maxLines: maxLines,
+            minLines: minLines,
             keyboardType: keyboardType,
             style: AppTypography.bodyMedium.copyWith(
               color: AppSemanticColors.textPrimary,
