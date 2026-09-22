@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
-import '../../config/constants.dart';
-import '../common/custom_button.dart';
+import '../../theme/app_spacing.dart';
+import '../../theme/app_theme.dart';
+import '../../theme/app_typography.dart';
+import '../../theme/tokens/app_colors_semantic.dart';
+import '../common/app_primary_button.dart';
 
 class UnderConstructionDialog extends StatelessWidget {
   final String agentName;
@@ -26,11 +29,16 @@ class UnderConstructionDialog extends StatelessWidget {
     return showDialog(
       context: context,
       barrierColor: Colors.black.withValues(alpha: 0.45),
-      builder: (_) => UnderConstructionDialog(
-        agentName: agentName,
-        agentRole: agentRole,
-        imagePath: imagePath,
-        agentColor: agentColor,
+      // O dialogo vive numa rota propria, fora do Theme local da tela; o tema
+      // do Design System e reaplicado explicitamente.
+      builder: (_) => Theme(
+        data: AppTheme.light,
+        child: UnderConstructionDialog(
+          agentName: agentName,
+          agentRole: agentRole,
+          imagePath: imagePath,
+          agentColor: agentColor,
+        ),
       ),
     );
   }
@@ -38,89 +46,93 @@ class UnderConstructionDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      backgroundColor: Colors.white,
+      backgroundColor: AppSemanticColors.surface,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppDimens.radiusXLarge),
+        borderRadius: BorderRadius.circular(AppRadius.sheet),
       ),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(28, 32, 28, 28),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Logo do agente
+            // Avatar do agente
             Container(
               width: 88,
               height: 88,
               decoration: BoxDecoration(
-                color: agentColor.withValues(alpha: 0.10),
-                borderRadius: BorderRadius.circular(AppDimens.radiusCard),
+                color: agentColor.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(AppRadius.card),
               ),
               child: Padding(
                 padding: const EdgeInsets.all(14),
-                child: Image.asset(imagePath, fit: BoxFit.contain),
+                child: Image.asset(
+                  imagePath,
+                  fit: BoxFit.contain,
+                  excludeFromSemantics: true,
+                ),
               ),
             ),
             const SizedBox(height: 20),
 
-            // Badge "em construção"
+            // Selo "em construcao": icone + texto, nunca so cor.
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
               decoration: BoxDecoration(
-                color: AppColors.warning.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(AppDimens.radiusFull),
+                color: AppSemanticColors.feedbackWarningSubtle,
+                borderRadius: BorderRadius.circular(AppRadius.full),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.construction_outlined,
-                      size: 13, color: AppColors.warning),
+                  const ExcludeSemantics(
+                    child: Icon(
+                      Icons.construction_outlined,
+                      size: 14,
+                      color: AppSemanticColors.onFeedbackWarning,
+                    ),
+                  ),
                   const SizedBox(width: 5),
-                  const Text(
+                  Text(
                     'Em construção',
-                    style: TextStyle(
-                      fontSize: 12,
+                    style: AppTypography.labelSmall.copyWith(
                       fontWeight: FontWeight.w600,
-                      color: AppColors.warning,
+                      color: AppSemanticColors.onFeedbackWarning,
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.defaultGap),
 
-            Text(
-              agentName,
-              style: const TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textDark,
-                letterSpacing: -0.3,
+            Semantics(
+              header: true,
+              child: Text(
+                agentName,
+                style: AppTypography.headlineMedium.copyWith(
+                  color: AppSemanticColors.textPrimary,
+                ),
               ),
             ),
             const SizedBox(height: 4),
             Text(
               agentRole,
-              style: const TextStyle(
-                fontSize: 13,
-                color: AppColors.textLabel,
-                fontWeight: FontWeight.w500,
+              style: AppTypography.labelMedium.copyWith(
+                color: AppSemanticColors.textSecondary,
               ),
             ),
-            const SizedBox(height: 12),
-            const Text(
+            const SizedBox(height: AppSpacing.itemGap),
+            Text(
               'Estamos construindo algo incrível!\nEm breve este agente estará disponível para te ajudar.',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 14,
-                color: AppColors.textLabel,
+              style: AppTypography.bodyMedium.copyWith(
+                color: AppSemanticColors.textSecondary,
                 height: 1.6,
               ),
             ),
             const SizedBox(height: 28),
 
-            CustomButton(
-              text: 'Entendido',
-              variant: ButtonVariant.secondary,
+            AppPrimaryButton(
+              label: 'Entendido',
               onPressed: () => Navigator.pop(context),
             ),
           ],

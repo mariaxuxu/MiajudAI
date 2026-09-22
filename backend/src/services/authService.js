@@ -23,15 +23,31 @@ class AuthService {
       const decodedToken = await verifyIdToken(idToken);
       return decodedToken;
     } catch (error) {
-      // Development fallback: when Firebase is not configured, use token as email
+      // Development fallback: when Firebase Admin is not configured, decode the
+      // Firebase ID token payload (JWT, base64url middle segment) to recover the
+      // real email/name/uid instead of treating the token itself as an email.
       if (process.env.NODE_ENV === 'development') {
         console.warn('⚠️  Firebase not configured - using development mode fallback');
-        return {
-          uid: `dev_${Date.now()}`,
-          email: idToken.split('@')[0] ? idToken : 'dev@miajudai.com',
-          email_verified: false,
-          name: 'Dev User'
-        };
+        let email = 'dev@miajudai.com';
+        let name = 'Dev User';
+        let uid = `dev_${Date.now()}`;
+        try {
+          const parts = idToken.split('.');
+          if (parts.length === 3) {
+            const payload = JSON.parse(
+              Buffer.from(
+                parts[1].replace(/-/g, '+').replace(/_/g, '/'),
+                'base64'
+              ).toString('utf8')
+            );
+            if (payload.email) email = payload.email;
+            if (payload.name) name = payload.name;
+            if (payload.sub) uid = payload.sub;
+          }
+        } catch (e) {
+          // Malformed token - keep the defaults above.
+        }
+        return { uid, email, email_verified: false, name };
       }
       throw new Error(`Firebase token verification failed: ${error.message}`);
     }

@@ -1,8 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../../config/constants.dart';
+import '../../theme/app_spacing.dart';
+import '../../theme/app_typography.dart';
+import '../../theme/tokens/app_colors_semantic.dart';
+import '../../theme/tokens/app_primitives.dart';
 import '../dialogs/under_construction_dialog.dart';
 
+/// Navegacao inferior da area autenticada: Inicio e os tres agentes.
+///
+/// Flutuante, em pilula. Os destinos sao os de sempre: Inicio nao navega,
+/// Luna abre `/chat`, Otto e Tina abrem o aviso de "em construcao".
 class AgentBottomNav extends StatefulWidget {
   final VoidCallback? onHomeTap;
 
@@ -36,7 +43,7 @@ class _AgentBottomNavState extends State<AgentBottomNav> {
       agentName: 'Otto',
       agentRole: 'Assistente de Cozinha',
       imagePath: 'assets/images/otto.png',
-      agentColor: AppColors.accent,
+      agentColor: AppAgent.otto.accent,
     );
   }
 
@@ -47,55 +54,56 @@ class _AgentBottomNavState extends State<AgentBottomNav> {
       agentName: 'Tina',
       agentRole: 'Assistente Doméstica',
       imagePath: 'assets/images/tina.png',
-      agentColor: AppColors.tina,
+      agentColor: AppAgent.tina.accent,
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 24,
-            offset: const Offset(0, -4),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        top: false,
-        child: SizedBox(
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.defaultGap,
+          AppSpacing.labelGap,
+          AppSpacing.defaultGap,
+          AppSpacing.defaultGap,
+        ),
+        child: Container(
           height: 72,
+          decoration: BoxDecoration(
+            color: AppSemanticColors.surface,
+            borderRadius: BorderRadius.circular(AppRadius.full),
+            boxShadow: AppPrimitives.shadowMd,
+          ),
           child: Row(
             children: [
-              _NavHomeItem(
+              _NavItem(
+                label: 'Início',
                 isSelected: _selected == 0,
                 onTap: _onHomeSelected,
+                icon: Icons.home_outlined,
+                selectedIcon: Icons.home_rounded,
               ),
-              _NavAgentItem(
-                imagePath: 'assets/images/luna.png',
+              _NavItem(
                 label: 'Luna',
-                bgColor: AppColors.primarySurface,
                 isSelected: _selected == 1,
                 onTap: () => _onLunaSelected(context),
+                agent: AppAgent.luna,
               ),
-              _NavAgentItem(
-                imagePath: 'assets/images/otto.png',
+              _NavItem(
                 label: 'Otto',
-                bgColor: AppColors.accentSurface,
                 isSelected: false,
-                showBadge: true,
                 onTap: () => _onOttoSelected(context),
+                agent: AppAgent.otto,
+                comingSoon: true,
               ),
-              _NavAgentItem(
-                imagePath: 'assets/images/tina.png',
+              _NavItem(
                 label: 'Tina',
-                bgColor: const Color(0xFFEAF7EF),
                 isSelected: false,
-                showBadge: true,
                 onTap: () => _onTinaSelected(context),
+                agent: AppAgent.tina,
+                comingSoon: true,
               ),
             ],
           ),
@@ -105,116 +113,40 @@ class _AgentBottomNavState extends State<AgentBottomNav> {
   }
 }
 
-class _NavHomeItem extends StatefulWidget {
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const _NavHomeItem({required this.isSelected, required this.onTap});
-
-  @override
-  State<_NavHomeItem> createState() => _NavHomeItemState();
-}
-
-class _NavHomeItemState extends State<_NavHomeItem>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _ctrl;
-  late Animation<double> _scaleAnim;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 180),
-      lowerBound: 0.88,
-      upperBound: 1.0,
-    );
-    _ctrl.value = 1.0;
-    _scaleAnim = _ctrl.drive(CurveTween(curve: Curves.easeOutCubic));
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: GestureDetector(
-        onTapDown: (_) => _ctrl.reverse(),
-        onTapUp: (_) {
-          _ctrl.forward();
-          widget.onTap();
-        },
-        onTapCancel: () => _ctrl.forward(),
-        behavior: HitTestBehavior.opaque,
-        child: AnimatedBuilder(
-          animation: _scaleAnim,
-          builder: (_, child) => Transform.scale(scale: _scaleAnim.value, child: child),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                curve: Curves.easeOutCubic,
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: widget.isSelected
-                      ? AppColors.primary.withValues(alpha: 0.10)
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(AppDimens.radiusMedium),
-                ),
-                child: Icon(
-                  widget.isSelected ? Icons.home_rounded : Icons.home_outlined,
-                  color: widget.isSelected
-                      ? AppColors.primary
-                      : AppColors.textLabel,
-                  size: 24,
-                ),
-              ),
-              const SizedBox(height: 4),
-              AnimatedDefaultTextStyle(
-                duration: const Duration(milliseconds: 200),
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: widget.isSelected ? FontWeight.w700 : FontWeight.w400,
-                  color: widget.isSelected ? AppColors.primary : AppColors.textLabel,
-                ),
-                child: const Text('Home'),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _NavAgentItem extends StatefulWidget {
-  final String imagePath;
+/// Um item da navegacao: icone (Inicio) ou avatar (agente) + rotulo.
+///
+/// O estado selecionado nao depende so de cor: muda a forma (circulo azul
+/// cheio / anel) e o peso do rotulo, e e anunciado por semantica.
+class _NavItem extends StatefulWidget {
   final String label;
-  final Color bgColor;
   final bool isSelected;
-  final bool showBadge;
   final VoidCallback onTap;
 
-  const _NavAgentItem({
-    required this.imagePath,
+  /// Inicio: icone normal e preenchido quando selecionado.
+  final IconData? icon;
+  final IconData? selectedIcon;
+
+  /// Agente: avatar do agente.
+  final AppAgent? agent;
+
+  /// Agente ainda sem tela: mostra o selo "!" e o anuncia como "em breve".
+  final bool comingSoon;
+
+  const _NavItem({
     required this.label,
-    required this.bgColor,
     required this.isSelected,
     required this.onTap,
-    this.showBadge = false,
+    this.icon,
+    this.selectedIcon,
+    this.agent,
+    this.comingSoon = false,
   });
 
   @override
-  State<_NavAgentItem> createState() => _NavAgentItemState();
+  State<_NavItem> createState() => _NavItemState();
 }
 
-class _NavAgentItemState extends State<_NavAgentItem>
+class _NavItemState extends State<_NavItem>
     with SingleTickerProviderStateMixin {
   late AnimationController _ctrl;
   late Animation<double> _scaleAnim;
@@ -241,86 +173,120 @@ class _NavAgentItemState extends State<_NavAgentItem>
   @override
   Widget build(BuildContext context) {
     return Expanded(
-      child: GestureDetector(
-        onTapDown: (_) => _ctrl.reverse(),
-        onTapUp: (_) {
-          _ctrl.forward();
-          widget.onTap();
-        },
-        onTapCancel: () => _ctrl.forward(),
-        behavior: HitTestBehavior.opaque,
-        child: AnimatedBuilder(
-          animation: _scaleAnim,
-          builder: (_, child) => Transform.scale(scale: _scaleAnim.value, child: child),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    curve: Curves.easeOutCubic,
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: widget.isSelected
-                          ? widget.bgColor
-                          : widget.bgColor.withValues(alpha: 0.5),
-                      borderRadius: BorderRadius.circular(AppDimens.radiusMedium),
-                      border: widget.isSelected
-                          ? Border.all(
-                              color: AppColors.primary.withValues(alpha: 0.25),
-                              width: 1.5,
-                            )
-                          : null,
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(8),
-                      child: Image.asset(
-                        widget.imagePath,
-                        fit: BoxFit.contain,
-                      ),
-                    ),
+      child: Semantics(
+        button: true,
+        selected: widget.isSelected,
+        label: widget.comingSoon ? '${widget.label}, em breve' : widget.label,
+        onTap: widget.onTap,
+        excludeSemantics: true,
+        child: GestureDetector(
+          onTapDown: (_) => _ctrl.reverse(),
+          onTapUp: (_) {
+            _ctrl.forward();
+            widget.onTap();
+          },
+          onTapCancel: () => _ctrl.forward(),
+          behavior: HitTestBehavior.opaque,
+          child: AnimatedBuilder(
+            animation: _scaleAnim,
+            builder: (_, child) =>
+                Transform.scale(scale: _scaleAnim.value, child: child),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _buildLeading(),
+                const SizedBox(height: 4),
+                AnimatedDefaultTextStyle(
+                  duration: const Duration(milliseconds: 200),
+                  style: AppTypography.labelSmall.copyWith(
+                    fontWeight:
+                        widget.isSelected ? FontWeight.w700 : FontWeight.w500,
+                    color: widget.isSelected
+                        ? AppSemanticColors.actionPrimary
+                        : AppSemanticColors.textSecondary,
                   ),
-                  if (widget.showBadge)
-                    Positioned(
-                      top: -4,
-                      right: -4,
-                      child: Container(
-                        width: 16,
-                        height: 16,
-                        decoration: BoxDecoration(
-                          color: AppColors.warning,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 1.5),
-                        ),
-                        child: const Center(
-                          child: Text(
-                            '!',
-                            style: TextStyle(
-                              fontSize: 9,
-                              fontWeight: FontWeight.w800,
-                              color: Colors.white,
-                              height: 1,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 4),
-              AnimatedDefaultTextStyle(
-                duration: const Duration(milliseconds: 200),
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: widget.isSelected ? FontWeight.w700 : FontWeight.w400,
-                  color: widget.isSelected ? AppColors.primary : AppColors.textLabel,
+                  child: Text(widget.label),
                 ),
-                child: Text(widget.label),
-              ),
-            ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLeading() {
+    final agent = widget.agent;
+    if (agent == null) return _buildHomeIcon();
+
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOutCubic,
+          width: 40,
+          height: 40,
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: agent.surface,
+            shape: BoxShape.circle,
+            border: widget.isSelected
+                ? Border.all(color: AppSemanticColors.actionPrimary, width: 2)
+                : null,
+          ),
+          child: Image.asset(
+            agent.assetPath,
+            fit: BoxFit.contain,
+            excludeFromSemantics: true,
+          ),
+        ),
+        if (widget.comingSoon)
+          Positioned(top: -3, right: -3, child: _buildComingSoonBadge()),
+      ],
+    );
+  }
+
+  Widget _buildHomeIcon() {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeOutCubic,
+      width: 40,
+      height: 40,
+      decoration: BoxDecoration(
+        color: widget.isSelected
+            ? AppSemanticColors.actionPrimary
+            : Colors.transparent,
+        shape: BoxShape.circle,
+      ),
+      child: Icon(
+        widget.isSelected ? widget.selectedIcon : widget.icon,
+        size: AppSizes.iconLg,
+        color: widget.isSelected
+            ? AppSemanticColors.onAction
+            : AppSemanticColors.textSecondary,
+      ),
+    );
+  }
+
+  Widget _buildComingSoonBadge() {
+    return Container(
+      width: 16,
+      height: 16,
+      decoration: BoxDecoration(
+        color: AppSemanticColors.feedbackWarning,
+        shape: BoxShape.circle,
+        border: Border.all(color: AppSemanticColors.surface, width: 1.5),
+      ),
+      child: const Center(
+        child: Text(
+          '!',
+          style: TextStyle(
+            fontFamily: AppTypography.fontFamily,
+            fontSize: 9,
+            fontWeight: FontWeight.w800,
+            color: AppSemanticColors.textPrimary,
+            height: 1,
           ),
         ),
       ),

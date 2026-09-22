@@ -1,11 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import '../../config/constants.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/auth_service.dart';
+import '../../theme/app_spacing.dart';
+import '../../theme/app_theme.dart';
+import '../../theme/app_typography.dart';
+import '../../theme/tokens/app_colors_semantic.dart';
 import '../../widgets/auth/auth_field.dart';
-import '../../widgets/common/custom_button.dart';
+import '../../widgets/auth/auth_screen_header.dart';
+import '../../widgets/common/app_primary_button.dart';
+import '../../widgets/common/app_screen_scaffold.dart';
+import '../../widgets/common/brand_note.dart';
+import '../../widgets/common/cropped_asset_image.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -56,201 +63,97 @@ class _LoginScreenState extends State<LoginScreen>
   Widget build(BuildContext context) {
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
         statusBarBrightness: Brightness.light,
         statusBarIconBrightness: Brightness.dark,
       ),
     );
 
-    return Scaffold(
-      backgroundColor: AppColors.accentSurface,
-      resizeToAvoidBottomInset: true,
-      body: Column(
-        children: [
-          _buildHero(context),
-          _buildFormCard(context),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHero(BuildContext context) {
-    return Expanded(
-      flex: 38,
-      child: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [AppColors.accentSurface, Color(0xFFFAF8F5)],
-          ),
-        ),
-        child: SafeArea(
-          bottom: false,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              IconButton(
-                onPressed: () =>
-                    Navigator.pushReplacementNamed(context, '/'),
-                icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
-                color: AppColors.textLabel,
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
-              ),
-              Expanded(
-                child: Center(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 32),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Container(
-                          width: 96,
-                          height: 96,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: AppColors.accent.withValues(alpha: 0.10),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Image.asset(
-                              'assets/images/miajudai_logo_transparent.png',
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        const Text(
-                          'Bem-vindo de volta!',
-                          style: TextStyle(
-                            color: AppColors.textDark,
-                            fontSize: 26,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: -0.5,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        const Text(
-                          'Continue sua jornada rumo à independência',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: AppColors.textLabel,
-                            fontSize: 14,
-                            height: 1.5,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFormCard(BuildContext context) {
-    return Expanded(
-      flex: 62,
+    return AppScreenScaffold(
+      footer: FadeTransition(opacity: _fadeAnim, child: _buildFooter()),
       child: FadeTransition(
         opacity: _fadeAnim,
         child: SlideTransition(
           position: _slideAnim,
-          child: Container(
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(AppDimens.radiusHeroCard),
-                topRight: Radius.circular(AppDimens.radiusHeroCard),
+          child: _buildForm(context),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildForm(BuildContext context) {
+    return Form(
+      key: _formKey,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AuthScreenHeader(
+            title: 'Bem-vindo de volta!',
+            subtitle: 'Continue sua jornada rumo à independência.',
+            noteText: 'Mais organização para uma vida mais leve.',
+            onBack: () => Navigator.pushReplacementNamed(context, '/'),
+          ),
+          const SizedBox(height: AppSpacing.sectionGap),
+          AuthField(
+            label: 'Email',
+            hint: 'seu@email.com',
+            controller: _emailController,
+            prefixIcon: Icons.email_outlined,
+            keyboardType: TextInputType.emailAddress,
+            focusNode: _emailFocus,
+            textInputAction: TextInputAction.next,
+            onEditingComplete: () =>
+                FocusScope.of(context).requestFocus(_passwordFocus),
+            validator: (v) {
+              if (v == null || v.trim().isEmpty) {
+                return 'Informe seu email';
+              }
+              if (!RegExp(r'^[\w\-.]+@([\w-]+\.)+[\w-]{2,}$')
+                  .hasMatch(v.trim())) {
+                return 'Email inválido';
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: AppSpacing.defaultGap),
+          AuthField(
+            label: 'Senha',
+            hint: 'Sua senha',
+            controller: _passwordController,
+            prefixIcon: Icons.lock_outline,
+            isPassword: true,
+            focusNode: _passwordFocus,
+            textInputAction: TextInputAction.done,
+            onEditingComplete: () => _submit(context),
+            validator: (v) {
+              if (v == null || v.isEmpty) return 'Informe sua senha';
+              if (v.length < 6) return 'Mínimo 6 caracteres';
+              return null;
+            },
+          ),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: () => _showForgotPassword(context),
+              style: TextButton.styleFrom(
+                padding: EdgeInsets.zero,
+                minimumSize: const Size(0, AppSpacing.minTouchTarget),
               ),
-            ),
-            child: SingleChildScrollView(
-              physics: const ClampingScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(28, 32, 28, 32),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const Text(
-                      'Entrar',
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textDark,
-                        letterSpacing: -0.3,
-                      ),
-                    ),
-                    const SizedBox(height: 28),
-                    AuthField(
-                      label: 'Email',
-                      hint: 'seu@email.com',
-                      controller: _emailController,
-                      prefixIcon: Icons.email_outlined,
-                      keyboardType: TextInputType.emailAddress,
-                      focusNode: _emailFocus,
-                      textInputAction: TextInputAction.next,
-                      onEditingComplete: () =>
-                          FocusScope.of(context).requestFocus(_passwordFocus),
-                      validator: (v) {
-                        if (v == null || v.trim().isEmpty) {
-                          return 'Informe seu email';
-                        }
-                        if (!RegExp(r'^[\w\-.]+@([\w-]+\.)+[\w-]{2,}$')
-                            .hasMatch(v.trim())) {
-                          return 'Email inválido';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 20),
-                    AuthField(
-                      label: 'Senha',
-                      hint: 'Sua senha',
-                      controller: _passwordController,
-                      prefixIcon: Icons.lock_outline,
-                      isPassword: true,
-                      focusNode: _passwordFocus,
-                      textInputAction: TextInputAction.done,
-                      onEditingComplete: () => _submit(context),
-                      validator: (v) {
-                        if (v == null || v.isEmpty) return 'Informe sua senha';
-                        if (v.length < 6) return 'Mínimo 6 caracteres';
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 10),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: GestureDetector(
-                        onTap: () => _showForgotPassword(context),
-                        child: const Text(
-                          'Esqueci minha senha',
-                          style: TextStyle(
-                            color: AppColors.textLabel,
-                            fontSize: 13,
-                            decoration: TextDecoration.underline,
-                            decorationColor: AppColors.textLabel,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 28),
-                    Consumer<AuthProvider>(
-                      builder: (context, auth, _) => CustomButton(
-                        text: 'Entrar',
-                        isLoading: auth.isLoading,
-                        onPressed: auth.isLoading ? null : () => _submit(context),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    _buildSignupLink(context),
-                  ],
-                ),
-              ),
+              child: const Text('Esqueci minha senha'),
             ),
           ),
-        ),
+          const SizedBox(height: AppSpacing.itemGap),
+          Consumer<AuthProvider>(
+            builder: (context, auth, _) => AppPrimaryButton(
+              label: 'Entrar',
+              trailingIcon: Icons.arrow_forward_rounded,
+              isLoading: auth.isLoading,
+              onPressed: auth.isLoading ? null : () => _submit(context),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.itemGap),
+          _buildSignupLink(context),
+        ],
       ),
     );
   }
@@ -259,23 +162,60 @@ class _LoginScreenState extends State<LoginScreen>
     return Center(
       child: Wrap(
         alignment: WrapAlignment.center,
+        crossAxisAlignment: WrapCrossAlignment.center,
         children: [
-          const Text(
-            'Não tem uma conta? ',
-            style: TextStyle(
-              color: AppColors.textLabel,
-              fontSize: 14,
+          Text(
+            'Não tem uma conta?',
+            style: AppTypography.bodyMedium.copyWith(
+              color: AppSemanticColors.textSecondary,
             ),
           ),
-          GestureDetector(
-            onTap: () => Navigator.pushNamed(context, '/signup'),
-            child: const Text(
-              'Criar conta gratuita',
-              style: TextStyle(
-                color: AppColors.accent,
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
+          TextButton(
+            onPressed: () => Navigator.pushNamed(context, '/signup'),
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 6),
+              minimumSize: const Size(0, AppSpacing.minTouchTarget),
+            ),
+            child: const Text('Criar conta gratuita'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Nota de marca a esquerda e o grupo de agentes a direita, ancorados na
+  /// base da tela. Puramente decorativo.
+  Widget _buildFooter() {
+    return const Padding(
+      padding: EdgeInsets.only(top: AppSpacing.itemGap),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Expanded(
+            flex: 2,
+            child: Align(
+              alignment: Alignment.bottomLeft,
+              child: Padding(
+                padding: EdgeInsets.only(bottom: AppSpacing.itemGap),
+                child: BrandNote(
+                  text: 'Pequenas decisões hoje, uma vida mais livre amanhã.',
+                  rotation: -0.07,
+                  maxWidth: 120,
+                ),
               ),
+            ),
+          ),
+          Expanded(
+            flex: 3,
+            child: CroppedAssetImage(
+              // Grupo de agentes. JPEG de fundo branco: dissolvido no fundo da
+              // tela e recortado nas margens (ver CroppedAssetImage).
+              asset: 'assets/images/todos_agents.jpg',
+              assetSize: Size(1421, 1536),
+              widthFactor: 0.82,
+              heightFactor: 0.72,
+              anchor: Alignment(-0.24, 0),
+              blendInto: AppSemanticColors.background,
             ),
           ),
         ],
@@ -313,17 +253,28 @@ class _LoginScreenState extends State<LoginScreen>
       SnackBar(
         content: Row(
           children: [
-            const Icon(Icons.error_outline, color: Colors.white, size: 18),
+            const Icon(
+              Icons.error_outline,
+              color: AppSemanticColors.onFeedbackSolid,
+              size: 18,
+            ),
             const SizedBox(width: 8),
-            Expanded(child: Text(message, style: const TextStyle(fontSize: 14))),
+            Expanded(
+              child: Text(
+                message,
+                style: AppTypography.bodyMedium.copyWith(
+                  color: AppSemanticColors.onFeedbackSolid,
+                ),
+              ),
+            ),
           ],
         ),
-        backgroundColor: AppColors.error,
+        backgroundColor: AppSemanticColors.feedbackErrorSolid,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppDimens.radiusMedium),
+          borderRadius: BorderRadius.circular(AppRadius.control),
         ),
-        margin: const EdgeInsets.all(16),
+        margin: const EdgeInsets.all(AppSpacing.defaultGap),
         duration: const Duration(seconds: 3),
       ),
     );
@@ -334,7 +285,12 @@ class _LoginScreenState extends State<LoginScreen>
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => const _ForgotPasswordSheet(),
+      // A sheet vive numa rota propria, fora do Theme local do
+      // AppScreenScaffold; o tema e reaplicado explicitamente.
+      builder: (_) => Theme(
+        data: AppTheme.light,
+        child: const _ForgotPasswordSheet(),
+      ),
     );
   }
 }
@@ -381,24 +337,30 @@ class _ForgotPasswordSheetState extends State<_ForgotPasswordSheet> {
       // Show success toast
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Row(
+          content: Row(
             children: [
-              Icon(Icons.email_outlined, color: Colors.white, size: 18),
-              SizedBox(width: 8),
+              const Icon(
+                Icons.email_outlined,
+                color: AppSemanticColors.onFeedbackSolid,
+                size: 18,
+              ),
+              const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   'Email de recuperação enviado com sucesso',
-                  style: TextStyle(fontSize: 14),
+                  style: AppTypography.bodyMedium.copyWith(
+                    color: AppSemanticColors.onFeedbackSolid,
+                  ),
                 ),
               ),
             ],
           ),
-          backgroundColor: AppColors.success,
+          backgroundColor: AppSemanticColors.feedbackSuccessSolid,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppDimens.radiusMedium),
+            borderRadius: BorderRadius.circular(AppRadius.control),
           ),
-          margin: const EdgeInsets.all(16),
+          margin: const EdgeInsets.all(AppSpacing.defaultGap),
           duration: const Duration(seconds: 3),
         ),
       );
@@ -426,13 +388,18 @@ class _ForgotPasswordSheetState extends State<_ForgotPasswordSheet> {
     final bottom = MediaQuery.of(context).viewInsets.bottom;
     return Container(
       decoration: const BoxDecoration(
-        color: Colors.white,
+        color: AppSemanticColors.surface,
         borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(AppDimens.radiusXLarge),
-          topRight: Radius.circular(AppDimens.radiusXLarge),
+          topLeft: Radius.circular(AppRadius.sheet),
+          topRight: Radius.circular(AppRadius.sheet),
         ),
       ),
-      padding: EdgeInsets.fromLTRB(24, 24, 24, 24 + bottom),
+      padding: EdgeInsets.fromLTRB(
+        AppSpacing.screenGutter,
+        AppSpacing.screenGutter,
+        AppSpacing.screenGutter,
+        AppSpacing.screenGutter + bottom,
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -442,31 +409,29 @@ class _ForgotPasswordSheetState extends State<_ForgotPasswordSheet> {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: AppColors.inputBorder,
-                borderRadius: BorderRadius.circular(AppDimens.radiusFull),
+                color: AppSemanticColors.border,
+                borderRadius: BorderRadius.circular(AppRadius.full),
               ),
             ),
           ),
-          const SizedBox(height: 24),
-          const Text(
-            'Recuperar senha',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-              color: AppColors.textDark,
-              letterSpacing: -0.3,
+          const SizedBox(height: AppSpacing.screenGutter),
+          Semantics(
+            header: true,
+            child: Text(
+              'Recuperar senha',
+              style: AppTypography.headlineMedium.copyWith(
+                color: AppSemanticColors.textPrimary,
+              ),
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             'Informe seu email e enviaremos um link de recuperação.',
-            style: TextStyle(
-              color: AppColors.textLabel,
-              fontSize: 14,
-              height: 1.5,
+            style: AppTypography.bodyMedium.copyWith(
+              color: AppSemanticColors.textSecondary,
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: AppSpacing.screenGutter),
           if (!_sent) ...[
             Form(
               key: _formKey,
@@ -487,25 +452,27 @@ class _ForgotPasswordSheetState extends State<_ForgotPasswordSheet> {
               ),
             ),
             if (_errorMessage != null) ...[
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.itemGap),
               Container(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(AppSpacing.itemGap),
                 decoration: BoxDecoration(
-                  color: AppColors.error.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(AppDimens.radiusSmall),
-                  border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+                  color: AppSemanticColors.feedbackErrorSubtle,
+                  borderRadius: BorderRadius.circular(AppRadius.control),
+                  border: Border.all(color: AppSemanticColors.feedbackError),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.error_outline,
-                        color: AppColors.error, size: 18),
+                    const Icon(
+                      Icons.error_outline,
+                      color: AppSemanticColors.onFeedbackError,
+                      size: 18,
+                    ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         _errorMessage!,
-                        style: const TextStyle(
-                          color: AppColors.error,
-                          fontSize: 13,
+                        style: AppTypography.bodySmall.copyWith(
+                          color: AppSemanticColors.onFeedbackError,
                         ),
                       ),
                     ),
@@ -513,42 +480,42 @@ class _ForgotPasswordSheetState extends State<_ForgotPasswordSheet> {
                 ),
               ),
             ],
-            const SizedBox(height: 20),
-            CustomButton(
-              text: 'Enviar link',
+            const SizedBox(height: AppSpacing.screenGutter),
+            AppPrimaryButton(
+              label: 'Enviar link',
               isLoading: _isLoading,
               onPressed: _isLoading ? null : _sendResetEmail,
             ),
           ] else ...[
             Container(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(AppSpacing.defaultGap),
               decoration: BoxDecoration(
-                color: AppColors.success.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(AppDimens.radiusMedium),
+                color: AppSemanticColors.feedbackSuccessSubtle,
+                borderRadius: BorderRadius.circular(AppRadius.control),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.check_circle_outline,
-                      color: AppColors.success, size: 24),
-                  const SizedBox(width: 12),
+                  const Icon(
+                    Icons.check_circle_outline,
+                    color: AppSemanticColors.onFeedbackSuccess,
+                    size: 24,
+                  ),
+                  const SizedBox(width: AppSpacing.itemGap),
                   Expanded(
                     child: Text(
                       'Link enviado para ${_emailCtrl.text}. Verifique sua caixa de entrada.',
-                      style: const TextStyle(
-                        color: AppColors.textDark,
-                        fontSize: 14,
-                        height: 1.4,
+                      style: AppTypography.bodyMedium.copyWith(
+                        color: AppSemanticColors.textPrimary,
                       ),
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 20),
-            CustomButton(
-              text: 'Fechar',
-              variant: ButtonVariant.outlined,
+            const SizedBox(height: AppSpacing.screenGutter),
+            OutlinedButton(
               onPressed: () => Navigator.pop(context),
+              child: const Text('Fechar'),
             ),
           ],
           const SizedBox(height: 8),

@@ -12,16 +12,18 @@ import routes from './routes/index.js';
 
 const app = express();
 
-// Initialize Firebase and Database
+// Initialize Firebase (best-effort — a failure here must not block the DB)
 try {
   initializeFirebase();
-  initializeDatabase().catch((err) => {
-    console.error('Database initialization error:', err);
-    process.exit(1);
-  });
 } catch (error) {
-  console.error('Initialization error:', error);
+  console.error('Initialization error (Firebase):', error);
 }
+
+// Initialize Database (required for the API to work)
+initializeDatabase().catch((err) => {
+  console.error('Database initialization error:', err);
+  process.exit(1);
+});
 
 // ====================================
 // Security Middleware
