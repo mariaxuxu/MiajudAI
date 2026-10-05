@@ -15,10 +15,11 @@ const checkInactiveUsers = async () => {
   // SQL direto para comparar last_sms_alert_at < last_activity com segurança
   const [rows] = await sequelize.query(
     `SELECT id FROM users
-     WHERE last_activity < :cutoff
+     WHERE logout_at IS NOT NULL
+       AND logout_at < :cutoff
        AND (
          last_sms_alert_at IS NULL
-         OR last_sms_alert_at < last_activity
+         OR last_sms_alert_at < logout_at
        )
        AND (
          emergency_contact_1_phone IS NOT NULL

@@ -1,188 +1,54 @@
 import axios from 'axios';
 import config from '../config/env.js';
-import { getDatabase } from '../config/database.js';
+import { getAgent, buildSystemPrompt } from '../agents/agentRegistry.js';
 import userProfilePromptService from './userProfilePromptService.js';
 
-const GEMINI_BASE_URL = 'https://api.groq.com/openai/v1';
+const GROQ_BASE_URL = 'https://api.groq.com/openai/v1';
 
-const buildFinancialContext = async (userId) => {
-  const { Account, Income, Expense } = getDatabase();
+const parseRoute = (text) => {
+  if (!text?.startsWith('ROUTE:')) return null;
+  try {
+    return JSON.parse(text.slice(6).trim());
+  } catch {
+    return null;
+  }
+};
 
-  const [accounts, recentIncome, recentExpenses] = await Promise.all([
-    Account.findAll({
-      where: { user_id: userId, is_active: true },
-      order: [['created_at', 'DESC']],
-    }),
-    Income.findAll({
-      where: { user_id: userId },
-      order: [['income_date', 'DESC']],
-      limit: 10,
-    }),
-    Expense.findAll({
-      where: { user_id: userId },
-      order: [['expense_date', 'DESC']],
-      limit: 10,
-    }),
+const sendMessage = async (userId, agentKey = 'luna', message, history = []) => {
+  console.log(`\n[CHAT] ═══════════════════════════════════════════`);
+  console.log(`[CHAT] agent=${agentKey}, userId=${userId}`);
+
+  if (!config.gemini.apiKey) throw new Error('GEMINI_API_KEY not configured');
+
+  const agent = getAgent(agentKey);
+
+  const [systemPrompt, agentContext, diaryContext] = await Promise.all([
+    buildSystemPrompt(agentKey, userId),
+    agent.buildContext(userId),
+    userProfilePromptService.buildDiaryContext(userId, agentKey, 800),
   ]);
 
-  const totalBalance = accounts.reduce((sum, a) => sum + parseFloat(a.balance || 0), 0);
-  const totalIncome = recentIncome.reduce((sum, i) => sum + parseFloat(i.amount || 0), 0);
-  const totalExpenses = recentExpenses.reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
+  console.log(
+    `[CHAT] ✓ Prompts prontos — system=${systemPrompt.length}c, context=${agentContext.length}c, diary=${diaryContext.length}c`
+  );
 
-  const fmt = (v) => `R$ ${parseFloat(v).toFixed(2).replace('.', ',')}`;
-  const fmtDate = (d) => new Date(d).toLocaleDateString('pt-BR');
+  const messages = [{ role: 'system', content: systemPrompt }];
 
-  const accountsText = accounts.length
-    ? accounts.map((a) => `  - ${a.name} (${a.type}): ${fmt(a.balance)}`).join('\n')
-    : '  Nenhuma conta cadastrada';
-
-  const incomeText = recentIncome.length
-    ? recentIncome.map((i) => `  - ${i.description} [${i.type}]: ${fmt(i.amount)} em ${fmtDate(i.income_date)}`).join('\n')
-    : '  Nenhuma receita registrada';
-
-  const expensesText = recentExpenses.length
-    ? recentExpenses.map((e) => `  - ${e.description}: ${fmt(e.amount)} em ${fmtDate(e.expense_date)}`).join('\n')
-    : '  Nenhuma despesa registrada';
-
-  return `Você é um assistente financeiro pessoal do app MiAjudAI, para pessoas que moram sozinhas no Brasil.
-Seja amigável, objetivo e use português brasileiro. Formate valores sempre como R$ X,XX.
-Quando não tiver dados suficientes, seja honesto e oriente o usuário a adicionar mais informações no app.
-
-SITUAÇÃO FINANCEIRA ATUAL DO USUÁRIO:
-
-Saldo total em contas: ${fmt(totalBalance)}
-
-Contas cadastradas:
-${accountsText}
-
-Receitas recentes (últimas ${recentIncome.length}):
-${incomeText}
-Soma das receitas listadas: ${fmt(totalIncome)}
-
-Despesas recentes (últimas ${recentExpenses.length}):
-${expensesText}
-Soma das despesas listadas: ${fmt(totalExpenses)}
-
-Responda com base nesses dados reais. Seja direto e prático.`;
-};
-
-const buildSystemPrompt = async (userId) => {
-  const { UserContext } = getDatabase();
-
-  // System prompt base
-  let systemPrompt = `Você é Luna, uma assistente especializada em finanças pessoais do app MiAjudAI.
-Seu foco é ajudar pessoas que vivem sozinhas a organizarem suas finanças e atingirem a independência financeira.
-
-SEU PAPEL:
-- Analisar gastos e identificar oportunidades de economia
-- Criar estratégias de poupança personalizadas
-- Orientar sobre investimentos básicos e segurança financeira
-- Motivar e acompanhar progresso em direção à independência financeira
-- Dar dicas práticas de organização financeira (gestão de contas, categorização, etc)
-- Sugerir ferramentas e métodos para melhorar controle financeiro
-- Ser honesta e realista sobre a situação financeira do usuário
-
-ESTILO:
-- Amigável, objetiva e motivadora
-- Use português brasileiro
-- Formate valores sempre como R$ X,XX
-- Se não houver dados suficientes, seja honesta e peça mais informações
-- Crie planos e dicas práticas e alcançáveis
-
-OBJETIVO DO USUÁRIO:
-- Organização financeira pessoal
-- Alcançar independência financeira`;
-
-  // Busca contexto do usuário (persona)
-  try {
-    const userContext = await UserContext.findOne({ where: { user_id: userId, agent_type: 'luna' } });
-
-    if (userContext) {
-      const { interests, routine_data, preferences, common_questions } = userContext;
-
-      const contextParts = [];
-
-      if (interests && Object.keys(interests).length > 0) {
-        contextParts.push(`\n\nINTERESES DO USUÁRIO:\n${JSON.stringify(interests, null, 2)}`);
-      }
-
-      if (routine_data && Object.keys(routine_data).length > 0) {
-        contextParts.push(`\n\nROTINA FINANCEIRA:\n${JSON.stringify(routine_data, null, 2)}`);
-      }
-
-      if (preferences && Object.keys(preferences).length > 0) {
-        contextParts.push(`\n\nPREFERÊNCIAS:\n${JSON.stringify(preferences, null, 2)}`);
-      }
-
-      if (common_questions && common_questions.length > 0) {
-        contextParts.push(`\n\nPERGUNTAS FREQUENTES:\n${common_questions.join('\n')}`);
-      }
-
-      if (contextParts.length > 0) {
-        systemPrompt += `\n\n--- CONTEXTO PERSISTENTE DO USUÁRIO (USE PARA PERSONALIZAR RESPOSTAS) ---${contextParts.join('')}`;
-        console.log(`[CHAT] User context loaded (${contextParts.length} sections)`);
-      }
-    }
-  } catch (error) {
-    console.warn(`[CHAT] Could not load user context: ${error.message}`);
-  }
-
-  return systemPrompt;
-};
-
-const sendMessage = async (userId, message, history = []) => {
-  console.log(`\n[CHAT] ═══════════════════════════════════════════`);
-  console.log(`[CHAT] Starting sendMessage for userId=${userId}`);
-
-  if (!config.gemini.apiKey) {
-    throw new Error('GEMINI_API_KEY not configured');
-  }
-
-  console.log(`[CHAT] ✓ Building system prompt (Luna + user_context)...`);
-  const systemPrompt = await buildSystemPrompt(userId);
-  console.log(`[CHAT] ✓ System prompt ready (${systemPrompt.length} chars)`);
-
-  console.log(`[CHAT] ✓ Building financial context...`);
-  const startContextTime = Date.now();
-  const financialContext = await buildFinancialContext(userId);
-  console.log(`[CHAT] ✓ Financial context built in ${Date.now() - startContextTime}ms (${financialContext.length} chars)`);
-
-  console.log(`[CHAT] ✓ Building diary context...`);
-  const diaryContext = await userProfilePromptService.buildDiaryContext(userId, 'luna', 800);
-
-  console.log(`[CHAT] ✓ Preparing message structure (${history.length} history items)`);
-
-  const messages = [
-    { role: 'system', content: systemPrompt },
-  ];
-
-  // Se é primeira mensagem do dia (history vazio), passar contexto financeiro + diário escondido
   if (history.length === 0) {
-    console.log(`[CHAT] ⚡ FIRST MESSAGE OF SESSION - Including financial + diary context (hidden from user)`);
-    const contextMessage = `[CONTEXTO FINANCEIRO E DIÁRIO - NÃO MOSTRAR AO USUÁRIO]\n\n${financialContext}\n\n${diaryContext}`;
-    messages.push({
-      role: 'user',
-      content: contextMessage,
-    });
-
-    // Resposta escondida confirmando que memorizou
-    messages.push({
-      role: 'assistant',
-      content: '[CONTEXTO MEMORIZADO]',
-    });
-    console.log(`[CHAT] ⚡ Context sent to Grok for memorization`);
+    const contextParts = [agentContext, diaryContext].filter(Boolean).join('\n\n');
+    if (contextParts) {
+      messages.push({
+        role: 'user',
+        content: `[CONTEXTO - NÃO MOSTRAR AO USUÁRIO]\n\n${contextParts}`,
+      });
+      messages.push({ role: 'assistant', content: '[CONTEXTO MEMORIZADO]' });
+    }
   } else {
-    // Não é primeira mensagem - apenas adiciona histórico visível
-    console.log(`[CHAT] ℹ️  NOT first message - using history from previous messages`);
     messages.push(
-      ...history.map((h) => ({
-        role: h.isUser ? 'user' : 'assistant',
-        content: h.text,
-      }))
+      ...history.map((h) => ({ role: h.isUser ? 'user' : 'assistant', content: h.text }))
     );
   }
 
-  // Adiciona mensagem atual do usuário
   messages.push({ role: 'user', content: message });
 
   const payload = {
@@ -192,26 +58,32 @@ const sendMessage = async (userId, message, history = []) => {
     max_tokens: 1024,
   };
 
-  const url = `${GEMINI_BASE_URL}/chat/completions`;
-  console.log(`[CHAT] 📤 Sending to Grok: ${messages.length} messages total`);
+  console.log(`[CHAT] 📤 Enviando ao Groq: ${messages.length} mensagens`);
+  const startTime = Date.now();
 
-  const startGeminiTime = Date.now();
-  const response = await axios.post(url, payload, {
+  const response = await axios.post(`${GROQ_BASE_URL}/chat/completions`, payload, {
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${config.gemini.apiKey}`,
+      Authorization: `Bearer ${config.gemini.apiKey}`,
     },
     timeout: 30000,
   });
-  const responseTime = Date.now() - startGeminiTime;
-  console.log(`[CHAT] ✓ Grok responded in ${responseTime}ms`);
+
+  console.log(`[CHAT] ✓ Groq respondeu em ${Date.now() - startTime}ms`);
 
   const reply = response.data?.choices?.[0]?.message?.content;
-  if (!reply) throw new Error('Empty response from Grok');
+  if (!reply) throw new Error('Empty response from Groq');
 
-  console.log(`[CHAT] 💬 Response: ${reply.substring(0, 80)}...`);
+  const route = parseRoute(reply);
+  if (route) {
+    console.log(`[CHAT] → Roteando para ${route.target}`);
+    console.log(`[CHAT] ═══════════════════════════════════════════\n`);
+    return { routed: true, target: route.target, message: route.message };
+  }
+
+  console.log(`[CHAT] 💬 Resposta: ${reply.substring(0, 80)}...`);
   console.log(`[CHAT] ═══════════════════════════════════════════\n`);
-  return reply;
+  return { routed: false, reply };
 };
 
 export default { sendMessage };

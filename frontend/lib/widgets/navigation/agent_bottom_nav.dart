@@ -4,7 +4,6 @@ import '../../theme/app_spacing.dart';
 import '../../theme/app_typography.dart';
 import '../../theme/tokens/app_colors_semantic.dart';
 import '../../theme/tokens/app_primitives.dart';
-import '../dialogs/under_construction_dialog.dart';
 
 /// Navegacao inferior da area autenticada: Inicio e os tres agentes.
 ///
@@ -37,25 +36,19 @@ class _AgentBottomNavState extends State<AgentBottomNav> {
   }
 
   void _onOttoSelected(BuildContext context) {
+    setState(() => _selected = 2);
     HapticFeedback.selectionClick();
-    UnderConstructionDialog.show(
-      context,
-      agentName: 'Otto',
-      agentRole: 'Assistente de Cozinha',
-      imagePath: 'assets/images/otto.png',
-      agentColor: AppAgent.otto.accent,
-    );
+    Navigator.pushNamed(context, '/chat/otto').then((_) {
+      if (mounted) setState(() => _selected = 0);
+    });
   }
 
   void _onTinaSelected(BuildContext context) {
+    setState(() => _selected = 3);
     HapticFeedback.selectionClick();
-    UnderConstructionDialog.show(
-      context,
-      agentName: 'Tina',
-      agentRole: 'Assistente Doméstica',
-      imagePath: 'assets/images/tina.png',
-      agentColor: AppAgent.tina.accent,
-    );
+    Navigator.pushNamed(context, '/chat/tina').then((_) {
+      if (mounted) setState(() => _selected = 0);
+    });
   }
 
   @override
@@ -93,17 +86,15 @@ class _AgentBottomNavState extends State<AgentBottomNav> {
               ),
               _NavItem(
                 label: 'Otto',
-                isSelected: false,
+                isSelected: _selected == 2,
                 onTap: () => _onOttoSelected(context),
                 agent: AppAgent.otto,
-                comingSoon: true,
               ),
               _NavItem(
                 label: 'Tina',
-                isSelected: false,
+                isSelected: _selected == 3,
                 onTap: () => _onTinaSelected(context),
                 agent: AppAgent.tina,
-                comingSoon: true,
               ),
             ],
           ),
@@ -129,9 +120,6 @@ class _NavItem extends StatefulWidget {
   /// Agente: avatar do agente.
   final AppAgent? agent;
 
-  /// Agente ainda sem tela: mostra o selo "!" e o anuncia como "em breve".
-  final bool comingSoon;
-
   const _NavItem({
     required this.label,
     required this.isSelected,
@@ -139,7 +127,6 @@ class _NavItem extends StatefulWidget {
     this.icon,
     this.selectedIcon,
     this.agent,
-    this.comingSoon = false,
   });
 
   @override
@@ -176,7 +163,7 @@ class _NavItemState extends State<_NavItem>
       child: Semantics(
         button: true,
         selected: widget.isSelected,
-        label: widget.comingSoon ? '${widget.label}, em breve' : widget.label,
+        label: widget.label,
         onTap: widget.onTap,
         excludeSemantics: true,
         child: GestureDetector(
@@ -219,31 +206,24 @@ class _NavItemState extends State<_NavItem>
     final agent = widget.agent;
     if (agent == null) return _buildHomeIcon();
 
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeOutCubic,
-          width: 40,
-          height: 40,
-          padding: const EdgeInsets.all(6),
-          decoration: BoxDecoration(
-            color: agent.surface,
-            shape: BoxShape.circle,
-            border: widget.isSelected
-                ? Border.all(color: AppSemanticColors.actionPrimary, width: 2)
-                : null,
-          ),
-          child: Image.asset(
-            agent.assetPath,
-            fit: BoxFit.contain,
-            excludeFromSemantics: true,
-          ),
-        ),
-        if (widget.comingSoon)
-          Positioned(top: -3, right: -3, child: _buildComingSoonBadge()),
-      ],
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeOutCubic,
+      width: 40,
+      height: 40,
+      padding: const EdgeInsets.all(6),
+      decoration: BoxDecoration(
+        color: agent.surface,
+        shape: BoxShape.circle,
+        border: widget.isSelected
+            ? Border.all(color: AppSemanticColors.actionPrimary, width: 2)
+            : null,
+      ),
+      child: Image.asset(
+        agent.assetPath,
+        fit: BoxFit.contain,
+        excludeFromSemantics: true,
+      ),
     );
   }
 
@@ -269,27 +249,4 @@ class _NavItemState extends State<_NavItem>
     );
   }
 
-  Widget _buildComingSoonBadge() {
-    return Container(
-      width: 16,
-      height: 16,
-      decoration: BoxDecoration(
-        color: AppSemanticColors.feedbackWarning,
-        shape: BoxShape.circle,
-        border: Border.all(color: AppSemanticColors.surface, width: 1.5),
-      ),
-      child: const Center(
-        child: Text(
-          '!',
-          style: TextStyle(
-            fontFamily: AppTypography.fontFamily,
-            fontSize: 9,
-            fontWeight: FontWeight.w800,
-            color: AppSemanticColors.textPrimary,
-            height: 1,
-          ),
-        ),
-      ),
-    );
-  }
 }

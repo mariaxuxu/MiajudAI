@@ -1,4 +1,5 @@
 import authService from '../services/authService.js';
+import { getDatabase } from '../config/database.js';
 import { HTTP_STATUS, ERROR_MESSAGES } from '../utils/constants.js';
 
 export const verifyToken = async (req, res) => {
@@ -167,6 +168,20 @@ export const getCurrentUser = async (req, res) => {
         statusCode: HTTP_STATUS.INTERNAL_SERVER_ERROR,
         message: ERROR_MESSAGES.INTERNAL_ERROR,
       },
+    });
+  }
+};
+
+export const logout = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { User } = getDatabase();
+    await User.update({ logout_at: new Date() }, { where: { id: userId } });
+    return res.status(HTTP_STATUS.OK).json({ success: true });
+  } catch (error) {
+    console.error('Logout error:', error);
+    return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+      error: { statusCode: HTTP_STATUS.INTERNAL_SERVER_ERROR, message: ERROR_MESSAGES.INTERNAL_ERROR },
     });
   }
 };

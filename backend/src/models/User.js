@@ -102,6 +102,10 @@ export const defineUserModel = (sequelize) => {
         type: DataTypes.DATE,
         allowNull: true,
       },
+      logout_at: {
+        type: DataTypes.DATE,
+        allowNull: true,
+      },
     },
     {
       tableName: 'users',
