@@ -41,6 +41,8 @@ export const verifyToken = async (req, res) => {
         console.log(`[AUTH] ✅ (dev) User registered: id=${user.id}`);
       }
 
+      await user.update({ last_activity: new Date() });
+
       const jwtToken = authService.generateJWT(user.id, user.email);
 
       return res.status(HTTP_STATUS.OK).json({

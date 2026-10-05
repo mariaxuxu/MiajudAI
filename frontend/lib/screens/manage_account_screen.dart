@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
@@ -13,6 +14,7 @@ import '../widgets/common/app_primary_button.dart';
 import '../widgets/common/app_form_sheet.dart';
 import '../widgets/common/module_screen_header.dart';
 import '../widgets/common/section_header.dart';
+import '../utils/phone_formatter.dart';
 import '../widgets/profile/contact_group_card.dart';
 import '../widgets/profile/profile_nav_card.dart';
 import '../widgets/profile/profile_section_card.dart';
@@ -117,6 +119,7 @@ void _showEditSheet(
   required String hint,
   required String initialValue,
   TextInputType? keyboardType,
+  List<TextInputFormatter>? inputFormatters,
   required void Function(String value) onSave,
 }) {
   final controller = TextEditingController(text: initialValue);
@@ -133,6 +136,7 @@ void _showEditSheet(
           controller: controller,
           hint: hint,
           keyboardType: keyboardType,
+          inputFormatters: inputFormatters,
           autofocus: true,
         ),
         const SizedBox(height: AppSpacing.blockGap),
@@ -594,7 +598,7 @@ class _ContatoEmergenciaPageState extends State<_ContatoEmergenciaPage> {
       title: title,
       hint: hint,
       name: name ?? 'Não informado',
-      phone: phone ?? 'Não informado',
+      phone: PhoneInputFormatter.formatDisplay(phone),
       noContact: naoTenho,
       onToggleNoContact: onToggle,
       onEditName: naoTenho ? null : () => _editContact(context, number, 'name'),
@@ -619,15 +623,23 @@ class _ContatoEmergenciaPageState extends State<_ContatoEmergenciaPage> {
 
     final fieldLabel = fieldType == 'name' ? 'Nome' : 'Telefone';
 
+    final isPhone = fieldType == 'phone';
     _showEditSheet(
       context,
       title: 'Contato $contactNumber — $fieldLabel',
       label: fieldLabel,
-      hint: fieldType == 'name' ? 'Digite o nome' : 'Digite o telefone',
-      initialValue: currentValue ?? '',
-      keyboardType:
-          fieldType == 'phone' ? TextInputType.phone : TextInputType.text,
-      onSave: (value) => _saveContact(context, contactNumber, fieldType, value),
+      hint: isPhone ? '(XX) XXXXX-XXXX' : 'Digite o nome',
+      initialValue: isPhone
+          ? PhoneInputFormatter.formatDisplay(currentValue, fallback: '')
+          : (currentValue ?? ''),
+      keyboardType: isPhone ? TextInputType.phone : TextInputType.text,
+      inputFormatters: isPhone ? [PhoneInputFormatter()] : null,
+      onSave: (value) => _saveContact(
+        context,
+        contactNumber,
+        fieldType,
+        isPhone ? PhoneInputFormatter.digitsOnly(value) : value,
+      ),
     );
   }
 

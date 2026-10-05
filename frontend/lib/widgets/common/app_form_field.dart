@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../theme/app_spacing.dart';
 import '../../theme/app_typography.dart';
@@ -24,6 +25,7 @@ class AppFormField extends StatelessWidget {
     this.maxLines = 1,
     this.minLines,
     this.isRequired = false,
+    this.inputFormatters,
   });
 
   final String label;
@@ -50,6 +52,7 @@ class AppFormField extends StatelessWidget {
   /// "obrigatorio" ao que o leitor de tela anuncia. E so apresentacao: nada aqui
   /// valida ou bloqueia o envio.
   final bool isRequired;
+  final List<TextInputFormatter>? inputFormatters;
 
   @override
   Widget build(BuildContext context) {
@@ -88,6 +91,7 @@ class AppFormField extends StatelessWidget {
             maxLines: maxLines,
             minLines: minLines,
             keyboardType: keyboardType,
+            inputFormatters: inputFormatters,
             style: AppTypography.bodyMedium.copyWith(
               color: AppSemanticColors.textPrimary,
             ),

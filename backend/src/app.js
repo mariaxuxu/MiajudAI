@@ -9,6 +9,7 @@ import errorHandler from './middleware/errorHandler.js';
 import loggerMiddleware from './middleware/logger.js';
 import corsMiddleware from './middleware/cors.js';
 import routes from './routes/index.js';
+import { startAlertJob } from './jobs/alertJob.js';
 
 const app = express();
 
@@ -20,10 +21,12 @@ try {
 }
 
 // Initialize Database (required for the API to work)
-initializeDatabase().catch((err) => {
-  console.error('Database initialization error:', err);
-  process.exit(1);
-});
+initializeDatabase()
+  .then(() => startAlertJob())
+  .catch((err) => {
+    console.error('Database initialization error:', err);
+    process.exit(1);
+  });
 
 // ====================================
 // Security Middleware

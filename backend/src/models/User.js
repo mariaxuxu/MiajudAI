@@ -98,6 +98,10 @@ export const defineUserModel = (sequelize) => {
         type: DataTypes.DATE,
         allowNull: true,
       },
+      last_sms_alert_at: {
+        type: DataTypes.DATE,
+        allowNull: true,
+      },
     },
     {
       tableName: 'users',
