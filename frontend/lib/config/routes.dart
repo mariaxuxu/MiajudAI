@@ -10,7 +10,8 @@ import '../screens/calendar_screen.dart';
 import '../screens/accounts_screen.dart';
 import '../screens/income_screen.dart';
 import '../screens/expenses_screen.dart';
-import '../screens/chat/financial_chat_screen.dart';
+import '../screens/chat/agent_chat_screen.dart';
+import '../theme/tokens/app_colors_semantic.dart';
 import '../screens/invoice_dashboard_screen.dart';
 import '../screens/diary_screen.dart';
 
@@ -44,7 +45,10 @@ class AppRoutes {
     accounts: (context) => const AccountsScreen(),
     income: (context) => const IncomeScreen(),
     expenses: (context) => const ExpensesScreen(),
-    chat: (context) => const FinancialChatScreen(),
+    chat: (context) => const AgentChatScreen(agent: AppAgent.luna),
+    '/chat/luna': (context) => const AgentChatScreen(agent: AppAgent.luna),
+    '/chat/otto': (context) => const AgentChatScreen(agent: AppAgent.otto),
+    '/chat/tina': (context) => const AgentChatScreen(agent: AppAgent.tina),
     invoiceDashboard: (context) => const InvoiceDashboardScreen(),
     diary: (context) => const DiaryScreen()
   };
