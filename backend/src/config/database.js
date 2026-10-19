@@ -16,6 +16,7 @@ import defineInteractionEventModel from '../models/InteractionEvent.js';
 import defineUserEventModel from '../models/UserEvent.js';
 import definePantryItemModel from '../models/PantryItem.js';
 import defineUserPantryModel from '../models/UserPantry.js';
+import definePantryCommitModel from '../models/PantryCommit.js';
 
 let sequelize = null;
 let db = null;
@@ -109,6 +110,7 @@ export const initializeDatabase = async () => {
     const UserEvent = defineUserEventModel(sequelize);
     const PantryItem = definePantryItemModel(sequelize);
     const UserPantry = defineUserPantryModel(sequelize);
+    const PantryCommit = definePantryCommitModel(sequelize);
 
     // Define associations
     User.hasMany(EmergencyContact, {
@@ -202,6 +204,12 @@ export const initializeDatabase = async () => {
       onDelete: 'CASCADE',
     });
 
+    User.hasMany(PantryCommit, {
+      foreignKey: 'user_id',
+      onDelete: 'CASCADE',
+    });
+    PantryCommit.belongsTo(User, { foreignKey: 'user_id' });
+
     db = {
       sequelize,
       User,
@@ -220,6 +228,7 @@ export const initializeDatabase = async () => {
       UserEvent,
       PantryItem,
       UserPantry,
+      PantryCommit,
     };
 
     return { sequelize, db };

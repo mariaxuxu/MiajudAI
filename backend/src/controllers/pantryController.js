@@ -21,6 +21,17 @@ const serializePantryRow = (row) => ({
 const isPositiveInteger = (value) => Number.isInteger(value) && value > 0;
 const isNonNegativeInteger = (value) => Number.isInteger(value) && value >= 0;
 
+const UUID_REGEX =
+  /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+
+const badRequest = (res, message) =>
+  res.status(HTTP_STATUS.BAD_REQUEST).json({
+    error: {
+      statusCode: HTTP_STATUS.BAD_REQUEST,
+      message,
+    },
+  });
+
 export const getCatalogItems = async (req, res) => {
   try {
     const items = await pantryService.getCatalogItems();
@@ -61,6 +72,51 @@ export const getPantry = async (req, res) => {
       error: {
         statusCode: HTTP_STATUS.INTERNAL_SERVER_ERROR,
         message: ERROR_MESSAGES.INTERNAL_ERROR,
+      },
+    });
+  }
+};
+
+export const commitPantry = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { commit_key: commitKey, items } = req.body;
+
+    if (typeof commitKey !== 'string' || !UUID_REGEX.test(commitKey)) {
+      return badRequest(res, 'Missing or invalid field: commit_key must be a valid UUID');
+    }
+
+    if (!Array.isArray(items) || items.length === 0) {
+      return badRequest(res, 'Missing or invalid field: items must be a non-empty array');
+    }
+
+    for (const item of items) {
+      if (!item || !isPositiveInteger(item.item_id)) {
+        return badRequest(res, 'Each item requires a positive integer item_id');
+      }
+      if (!isPositiveInteger(item.quantity)) {
+        return badRequest(res, 'Each item requires a positive integer quantity');
+      }
+    }
+
+    const result = await pantryService.commitPantry(userId, commitKey, items);
+
+    return res.status(HTTP_STATUS.OK).json({
+      success: true,
+      applied: result.applied,
+    });
+  } catch (error) {
+    console.error('Commit pantry error:', error);
+
+    if (error.message.startsWith('Unknown catalog item:')) {
+      return badRequest(res, error.message);
+    }
+
+    return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+      error: {
+        statusCode: HTTP_STATUS.INTERNAL_SERVER_ERROR,
+        message: ERROR_MESSAGES.INTERNAL_ERROR,
+        details: error.message,
       },
     });
   }

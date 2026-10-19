@@ -57,6 +57,82 @@ export const updateQuantity = async (userId, itemId, quantity) => {
   return row;
 };
 
+// Records a whole market trip at once. Increment semantics: committing 2 onto
+// an owned 3 leaves 5. All-or-nothing — the whole trip is written or none of
+// it is. Idempotent on commit_key: inserting the key first means a replay
+// collides on UNIQUE (user_id, commit_key) and becomes a no-op, which also
+// makes two concurrent identical commits safe (the loser rolls back).
+export const commitPantry = async (userId, commitKey, items) => {
+  const { sequelize, UserPantry, PantryItem, PantryCommit } = getDatabase();
+
+  // Collapse repeated item_ids so a cart listing the same item twice becomes
+  // one write instead of two.
+  const quantitiesByItem = new Map();
+  for (const { item_id: itemId, quantity } of items) {
+    quantitiesByItem.set(itemId, (quantitiesByItem.get(itemId) || 0) + quantity);
+  }
+
+  const catalogItems = await PantryItem.findAll({
+    where: { id: [...quantitiesByItem.keys()] },
+    attributes: ['id'],
+  });
+  const knownIds = new Set(catalogItems.map((item) => item.id));
+  for (const itemId of quantitiesByItem.keys()) {
+    if (!knownIds.has(itemId)) {
+      throw new Error(`Unknown catalog item: ${itemId}`);
+    }
+  }
+
+  return sequelize.transaction(async (transaction) => {
+    let replayed = false;
+    try {
+      await PantryCommit.create(
+        { user_id: userId, commit_key: commitKey },
+        { transaction }
+      );
+    } catch (error) {
+      if (error.name !== 'SequelizeUniqueConstraintError') {
+        throw error;
+      }
+      replayed = true;
+    }
+
+    if (replayed) {
+      return { applied: false };
+    }
+
+    const owned = await UserPantry.findAll({
+      where: { user_id: userId, item_id: [...quantitiesByItem.keys()] },
+      transaction,
+    });
+    const ownedIds = new Set(owned.map((row) => row.item_id));
+
+    for (const [itemId, quantity] of quantitiesByItem) {
+      if (ownedIds.has(itemId)) {
+        // increment issues a single `SET quantity = quantity + N`, which keeps
+        // concurrent commits from clobbering each other — but it also skips
+        // updated_at (the model is timestamps:false), so the stamp is applied
+        // separately to keep the pantry ordering honest.
+        await UserPantry.increment(
+          { quantity },
+          { where: { user_id: userId, item_id: itemId }, transaction }
+        );
+        await UserPantry.update(
+          { updated_at: new Date() },
+          { where: { user_id: userId, item_id: itemId }, transaction }
+        );
+      } else {
+        await UserPantry.create(
+          { user_id: userId, item_id: itemId, quantity },
+          { transaction }
+        );
+      }
+    }
+
+    return { applied: true };
+  });
+};
+
 export const removeItem = async (userId, itemId) => {
   const { UserPantry } = getDatabase();
   const row = await UserPantry.findOne({
@@ -74,6 +150,7 @@ export const removeItem = async (userId, itemId) => {
 export default {
   getCatalogItems,
   getUserPantry,
+  commitPantry,
   updateQuantity,
   removeItem,
 };

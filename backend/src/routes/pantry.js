@@ -2,6 +2,7 @@ import express from 'express';
 import {
   getCatalogItems,
   getPantry,
+  commitPantry,
   updatePantryQuantity,
   deletePantryItem,
 } from '../controllers/pantryController.js';
@@ -11,6 +12,7 @@ const router = express.Router();
 
 router.get('/items', verifyToken, getCatalogItems);
 router.get('/', verifyToken, getPantry);
+router.post('/commit', verifyToken, commitPantry);
 router.patch('/', verifyToken, updatePantryQuantity);
 router.delete('/:itemId', verifyToken, deletePantryItem);
 
