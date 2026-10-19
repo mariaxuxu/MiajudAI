@@ -29,9 +29,15 @@ export const getUserPantry = async (userId) => {
 // Quantity is a pack count; 0 is represented by the absence of the row, so
 // hitting 0 removes it rather than storing a zero (which the DB forbids).
 export const updateQuantity = async (userId, itemId, quantity) => {
-  const { UserPantry } = getDatabase();
+  const { UserPantry, PantryItem } = getDatabase();
   const row = await UserPantry.findOne({
     where: { user_id: userId, item_id: itemId },
+    include: [
+      {
+        model: PantryItem,
+        attributes: ['id', 'name', 'emoji', 'domain'],
+      },
+    ],
   });
 
   if (!row) {
@@ -44,6 +50,9 @@ export const updateQuantity = async (userId, itemId, quantity) => {
   }
 
   row.quantity = quantity;
+  // The model is timestamps:false, so updated_at is a plain column Sequelize
+  // does not maintain — set it explicitly to keep the pantry ordering honest.
+  row.updated_at = new Date();
   await row.save();
   return row;
 };

@@ -84,6 +84,35 @@ describe('pantryService', () => {
       expect(args.where).toEqual({ user_id: USER_ID, item_id: 12 });
     });
 
+    it('loads the catalog item so the returned row carries name/emoji/domain', async () => {
+      const row = {
+        ...makeRow({ PantryItem: makeItem() }),
+        save: jest.fn().mockResolvedValue(undefined),
+      };
+      const findOne = jest.fn().mockResolvedValue(row);
+      getDatabase.mockReturnValue({ UserPantry: { findOne }, PantryItem: {} });
+
+      const updated = await pantryService.updateQuantity(USER_ID, 12, 5);
+
+      const [args] = findOne.mock.calls[0];
+      expect(args.include[0].model).toBeDefined();
+      expect(updated.PantryItem.name).toBe('Arroz');
+    });
+
+    it('stamps updated_at on save so ordering reflects the edit', async () => {
+      const row = {
+        ...makeRow({ quantity: 2, updated_at: new Date('2020-01-01') }),
+        save: jest.fn().mockResolvedValue(undefined),
+      };
+      const findOne = jest.fn().mockResolvedValue(row);
+      getDatabase.mockReturnValue({ UserPantry: { findOne } });
+
+      const before = Date.now();
+      await pantryService.updateQuantity(USER_ID, 12, 7);
+
+      expect(row.updated_at.getTime()).toBeGreaterThanOrEqual(before);
+    });
+
     it('removes the row when the new quantity is 0', async () => {
       const row = {
         ...makeRow({ quantity: 3 }),
@@ -109,9 +138,8 @@ describe('pantryService', () => {
         'Pantry item not found'
       );
       expect(destroy).not.toHaveBeenCalled();
-      expect(findOne).toHaveBeenCalledWith({
-        where: { user_id: USER_ID, item_id: 999 },
-      });
+      const [args] = findOne.mock.calls[0];
+      expect(args.where).toEqual({ user_id: USER_ID, item_id: 999 });
     });
   });
 
