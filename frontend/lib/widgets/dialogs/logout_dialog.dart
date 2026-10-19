@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
-import '../../config/constants.dart';
+import '../../theme/app_spacing.dart';
+import '../../theme/app_theme.dart';
+import '../../theme/app_typography.dart';
+import '../../theme/tokens/app_colors_semantic.dart';
 
 class LogoutDialog {
   static Future<void> show(
@@ -9,102 +12,81 @@ class LogoutDialog {
     return showDialog(
       context: context,
       barrierColor: Colors.black.withValues(alpha: 0.45),
-      builder: (dialogContext) => Dialog(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppDimens.radiusXLarge),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 28, 24, 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  color: AppColors.error.withValues(alpha: 0.08),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.logout_rounded,
-                  color: AppColors.error,
-                  size: 26,
-                ),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Sair da conta?',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textDark,
-                  letterSpacing: -0.2,
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Você será desconectado e precisará entrar novamente.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: AppColors.textLabel,
-                  height: 1.5,
-                ),
-              ),
-              const SizedBox(height: 24),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.pop(dialogContext),
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: AppColors.inputBorder),
-                        shape: RoundedRectangleBorder(
-                          borderRadius:
-                              BorderRadius.circular(AppDimens.radiusButton),
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                      ),
-                      child: const Text(
-                        'Cancelar',
-                        style: TextStyle(
-                          color: AppColors.textLabel,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 15,
-                        ),
-                      ),
+      // O dialogo vive numa rota propria, fora do Theme local da tela; o tema
+      // do Design System e reaplicado explicitamente.
+      builder: (dialogContext) => Theme(
+        data: AppTheme.light,
+        child: Dialog(
+          backgroundColor: AppSemanticColors.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.sheet),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 28, 24, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: const BoxDecoration(
+                    color: AppSemanticColors.feedbackErrorSubtle,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const ExcludeSemantics(
+                    child: Icon(
+                      Icons.logout_rounded,
+                      color: AppSemanticColors.onFeedbackError,
+                      size: 26,
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.pop(dialogContext);
-                        onConfirm();
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.error,
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius:
-                              BorderRadius.circular(AppDimens.radiusButton),
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                      ),
-                      child: const Text(
-                        'Sair',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 15,
-                        ),
-                      ),
+                ),
+                const SizedBox(height: AppSpacing.defaultGap),
+                Semantics(
+                  header: true,
+                  child: Text(
+                    'Sair da conta?',
+                    style: AppTypography.headlineSmall.copyWith(
+                      color: AppSemanticColors.textPrimary,
                     ),
                   ),
-                ],
-              ),
-            ],
+                ),
+                const SizedBox(height: AppSpacing.labelGap),
+                Text(
+                  'Você será desconectado e precisará entrar novamente.',
+                  textAlign: TextAlign.center,
+                  style: AppTypography.bodyMedium.copyWith(
+                    color: AppSemanticColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.blockGap),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(dialogContext),
+                        child: const Text('Cancelar'),
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.itemGap),
+                    Expanded(
+                      child: FilledButton(
+                        onPressed: () {
+                          Navigator.pop(dialogContext);
+                          onConfirm();
+                        },
+                        // Acao destrutiva: fundo vermelho solido (AA com branco).
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppSemanticColors.feedbackErrorSolid,
+                          foregroundColor: AppSemanticColors.onFeedbackSolid,
+                        ),
+                        child: const Text('Sair'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),

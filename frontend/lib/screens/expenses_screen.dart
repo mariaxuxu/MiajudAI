@@ -1,15 +1,32 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-import '../config/constants.dart';
 import '../providers/auth_provider.dart';
 import '../providers/expense_provider.dart';
 import '../providers/account_provider.dart';
 import '../models/expense_model.dart';
-import '../widgets/common/custom_button.dart';
-import '../widgets/dialogs/delete_confirm_dialog.dart';
-import '../utils/app_snackbar.dart';
+import '../theme/app_spacing.dart';
+import '../theme/app_typography.dart';
+import '../theme/tokens/app_colors_semantic.dart';
+import '../widgets/common/app_date_field.dart';
+import '../widgets/common/app_feedback_snackbar.dart';
+import '../widgets/common/app_form_dropdown.dart';
+import '../widgets/common/app_form_field.dart';
+import '../widgets/common/app_form_sheet.dart';
+import '../widgets/common/app_module_scaffold.dart';
+import '../widgets/common/app_primary_button.dart';
+import '../widgets/common/app_segmented_tabs.dart';
+import '../widgets/common/empty_state_card.dart';
+import '../widgets/common/module_header_action.dart';
+import '../widgets/common/module_screen_header.dart';
+import '../widgets/common/section_header.dart';
+import '../widgets/dialogs/app_confirm_dialog.dart';
+import '../widgets/finance/finance_empty_art.dart';
+import '../widgets/finance/finance_record_tile.dart';
+import '../widgets/finance/finance_tone.dart';
+import '../widgets/finance/month_selector.dart';
+import '../widgets/finance/tip_card.dart';
+import '../widgets/finance/tonal_summary_card.dart';
 
 class ExpensesScreen extends StatefulWidget {
   const ExpensesScreen({super.key});
@@ -33,8 +50,7 @@ class _ExpensesScreenState extends State<ExpensesScreen>
   void initState() {
     super.initState();
     _selectedMonth = DateTime.now();
-    _tabController =
-        TabController(length: _expenseTypes.length, vsync: this);
+    _tabController = TabController(length: _expenseTypes.length, vsync: this);
     WidgetsBinding.instance.addPostFrameCallback((_) => _reload());
   }
 
@@ -48,41 +64,28 @@ class _ExpensesScreenState extends State<ExpensesScreen>
     final auth = context.read<AuthProvider>();
     if (auth.authToken != null) {
       context.read<ExpenseProvider>().loadExpenses(
-        auth.authToken!,
-        month: _selectedMonth.month,
-        year: _selectedMonth.year,
-      );
+            auth.authToken!,
+            month: _selectedMonth.month,
+            year: _selectedMonth.year,
+          );
     }
   }
 
   void _previousMonth() {
     setState(() {
-      _selectedMonth =
-          DateTime(_selectedMonth.year, _selectedMonth.month - 1);
+      _selectedMonth = DateTime(_selectedMonth.year, _selectedMonth.month - 1);
     });
     _reload();
   }
 
   void _nextMonth() {
     setState(() {
-      _selectedMonth =
-          DateTime(_selectedMonth.year, _selectedMonth.month + 1);
+      _selectedMonth = DateTime(_selectedMonth.year, _selectedMonth.month + 1);
     });
     _reload();
   }
 
-  static InputDecoration _inputDecoration(String label,
-          {String? hint, String? prefix}) =>
-      InputDecoration(
-        labelText: label,
-        hintText: hint,
-        prefixText: prefix,
-        labelStyle:
-            const TextStyle(color: AppColors.textLabel, fontSize: 14),
-      );
-
-  List<ExpenseModel> _filterExpenses(
-      List<ExpenseModel> expenses, String type) {
+  List<ExpenseModel> _filterExpenses(List<ExpenseModel> expenses, String type) {
     switch (type) {
       case 'Contas Fixas':
         return expenses
@@ -95,9 +98,7 @@ class _ExpensesScreenState extends State<ExpensesScreen>
                 e.paymentMethod != 'credit_card')
             .toList();
       case 'Cartão':
-        return expenses
-            .where((e) => e.paymentMethod == 'credit_card')
-            .toList();
+        return expenses.where((e) => e.paymentMethod == 'credit_card').toList();
       default:
         return expenses;
     }
@@ -126,226 +127,146 @@ class _ExpensesScreenState extends State<ExpensesScreen>
       9: 'Diversão',
     };
 
-    showModalBottomSheet(
+    AppFormSheet.show(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(AppDimens.radiusHeroCard),
-        ),
-      ),
+      title: 'Nova Despesa',
       builder: (sheetContext) {
         return StatefulBuilder(
           builder: (innerContext, sheetSetState) {
-            return SingleChildScrollView(
-              padding: EdgeInsets.fromLTRB(
-                24, 16, 24,
-                MediaQuery.of(sheetContext).viewInsets.bottom + 24,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: AppColors.inputBorder,
-                        borderRadius:
-                            BorderRadius.circular(AppDimens.radiusFull),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  const Text(
-                    'Nova Despesa',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textDark,
-                      letterSpacing: -0.3,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  TextField(
-                    controller: amountCtrl,
-                    keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true),
-                    style: const TextStyle(
-                        color: AppColors.textDark, fontSize: 15),
-                    decoration: _inputDecoration('Valor',
-                        hint: '0,00', prefix: 'R\$ '),
-                  ),
-                  const SizedBox(height: 14),
-                  TextField(
-                    controller: descCtrl,
-                    style: const TextStyle(
-                        color: AppColors.textDark, fontSize: 15),
-                    decoration: _inputDecoration('Descrição',
-                        hint: 'Ex: Conta de água'),
-                  ),
-                  const SizedBox(height: 14),
-                  DropdownButtonFormField<int>(
-                    value: selectedCategoryId,
-                    onChanged: (v) =>
-                        sheetSetState(() => selectedCategoryId = v!),
-                    decoration: _inputDecoration('Categoria'),
-                    style: const TextStyle(
-                        color: AppColors.textDark, fontSize: 15),
-                    items: categories.entries
-                        .map((e) => DropdownMenuItem(
-                            value: e.key, child: Text(e.value)))
-                        .toList(),
-                  ),
-                  const SizedBox(height: 14),
-                  DropdownButtonFormField<String>(
-                    value: selectedPaymentMethod,
-                    onChanged: (v) =>
-                        sheetSetState(() => selectedPaymentMethod = v!),
-                    decoration:
-                        _inputDecoration('Forma de Pagamento'),
-                    style: const TextStyle(
-                        color: AppColors.textDark, fontSize: 15),
-                    items: const [
-                      DropdownMenuItem(
-                          value: 'cash', child: Text('Dinheiro')),
-                      DropdownMenuItem(
-                          value: 'debit_card',
-                          child: Text('Cartão Débito')),
-                      DropdownMenuItem(
-                          value: 'credit_card',
-                          child: Text('Cartão Crédito')),
-                      DropdownMenuItem(
-                          value: 'transfer',
-                          child: Text('Transferência')),
-                      DropdownMenuItem(
-                          value: 'other', child: Text('Outro')),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  Consumer<AccountProvider>(
-                    builder: (context, accountProvider, _) {
-                      return DropdownButtonFormField<int?>(
-                        value: selectedAccountId,
-                        onChanged: (v) =>
-                            sheetSetState(() => selectedAccountId = v),
-                        decoration:
-                            _inputDecoration('Conta (opcional)'),
-                        style: const TextStyle(
-                            color: AppColors.textDark, fontSize: 15),
-                        items: [
-                          const DropdownMenuItem(
-                              value: null,
-                              child: Text('Nenhuma conta')),
-                          ...accountProvider.accounts.map(
-                            (a) => DropdownMenuItem(
-                              value: a.id,
-                              child: Text(
-                                  '${a.name} (R\$ ${a.balance.toStringAsFixed(2)})'),
-                            ),
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                AppFormField(
+                  controller: amountCtrl,
+                  label: 'Valor',
+                  hint: '0,00',
+                  prefixText: 'R\$ ',
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                ),
+                const SizedBox(height: AppSpacing.defaultGap),
+                AppFormField(
+                  controller: descCtrl,
+                  label: 'Descrição',
+                  hint: 'Ex: Conta de água',
+                ),
+                const SizedBox(height: AppSpacing.defaultGap),
+                AppFormDropdown<int>(
+                  label: 'Categoria',
+                  value: selectedCategoryId,
+                  onChanged: (v) =>
+                      sheetSetState(() => selectedCategoryId = v!),
+                  items: categories.entries
+                      .map((e) =>
+                          DropdownMenuItem(value: e.key, child: Text(e.value)))
+                      .toList(),
+                ),
+                const SizedBox(height: AppSpacing.defaultGap),
+                AppFormDropdown<String>(
+                  label: 'Forma de Pagamento',
+                  value: selectedPaymentMethod,
+                  onChanged: (v) =>
+                      sheetSetState(() => selectedPaymentMethod = v!),
+                  items: const [
+                    DropdownMenuItem(value: 'cash', child: Text('Dinheiro')),
+                    DropdownMenuItem(
+                        value: 'debit_card', child: Text('Cartão Débito')),
+                    DropdownMenuItem(
+                        value: 'credit_card', child: Text('Cartão Crédito')),
+                    DropdownMenuItem(
+                        value: 'transfer', child: Text('Transferência')),
+                    DropdownMenuItem(value: 'other', child: Text('Outro')),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.defaultGap),
+                Consumer<AccountProvider>(
+                  builder: (context, accountProvider, _) {
+                    return AppFormDropdown<int?>(
+                      label: 'Conta (opcional)',
+                      value: selectedAccountId,
+                      onChanged: (v) =>
+                          sheetSetState(() => selectedAccountId = v),
+                      items: [
+                        const DropdownMenuItem(
+                            value: null, child: Text('Nenhuma conta')),
+                        ...accountProvider.accounts.map(
+                          (a) => DropdownMenuItem(
+                            value: a.id,
+                            child: Text(
+                                '${a.name} (R\$ ${a.balance.toStringAsFixed(2)})'),
                           ),
-                        ],
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 14),
-                  GestureDetector(
-                    onTap: () async {
-                      final date = await showDatePicker(
-                        context: innerContext,
-                        initialDate: selectedDate,
-                        firstDate: DateTime(2000),
-                        lastDate: DateTime(2050),
-                      );
-                      if (date != null) {
-                        sheetSetState(() => selectedDate = date);
+                        ),
+                      ],
+                    );
+                  },
+                ),
+                const SizedBox(height: AppSpacing.defaultGap),
+                AppDateField(
+                  label: 'Data',
+                  value: selectedDate,
+                  onTap: () async {
+                    final date = await showDatePicker(
+                      context: innerContext,
+                      initialDate: selectedDate,
+                      firstDate: DateTime(2000),
+                      lastDate: DateTime(2050),
+                    );
+                    if (date != null) {
+                      sheetSetState(() => selectedDate = date);
+                    }
+                  },
+                ),
+                const SizedBox(height: AppSpacing.blockGap),
+                AppPrimaryButton(
+                  label: 'Adicionar despesa',
+                  onPressed: () {
+                    final amountStr = amountCtrl.text.trim();
+                    final description = descCtrl.text.trim();
+                    if (amountStr.isEmpty || description.isEmpty) {
+                      AppFeedbackSnackBar.error(
+                          sheetContext, 'Preencha todos os campos');
+                      return;
+                    }
+                    try {
+                      final amount =
+                          double.parse(amountStr.replaceAll(',', '.'));
+                      final auth = outerContext.read<AuthProvider>();
+                      final expenses = outerContext.read<ExpenseProvider>();
+                      final accounts = outerContext.read<AccountProvider>();
+                      if (auth.authToken != null) {
+                        expenses
+                            .addExpense(
+                          auth.authToken!,
+                          selectedCategoryId,
+                          amount,
+                          description,
+                          selectedDate,
+                          selectedAccountId,
+                          selectedPaymentMethod,
+                          selectedStatus,
+                          false,
+                          null,
+                          null,
+                        )
+                            .then((_) async {
+                          if (!outerContext.mounted) return;
+                          AppFeedbackSnackBar.success(
+                              outerContext, 'Despesa adicionada!');
+                          if (!sheetContext.mounted) return;
+                          Navigator.pop(sheetContext);
+                          // Navegar para /accounts para ver saldo atualizado
+                          if (!outerContext.mounted) return;
+                          Navigator.pushReplacementNamed(
+                              outerContext, '/accounts');
+                        });
                       }
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 14),
-                      decoration: BoxDecoration(
-                        color: AppColors.inputFill,
-                        border:
-                            Border.all(color: AppColors.inputBorder),
-                        borderRadius: BorderRadius.circular(
-                            AppDimens.radiusInput),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.calendar_today_outlined,
-                            color: AppColors.textLabel,
-                            size: 18,
-                          ),
-                          const SizedBox(width: 12),
-                          Text(
-                            DateFormat('dd/MM/yyyy')
-                                .format(selectedDate),
-                            style: const TextStyle(
-                              color: AppColors.textDark,
-                              fontSize: 15,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  CustomButton(
-                    text: 'Adicionar despesa',
-                    onPressed: () {
-                      final amountStr = amountCtrl.text.trim();
-                      final description = descCtrl.text.trim();
-                      if (amountStr.isEmpty || description.isEmpty) {
-                        AppSnackBar.error(sheetContext,
-                            'Preencha todos os campos');
-                        return;
-                      }
-                      try {
-                        final amount = double.parse(
-                            amountStr.replaceAll(',', '.'));
-                        final auth = outerContext.read<AuthProvider>();
-                        final expenses =
-                            outerContext.read<ExpenseProvider>();
-                        final accounts =
-                            outerContext.read<AccountProvider>();
-                        if (auth.authToken != null) {
-                          expenses
-                              .addExpense(
-                            auth.authToken!,
-                            selectedCategoryId,
-                            amount,
-                            description,
-                            selectedDate,
-                            selectedAccountId,
-                            selectedPaymentMethod,
-                            selectedStatus,
-                            false,
-                            null,
-                            null,
-                          )
-                              .then((_) async {
-                            if (!outerContext.mounted) return;
-                            AppSnackBar.success(
-                                outerContext, 'Despesa adicionada!');
-                            if (!sheetContext.mounted) return;
-                            Navigator.pop(sheetContext);
-                            // Navegar para /accounts para ver saldo atualizado
-                            if (!outerContext.mounted) return;
-                            Navigator.pushReplacementNamed(
-                                outerContext, '/accounts');
-                          });
-                        }
-                      } catch (_) {
-                        AppSnackBar.error(sheetContext, 'Valor inválido');
-                      }
-                    },
-                  ),
-                ],
-              ),
+                    } catch (_) {
+                      AppFeedbackSnackBar.error(sheetContext, 'Valor inválido');
+                    }
+                  },
+                ),
+              ],
             );
           },
         );
@@ -354,10 +275,8 @@ class _ExpensesScreenState extends State<ExpensesScreen>
   }
 
   void _showEditExpenseBottomSheet(ExpenseModel expense) {
-    final descCtrl =
-        TextEditingController(text: expense.description);
-    final amountCtrl =
-        TextEditingController(text: expense.amount.toString());
+    final descCtrl = TextEditingController(text: expense.description);
+    final amountCtrl = TextEditingController(text: expense.amount.toString());
     String selectedPaymentMethod = expense.paymentMethod;
     String selectedStatus = expense.status;
     DateTime selectedDate = expense.expenseDate;
@@ -376,148 +295,98 @@ class _ExpensesScreenState extends State<ExpensesScreen>
       9: 'Diversão',
     };
 
-    showModalBottomSheet(
+    AppFormSheet.show(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(AppDimens.radiusHeroCard),
-        ),
-      ),
+      title: 'Editar Despesa',
       builder: (sheetContext) {
         return StatefulBuilder(
           builder: (innerContext, sheetSetState) {
-            return SingleChildScrollView(
-              padding: EdgeInsets.fromLTRB(
-                24, 16, 24,
-                MediaQuery.of(sheetContext).viewInsets.bottom + 24,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: AppColors.inputBorder,
-                        borderRadius:
-                            BorderRadius.circular(AppDimens.radiusFull),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  const Text(
-                    'Editar Despesa',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textDark,
-                      letterSpacing: -0.3,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  TextField(
-                    controller: amountCtrl,
-                    keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true),
-                    style: const TextStyle(
-                        color: AppColors.textDark, fontSize: 15),
-                    decoration: _inputDecoration('Valor',
-                        hint: '0,00', prefix: 'R\$ '),
-                  ),
-                  const SizedBox(height: 14),
-                  TextField(
-                    controller: descCtrl,
-                    style: const TextStyle(
-                        color: AppColors.textDark, fontSize: 15),
-                    decoration: _inputDecoration('Descrição'),
-                  ),
-                  const SizedBox(height: 14),
-                  DropdownButtonFormField<int>(
-                    value: selectedCategoryId,
-                    onChanged: (v) =>
-                        sheetSetState(() => selectedCategoryId = v!),
-                    decoration: _inputDecoration('Categoria'),
-                    style: const TextStyle(
-                        color: AppColors.textDark, fontSize: 15),
-                    items: categories.entries
-                        .map((e) => DropdownMenuItem(
-                            value: e.key, child: Text(e.value)))
-                        .toList(),
-                  ),
-                  const SizedBox(height: 14),
-                  DropdownButtonFormField<String>(
-                    value: selectedPaymentMethod,
-                    onChanged: (v) =>
-                        sheetSetState(() => selectedPaymentMethod = v!),
-                    decoration:
-                        _inputDecoration('Forma de Pagamento'),
-                    style: const TextStyle(
-                        color: AppColors.textDark, fontSize: 15),
-                    items: const [
-                      DropdownMenuItem(
-                          value: 'cash', child: Text('Dinheiro')),
-                      DropdownMenuItem(
-                          value: 'debit_card',
-                          child: Text('Cartão Débito')),
-                      DropdownMenuItem(
-                          value: 'credit_card',
-                          child: Text('Cartão Crédito')),
-                      DropdownMenuItem(
-                          value: 'transfer',
-                          child: Text('Transferência')),
-                      DropdownMenuItem(
-                          value: 'other', child: Text('Outro')),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-                  CustomButton(
-                    text: 'Salvar alterações',
-                    onPressed: () {
-                      final amountStr = amountCtrl.text.trim();
-                      final description = descCtrl.text.trim();
-                      if (amountStr.isEmpty || description.isEmpty) {
-                        AppSnackBar.error(
-                            sheetContext, 'Preencha todos os campos');
-                        return;
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                AppFormField(
+                  controller: amountCtrl,
+                  label: 'Valor',
+                  hint: '0,00',
+                  prefixText: 'R\$ ',
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                ),
+                const SizedBox(height: AppSpacing.defaultGap),
+                AppFormField(controller: descCtrl, label: 'Descrição'),
+                const SizedBox(height: AppSpacing.defaultGap),
+                AppFormDropdown<int>(
+                  label: 'Categoria',
+                  value: selectedCategoryId,
+                  onChanged: (v) =>
+                      sheetSetState(() => selectedCategoryId = v!),
+                  items: categories.entries
+                      .map((e) =>
+                          DropdownMenuItem(value: e.key, child: Text(e.value)))
+                      .toList(),
+                ),
+                const SizedBox(height: AppSpacing.defaultGap),
+                AppFormDropdown<String>(
+                  label: 'Forma de Pagamento',
+                  value: selectedPaymentMethod,
+                  onChanged: (v) =>
+                      sheetSetState(() => selectedPaymentMethod = v!),
+                  items: const [
+                    DropdownMenuItem(value: 'cash', child: Text('Dinheiro')),
+                    DropdownMenuItem(
+                        value: 'debit_card', child: Text('Cartão Débito')),
+                    DropdownMenuItem(
+                        value: 'credit_card', child: Text('Cartão Crédito')),
+                    DropdownMenuItem(
+                        value: 'transfer', child: Text('Transferência')),
+                    DropdownMenuItem(value: 'other', child: Text('Outro')),
+                  ],
+                ),
+                const SizedBox(height: AppSpacing.blockGap),
+                AppPrimaryButton(
+                  label: 'Salvar alterações',
+                  onPressed: () {
+                    final amountStr = amountCtrl.text.trim();
+                    final description = descCtrl.text.trim();
+                    if (amountStr.isEmpty || description.isEmpty) {
+                      AppFeedbackSnackBar.error(
+                          sheetContext, 'Preencha todos os campos');
+                      return;
+                    }
+                    try {
+                      final amount =
+                          double.parse(amountStr.replaceAll(',', '.'));
+                      final auth = outerContext.read<AuthProvider>();
+                      final expenseProvider =
+                          outerContext.read<ExpenseProvider>();
+                      if (auth.authToken != null) {
+                        expenseProvider
+                            .updateExpense(
+                          auth.authToken!,
+                          expense.id,
+                          selectedCategoryId,
+                          amount,
+                          description,
+                          selectedDate,
+                          selectedPaymentMethod,
+                          selectedStatus,
+                          null,
+                        )
+                            .then((_) {
+                          if (!sheetContext.mounted) return;
+                          Navigator.pop(sheetContext);
+                          if (!outerContext.mounted) return;
+                          AppFeedbackSnackBar.success(
+                              outerContext, 'Despesa atualizada!');
+                        });
                       }
-                      try {
-                        final amount = double.parse(
-                            amountStr.replaceAll(',', '.'));
-                        final auth = outerContext.read<AuthProvider>();
-                        final expenseProvider =
-                            outerContext.read<ExpenseProvider>();
-                        if (auth.authToken != null) {
-                          expenseProvider
-                              .updateExpense(
-                            auth.authToken!,
-                            expense.id,
-                            selectedCategoryId,
-                            amount,
-                            description,
-                            selectedDate,
-                            selectedPaymentMethod,
-                            selectedStatus,
-                            null,
-                          )
-                              .then((_) {
-                            if (!sheetContext.mounted) return;
-                            Navigator.pop(sheetContext);
-                            if (!outerContext.mounted) return;
-                            AppSnackBar.success(
-                                outerContext, 'Despesa atualizada!');
-                          });
-                        }
-                      } catch (_) {
-                        AppSnackBar.error(sheetContext, 'Valor inválido');
-                      }
-                    },
-                  ),
-                ],
-              ),
+                    } catch (_) {
+                      AppFeedbackSnackBar.error(sheetContext, 'Valor inválido');
+                    }
+                  },
+                ),
+              ],
             );
           },
         );
@@ -527,426 +396,168 @@ class _ExpensesScreenState extends State<ExpensesScreen>
 
   @override
   Widget build(BuildContext context) {
-    SystemChrome.setSystemUIOverlayStyle(
-      const SystemUiOverlayStyle(
-        statusBarBrightness: Brightness.light,
-        statusBarIconBrightness: Brightness.light,
-      ),
-    );
-
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: AppColors.primary,
-        elevation: 0,
-        centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded,
-              size: 20, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text(
-          'Despesas',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-            letterSpacing: -0.3,
-          ),
-        ),
+    return AppModuleScaffold(
+      header: ModuleScreenHeader(
+        title: 'Despesas',
+        subtitle: 'Acompanhe seus gastos e mantenha o controle',
+        onBack: () => Navigator.pop(context),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.trending_up_rounded,
-                color: Colors.white, size: 22),
-            onPressed: () => Navigator.pushNamed(context, '/income'),
+          ModuleHeaderAction(
+            icon: Icons.trending_up_rounded,
             tooltip: 'Receitas',
+            onPressed: () => Navigator.pushNamed(context, '/income'),
           ),
         ],
-        bottom: TabBar(
-          controller: _tabController,
-          tabs:
-              _expenseTypes.map((t) => Tab(text: t)).toList(),
-          indicatorColor: AppColors.accent,
-          indicatorWeight: 3,
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.white60,
-          labelStyle: const TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-          ),
-          unselectedLabelStyle: const TextStyle(fontSize: 13),
-        ),
       ),
-      body: Column(
+      topBar: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _buildMonthNavigator(),
-          Expanded(
-            child: Consumer<ExpenseProvider>(
-              builder: (context, expenseProvider, _) {
-                return TabBarView(
-                  controller: _tabController,
-                  children: _expenseTypes.map((type) {
-                    final filtered =
-                        _filterExpenses(expenseProvider.expenses, type);
-                    final total = filtered.fold<double>(
-                        0, (sum, e) => sum + e.amount);
-                    return _buildTabContent(filtered, total, type);
-                  }).toList(),
-                );
-              },
-            ),
+          AppSegmentedTabs(
+            controller: _tabController,
+            labels: _expenseTypes,
+          ),
+          const SizedBox(height: AppSpacing.labelGap),
+          MonthSelector(
+            month: _selectedMonth,
+            onPrevious: _previousMonth,
+            onNext: _nextMonth,
           ),
         ],
       ),
+      // Cada aba rola sozinha (TabBarView), como no legado.
+      scrollable: false,
       floatingActionButton: FloatingActionButton(
         onPressed: _showAddExpenseBottomSheet,
-        backgroundColor: AppColors.error,
-        elevation: 2,
-        child: const Icon(Icons.add, color: Colors.white),
+        tooltip: 'Adicionar despesa',
+        child: const Icon(Icons.add),
       ),
-    );
-  }
-
-  Widget _buildMonthNavigator() {
-    return Container(
-      color: AppColors.primary,
-      padding: const EdgeInsets.fromLTRB(20, 0, 20, 14),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          GestureDetector(
-            onTap: _previousMonth,
-            child: Icon(
-              Icons.chevron_left_rounded,
-              color: Colors.white.withValues(alpha: 0.80),
-              size: 26,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Text(
-            DateFormat("MMMM 'de' y", 'pt_BR').format(_selectedMonth),
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.90),
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              letterSpacing: -0.2,
-            ),
-          ),
-          const SizedBox(width: 12),
-          GestureDetector(
-            onTap: _nextMonth,
-            child: Icon(
-              Icons.chevron_right_rounded,
-              color: Colors.white.withValues(alpha: 0.80),
-              size: 26,
-            ),
-          ),
-        ],
+      child: Consumer<ExpenseProvider>(
+        builder: (context, expenseProvider, _) {
+          return TabBarView(
+            controller: _tabController,
+            children: _expenseTypes.map((type) {
+              final filtered = _filterExpenses(expenseProvider.expenses, type);
+              final total =
+                  filtered.fold<double>(0, (sum, e) => sum + e.amount);
+              return _buildTabContent(filtered, total, type);
+            }).toList(),
+          );
+        },
       ),
     );
   }
 
   Widget _buildTabContent(
       List<ExpenseModel> expenses, double total, String type) {
-    return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.all(AppDimens.paddingDefault),
+    return ModuleScrollBody(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _buildSummaryCard(total),
-          const SizedBox(height: 20),
-          _buildSectionHeader(type, expenses.length),
-          const SizedBox(height: 12),
-          if (expenses.isEmpty)
-            _buildEmptyState()
-          else
+          _buildSummaryCard(total, expenses.length, type),
+          const SizedBox(height: AppSpacing.blockGap),
+          SectionHeader(
+            title: type == 'Tudo' ? 'Todas as despesas' : type,
+            count: expenses.length,
+            accent: FinanceTone.expense.accent,
+          ),
+          const SizedBox(height: AppSpacing.itemGap),
+          if (expenses.isEmpty) ...[
+            _buildEmptyState(),
+            const SizedBox(height: AppSpacing.blockGap),
+            _buildTips(),
+          ] else
             ...expenses.map((e) => _buildExpenseCard(e)),
-          const SizedBox(height: 80),
         ],
       ),
     );
   }
 
-  Widget _buildSummaryCard(double total) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [AppColors.error, Color(0xFFDC2626)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(AppDimens.radiusCard),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.error.withValues(alpha: 0.22),
-            blurRadius: 20,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Text(
-                'Total gasto',
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.80),
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(width: 6),
-              Icon(
-                Icons.receipt_outlined,
-                color: Colors.white.withValues(alpha: 0.55),
-                size: 16,
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Text(
-            'R\$ ${total.toStringAsFixed(2).replaceAll('.', ',')}',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 28,
-              fontWeight: FontWeight.w700,
-              letterSpacing: -0.5,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSectionHeader(String title, int count) {
-    return Row(
-      children: [
-        Container(
-          width: 4,
-          height: 18,
-          decoration: BoxDecoration(
-            color: AppColors.error,
-            borderRadius: BorderRadius.circular(AppDimens.radiusFull),
-          ),
-        ),
-        const SizedBox(width: 10),
-        Text(
-          title == 'Tudo' ? 'Todas as despesas' : title,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
-            color: AppColors.textDark,
-            letterSpacing: -0.2,
-          ),
-        ),
-        if (count > 0) ...[
-          const SizedBox(width: 8),
-          Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-            decoration: BoxDecoration(
-              color: AppColors.error.withValues(alpha: 0.10),
-              borderRadius:
-                  BorderRadius.circular(AppDimens.radiusFull),
-            ),
-            child: Text(
-              '$count',
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: AppColors.error,
-              ),
-            ),
-          ),
-        ],
-      ],
+  Widget _buildSummaryCard(double total, int count, String type) {
+    return TonalSummaryCard(
+      tone: FinanceTone.expense,
+      icon: Icons.trending_down_rounded,
+      // O total e o da aba (filtrado), entao o rotulo diz de qual aba e.
+      label:
+          type == 'Tudo' ? 'Total de despesas no mês' : 'Total de $type no mês',
+      value: 'R\$ ${total.toStringAsFixed(2).replaceAll('.', ',')}',
+      caption: switch (count) {
+        0 => 'Nenhuma despesa registrada',
+        1 => '1 despesa registrada',
+        _ => '$count despesas registradas',
+      },
     );
   }
 
   Widget _buildExpenseCard(ExpenseModel expense) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(AppDimens.radiusCard),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
+    return FinanceRecordTile(
+      tone: FinanceTone.expense,
+      icon: _getCategoryIcon(expense.categoryId),
+      title: expense.description,
+      subtitle: DateFormat('dd/MM/yyyy').format(expense.expenseDate),
+      amount: 'R\$ ${expense.amount.toStringAsFixed(2).replaceAll('.', ',')}',
+      actions: [
+        IconButton(
+          tooltip: 'Editar ${expense.description}',
+          icon: const Icon(Icons.edit_outlined),
+          color: AppSemanticColors.actionPrimary,
+          onPressed: () => _showEditExpenseBottomSheet(expense),
+        ),
+        IconButton(
+          tooltip: 'Remover ${expense.description}',
+          icon: const Icon(Icons.delete_outline_rounded),
+          color: AppSemanticColors.onFeedbackError,
+          onPressed: () => AppConfirmDialog.show(
+            context,
+            title: 'Deletar despesa?',
+            message: 'Tem certeza que deseja deletar "${expense.description}"?',
+            onConfirm: () {
+              final auth = context.read<AuthProvider>();
+              if (auth.authToken != null) {
+                context
+                    .read<ExpenseProvider>()
+                    .removeExpense(auth.authToken!, expense.id);
+              }
+              AppFeedbackSnackBar.error(context, 'Despesa deletada');
+            },
           ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 52,
-            height: 52,
-            decoration: BoxDecoration(
-              color: AppColors.error.withValues(alpha: 0.08),
-              borderRadius:
-                  BorderRadius.circular(AppDimens.radiusMedium),
-            ),
-            child: Icon(
-              _getCategoryIcon(expense.categoryId),
-              color: AppColors.error,
-              size: 24,
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  expense.description,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textDark,
-                    letterSpacing: -0.1,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  DateFormat('dd/MM/yyyy').format(expense.expenseDate),
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: AppColors.textLabel,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                'R\$ ${expense.amount.toStringAsFixed(2).replaceAll('.', ',')}',
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.error,
-                  letterSpacing: -0.2,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Row(
-                children: [
-                  GestureDetector(
-                    onTap: () =>
-                        _showEditExpenseBottomSheet(expense),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary
-                            .withValues(alpha: 0.08),
-                        borderRadius: BorderRadius.circular(
-                            AppDimens.radiusFull),
-                      ),
-                      child: const Text(
-                        'Editar',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  GestureDetector(
-                    onTap: () => DeleteConfirmDialog.show(
-                      context,
-                      title: 'Deletar despesa?',
-                      message:
-                          'Tem certeza que deseja deletar "${expense.description}"?',
-                      onConfirm: () {
-                        final auth = context.read<AuthProvider>();
-                        if (auth.authToken != null) {
-                          context
-                              .read<ExpenseProvider>()
-                              .removeExpense(
-                                  auth.authToken!, expense.id);
-                        }
-                        AppSnackBar.error(
-                            context, 'Despesa deletada');
-                      },
-                    ),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: AppColors.error
-                            .withValues(alpha: 0.08),
-                        borderRadius: BorderRadius.circular(
-                            AppDimens.radiusFull),
-                      ),
-                      child: const Text(
-                        'Remover',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.error,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
   Widget _buildEmptyState() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(28),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(AppDimens.radiusCard),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: const Column(
-        children: [
-          Icon(Icons.receipt_long_outlined,
-              size: 40, color: AppColors.textSecondary),
-          SizedBox(height: 10),
-          Text(
-            'Nenhuma despesa neste mês',
-            style: TextStyle(
-              color: AppColors.textDark,
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
+    return EmptyStateCard(
+      art: const FinanceEmptyArt(tone: FinanceTone.expense),
+      title: 'Nenhuma despesa neste mês',
+      message:
+          'Registre seus gastos para acompanhar para onde seu dinheiro está indo.',
+      actionLabel: 'Adicionar despesa',
+      onAction: _showAddExpenseBottomSheet,
+      actionStyle: EmptyStateActionStyle.filled,
+    );
+  }
+
+  Widget _buildTips() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Semantics(
+          header: true,
+          child: Text(
+            'Dicas para começar',
+            style: AppTypography.headlineSmall.copyWith(
+              color: AppSemanticColors.textPrimary,
             ),
           ),
-          SizedBox(height: 4),
-          Text(
-            'Adicione suas despesas para acompanhar seus gastos',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: AppColors.textLabel,
-              fontSize: 13,
-              height: 1.4,
-            ),
-          ),
-        ],
-      ),
+        ),
+        const SizedBox(height: AppSpacing.itemGap),
+        const TipCard(
+          tone: FinanceTone.expense,
+          title: 'Categorize seus gastos',
+          message:
+              'Use categorias para entender melhor seus hábitos e identificar oportunidades de economia.',
+        ),
+      ],
     );
   }
 

@@ -200,7 +200,17 @@ Future<void> signup({
   Future<void> logout() async {
     _setLoading(true);
     try {
+      // Flush buffered behavior events before the token is cleared.
       await EventsService().flushAndClearToken();
+
+      // Registra logout no backend para o job de alertas SMS
+      if (_authToken != null) {
+        try {
+          await _apiService.post('/auth/logout', {}, token: _authToken);
+        } catch (_) {
+          // Falha silenciosa — o logout local continua mesmo se o backend não responder
+        }
+      }
 
       await _authService.signOut();
       _authToken = null;

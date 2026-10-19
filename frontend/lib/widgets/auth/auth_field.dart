@@ -1,8 +1,17 @@
 import 'package:flutter/material.dart';
-import '../../config/constants.dart';
 
-/// Campo de formulário compartilhado para telas de autenticação.
-/// Substitui _buildLabel + _inputDecoration duplicados em Login e Signup.
+import '../../theme/app_spacing.dart';
+import '../../theme/app_typography.dart';
+import '../../theme/tokens/app_colors_semantic.dart';
+
+/// Campo de formulario compartilhado para telas de autenticacao.
+///
+/// Rotulo acima, icone a esquerda e, quando [isPassword], alternancia de
+/// visibilidade a direita. Bordas, preenchimento, altura (48) e raio (12)
+/// vem do `InputDecorationTheme` de `AppTheme`, aplicado por
+/// `AppScreenScaffold`; este widget so acrescenta o que e proprio do campo.
+///
+/// Usado exclusivamente por Login, Signup e pela recuperacao de senha.
 class AuthField extends StatefulWidget {
   final String label;
   final String hint;
@@ -46,91 +55,56 @@ class _AuthFieldState extends State<AuthField> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          widget.label,
-          style: const TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w500,
-            color: AppColors.textLabel,
-            letterSpacing: 0.1,
+        // O rotulo visivel e lido junto com o campo (Semantics abaixo); sem
+        // ExcludeSemantics ele seria anunciado duas vezes.
+        ExcludeSemantics(
+          child: Text(
+            widget.label,
+            style: AppTypography.labelMedium.copyWith(
+              color: AppSemanticColors.textSecondaryStrong,
+            ),
           ),
         ),
-        const SizedBox(height: 8),
-        Focus(
-          onFocusChange: (focused) => setState(() => _isFocused = focused),
-          child: TextFormField(
-            controller: widget.controller,
-            obscureText: widget.isPassword && _obscure,
-            keyboardType: widget.keyboardType,
-            textInputAction: widget.textInputAction,
-            focusNode: widget.focusNode,
-            autofocus: widget.autofocus,
-            onEditingComplete: widget.onEditingComplete,
-            onChanged: widget.onChanged,
-            validator: widget.validator,
-            style: const TextStyle(
-              fontSize: 15,
-              color: AppColors.textDark,
-              fontWeight: FontWeight.w400,
-              height: 1.4,
-            ),
-            decoration: InputDecoration(
-              hintText: widget.hint,
-              hintStyle: const TextStyle(
-                color: AppColors.textHint,
-                fontSize: 14,
-                fontWeight: FontWeight.w400,
+        const SizedBox(height: AppSpacing.labelGap),
+        Semantics(
+          label: widget.label,
+          child: Focus(
+            onFocusChange: (focused) => setState(() => _isFocused = focused),
+            child: TextFormField(
+              controller: widget.controller,
+              obscureText: widget.isPassword && _obscure,
+              keyboardType: widget.keyboardType,
+              textInputAction: widget.textInputAction,
+              focusNode: widget.focusNode,
+              autofocus: widget.autofocus,
+              onEditingComplete: widget.onEditingComplete,
+              onChanged: widget.onChanged,
+              validator: widget.validator,
+              style: AppTypography.bodyMedium.copyWith(
+                color: AppSemanticColors.textPrimary,
               ),
-              prefixIcon: Padding(
-                padding: const EdgeInsets.only(left: 4),
-                child: Icon(
+              decoration: InputDecoration(
+                hintText: widget.hint,
+                prefixIcon: Icon(
                   widget.prefixIcon,
-                  size: 18,
-                  color: _isFocused ? AppColors.accent : AppColors.textLabel,
+                  size: AppSizes.iconMd,
+                  color: _isFocused
+                      ? AppSemanticColors.actionPrimary
+                      : AppSemanticColors.textSecondaryStrong,
                 ),
-              ),
-              suffixIcon: widget.isPassword
-                  ? IconButton(
-                      icon: Icon(
-                        _obscure
-                            ? Icons.visibility_off_outlined
-                            : Icons.visibility_outlined,
-                        size: 18,
-                        color: AppColors.textLabel,
-                      ),
-                      onPressed: () => setState(() => _obscure = !_obscure),
-                    )
-                  : null,
-              filled: true,
-              fillColor: AppColors.inputFill,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 16,
-              ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(AppDimens.radiusInput),
-                borderSide: const BorderSide(color: AppColors.inputBorder),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(AppDimens.radiusInput),
-                borderSide: const BorderSide(color: AppColors.inputBorder),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(AppDimens.radiusInput),
-                borderSide: const BorderSide(color: AppColors.accent, width: 2),
-              ),
-              errorBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(AppDimens.radiusInput),
-                borderSide: const BorderSide(color: AppColors.error),
-              ),
-              focusedErrorBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(AppDimens.radiusInput),
-                borderSide: const BorderSide(color: AppColors.error, width: 2),
-              ),
-              errorStyle: const TextStyle(
-                fontSize: 12,
-                color: AppColors.error,
-                height: 1.3,
+                suffixIcon: widget.isPassword
+                    ? IconButton(
+                        tooltip: _obscure ? 'Mostrar senha' : 'Ocultar senha',
+                        icon: Icon(
+                          _obscure
+                              ? Icons.visibility_off_outlined
+                              : Icons.visibility_outlined,
+                          size: AppSizes.iconMd,
+                          color: AppSemanticColors.textSecondaryStrong,
+                        ),
+                        onPressed: () => setState(() => _obscure = !_obscure),
+                      )
+                    : null,
               ),
             ),
           ),

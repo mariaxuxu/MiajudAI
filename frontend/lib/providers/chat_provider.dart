@@ -6,9 +6,12 @@ import '../config/event_actions.dart';
 
 class ChatProvider extends ChangeNotifier {
   final ChatService _chatService = ChatService();
+  final String agentKey;
   final List<ChatMessage> _messages = [];
   bool _isLoading = false;
   String? _error;
+
+  ChatProvider({this.agentKey = 'luna'});
 
   List<ChatMessage> get messages => List.unmodifiable(_messages);
   bool get isLoading => _isLoading;
@@ -21,16 +24,31 @@ class ChatProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // Send up to 20 previous messages as context (excluding the one just added)
       final historyToSend = _messages.length > 21
           ? _messages.sublist(_messages.length - 21, _messages.length - 1)
           : _messages.sublist(0, _messages.length - 1);
 
-      final reply = await _chatService.sendMessage(text, historyToSend, token);
-      _messages.add(ChatMessage(text: reply, isUser: false, timestamp: DateTime.now()));
+      final result = await _chatService.sendMessage(agentKey, text, historyToSend, token);
+
+      if (result.routed) {
+        _messages.add(ChatMessage(
+          text: result.routeMessage!,
+          isUser: false,
+          timestamp: DateTime.now(),
+          isRouted: true,
+          routeTarget: result.routeTarget,
+        ));
+      } else {
+        _messages.add(ChatMessage(
+          text: result.reply!,
+          isUser: false,
+          timestamp: DateTime.now(),
+        ));
+      }
+
       EventsService().publishEvent(
         EventActions.agentMessageSent,
-        metadata: {'agent_type': 'luna'},
+        metadata: {'agent_type': agentKey},
       );
     } catch (_) {
       _messages.removeLast();

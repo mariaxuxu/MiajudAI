@@ -5,12 +5,14 @@ import {
   verifyToken,
   getCurrentUser,
   updateProfile,
+  logout,
 } from '../controllers/authController.js';
 import { verifyToken as authMiddleware } from '../middleware/auth.js';
 
 const router = express.Router();
 
 router.post('/verify-token', verifyToken);
+router.post('/logout', authMiddleware, logout);
 router.get('/me', authMiddleware, getCurrentUser);
 router.put('/profile', authMiddleware, updateProfile);
 

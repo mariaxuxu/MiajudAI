@@ -1,4 +1,5 @@
 import authService from '../services/authService.js';
+import { getDatabase } from '../config/database.js';
 import { HTTP_STATUS, ERROR_MESSAGES } from '../utils/constants.js';
 
 export const verifyToken = async (req, res) => {
@@ -21,6 +22,36 @@ export const verifyToken = async (req, res) => {
     console.log(`[AUTH] ⏳ Verifying Firebase token...`);
     const decodedToken = await authService.verifyFirebaseToken(idToken);
     console.log(`[AUTH] ✅ Firebase token verified`);
+
+    if (process.env.NODE_ENV === 'development') {
+      const email = decodedToken.email || idToken;
+      const name = decodedToken.name || fullName || 'Usuário';
+
+      // Dev fallback: register/find a REAL user in the database so the JWT
+      // carries an integer user id that satisfies the foreign keys.
+      console.log(`[AUTH] ⏳ (dev) Looking up user by email: ${email}`);
+      let user = await authService.getUserByEmail(email);
+
+      if (!user) {
+        console.log(`[AUTH] ⏳ (dev) Registering new user...`);
+        user = await authService.registerUser(
+          decodedToken.uid || `dev_${Date.now()}`,
+          email,
+          name
+        );
+        console.log(`[AUTH] ✅ (dev) User registered: id=${user.id}`);
+      }
+
+      await user.update({ last_activity: new Date() });
+
+      const jwtToken = authService.generateJWT(user.id, user.email);
+
+      return res.status(HTTP_STATUS.OK).json({
+        success: true,
+        token: jwtToken,
+        user: user.toJSON(),
+      });
+    }
 
     // Register or get user (lookup by email since firebase uid can change between sessions)
     console.log(`[AUTH] ⏳ Looking up user by email: ${decodedToken.email}`);
@@ -137,6 +168,20 @@ export const getCurrentUser = async (req, res) => {
         statusCode: HTTP_STATUS.INTERNAL_SERVER_ERROR,
         message: ERROR_MESSAGES.INTERNAL_ERROR,
       },
+    });
+  }
+};
+
+export const logout = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { User } = getDatabase();
+    await User.update({ logout_at: new Date() }, { where: { id: userId } });
+    return res.status(HTTP_STATUS.OK).json({ success: true });
+  } catch (error) {
+    console.error('Logout error:', error);
+    return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+      error: { statusCode: HTTP_STATUS.INTERNAL_SERVER_ERROR, message: ERROR_MESSAGES.INTERNAL_ERROR },
     });
   }
 };

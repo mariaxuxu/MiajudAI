@@ -4,6 +4,8 @@ import { verifyToken } from '../middleware/auth.js';
 
 const router = express.Router();
 
+router.post('/message', verifyToken, chatController.sendMessage);
+// Alias legado
 router.post('/financial', verifyToken, chatController.sendMessage);
 
 export default router;
