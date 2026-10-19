@@ -22,20 +22,27 @@ const sendMessage = async (userId, agentKey = 'luna', message, history = []) => 
 
   const agent = getAgent(agentKey);
 
-  const [systemPrompt, agentContext, diaryContext] = await Promise.all([
+  // Pantry limit is tighter than the diary's 800 because the block is a flat
+  // list, not prose: ~25 items of ~15 chars fit in 400, so a typical pantry
+  // (10-20 items) lands untruncated, and a pantry large enough to overflow gets
+  // clipped rather than eating the session's context budget.
+  const [systemPrompt, agentContext, diaryContext, pantryContext] = await Promise.all([
     buildSystemPrompt(agentKey, userId),
     agent.buildContext(userId),
     userProfilePromptService.buildDiaryContext(userId, agentKey, 800),
+    userProfilePromptService.buildPantryContext(userId, agentKey, 400),
   ]);
 
   console.log(
-    `[CHAT] ✓ Prompts prontos — system=${systemPrompt.length}c, context=${agentContext.length}c, diary=${diaryContext.length}c`
+    `[CHAT] ✓ Prompts prontos — system=${systemPrompt.length}c, context=${agentContext.length}c, diary=${diaryContext.length}c, pantry=${pantryContext.length}c`
   );
 
   const messages = [{ role: 'system', content: systemPrompt }];
 
   if (history.length === 0) {
-    const contextParts = [agentContext, diaryContext].filter(Boolean).join('\n\n');
+    const contextParts = [agentContext, diaryContext, pantryContext]
+      .filter(Boolean)
+      .join('\n\n');
     if (contextParts) {
       messages.push({
         role: 'user',
