@@ -11,6 +11,7 @@ import installmentsRoutes from './installments.js';
 import fixedCostsRoutes from './fixedCosts.js';
 import userActivityRoutes from './userActivity.js';
 import userEventsRoutes from './userEvents.js';
+import pantryRoutes from './pantry.js';
 
 const router = express.Router();
 
@@ -30,5 +31,6 @@ router.use('/installments', installmentsRoutes);
 router.use('/fixed-costs', fixedCostsRoutes);
 router.use('/user-activity', userActivityRoutes);
 router.use('/user-events', userEventsRoutes);
+router.use('/pantry', pantryRoutes);
 
 export default router;
