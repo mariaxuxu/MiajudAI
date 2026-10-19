@@ -29,6 +29,7 @@ class AppModuleScaffold extends StatelessWidget {
     required this.header,
     required this.child,
     this.topBar,
+    this.bottomBar,
     this.scrollable = true,
     this.floatingActionButton,
   });
@@ -43,6 +44,11 @@ class AppModuleScaffold extends StatelessWidget {
   /// Faixa fixa entre o [header] e o [child]; recebe o gutter lateral.
   final Widget? topBar;
 
+  /// Faixa fixa abaixo de [child] (ex.: a barra de confirmar do carrinho).
+  /// Recebe o gutter lateral e sobra espaco no fim da rolagem, para o ultimo
+  /// item nao terminar escondido atras dela.
+  final Widget? bottomBar;
+
   /// Quando falso, [child] nao ganha `SingleChildScrollView`: quem o fornece
   /// cuida da rolagem (ver [ModuleScrollBody]).
   final bool scrollable;
@@ -52,11 +58,25 @@ class AppModuleScaffold extends StatelessWidget {
   /// Espaco extra no fim da rolagem: FAB (56) mais respiro.
   static const double fabClearance = 96;
 
+  /// Respiro extra no fim da rolagem quando ha [bottomBar], para o ultimo item
+  /// nao encostar na faixa fixa.
+  static const double bottomBarClearance = 24;
+
   /// Em telas estreitas o gutter cede antes do conteudo, para evitar overflow
   /// sem quebrar a composicao (mesma regra de `AppScreenScaffold`).
   static double gutterFor(double width) => width < AppBreakpoints.compact
       ? AppSpacing.screenGutter * 0.66
       : AppSpacing.screenGutter;
+
+  /// Espaco reservado no fim da rolagem: o FAB e/ou a [bottomBar] nao devem
+  /// cobrir o ultimo item.
+  double _bottomPadding() {
+    if (bottomBar != null) {
+      return AppSpacing.defaultGap + bottomBarClearance;
+    }
+    if (floatingActionButton != null) return fabClearance;
+    return AppSpacing.defaultGap;
+  }
 
   static const SystemUiOverlayStyle _overlayStyle = SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
@@ -73,6 +93,12 @@ class AppModuleScaffold extends StatelessWidget {
         child: Scaffold(
           backgroundColor: AppSemanticColors.background,
           floatingActionButton: floatingActionButton,
+          // A barra fica no `bottomNavigationBar` (e nao dentro do corpo) para
+          // que um snackbar flutuante empilhe ACIMA dela: como o Scaffold
+          // reserva o espaco, o feedback nunca cobre o botao de confirmar.
+          bottomNavigationBar: bottomBar == null
+              ? null
+              : _BottomBarSlot(child: bottomBar!),
           body: Stack(
             children: [
               const Positioned.fill(child: AppBackdrop()),
@@ -119,9 +145,7 @@ class AppModuleScaffold extends StatelessWidget {
                                         gutter,
                                         AppSpacing.defaultGap,
                                         gutter,
-                                        floatingActionButton != null
-                                            ? fabClearance
-                                            : AppSpacing.defaultGap,
+                                        _bottomPadding(),
                                       ),
                                       child: child,
                                     )
@@ -136,6 +160,50 @@ class AppModuleScaffold extends StatelessWidget {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Casca da faixa [AppModuleScaffold.bottomBar] no `bottomNavigationBar`:
+/// aplica o gutter lateral, centraliza no mesmo [AppBreakpoints.maxContentWidth]
+/// do corpo e mantem o fundo do scaffold.
+class _BottomBarSlot extends StatelessWidget {
+  const _BottomBarSlot({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return ColoredBox(
+      color: AppSemanticColors.background,
+      child: SafeArea(
+        top: false,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final gutter = AppModuleScaffold.gutterFor(constraints.maxWidth);
+
+            return Padding(
+              padding: EdgeInsets.fromLTRB(
+                gutter,
+                AppSpacing.itemGap,
+                gutter,
+                AppSpacing.defaultGap,
+              ),
+              // `heightFactor: 1` faz a faixa ter exatamente a altura do
+              // conteudo; sem ele o Center expandiria e cobriria o corpo.
+              child: Center(
+                heightFactor: 1,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(
+                    maxWidth: AppBreakpoints.maxContentWidth,
+                  ),
+                  child: child,
+                ),
+              ),
+            );
+          },
         ),
       ),
     );

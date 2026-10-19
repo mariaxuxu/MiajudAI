@@ -16,6 +16,7 @@ import 'providers/chat_provider.dart';
 import 'providers/installment_provider.dart';
 import 'providers/fixed_cost_provider.dart';
 import 'providers/diary_provider.dart';
+import 'providers/pantry_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -65,6 +66,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         ChangeNotifierProvider(create: (_) => InstallmentProvider()),
         ChangeNotifierProvider(create: (_) => FixedCostProvider()),
         ChangeNotifierProvider(create: (_) => DiaryProvider()),
+        ChangeNotifierProvider(create: (_) => PantryProvider()),
       ],
       child: MaterialApp(
         title: 'MiAjudAI',

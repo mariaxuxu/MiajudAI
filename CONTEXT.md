@@ -13,7 +13,7 @@ A person living alone who uses MiAjudAI for financial tracking, calendar organiz
 _Avoid_: Client, account, person
 
 **Agent**:
-A specialized LLM personality (Otto for cooking, Luna for finances, Tina for household management) with domain-specific system prompts and access to user context.
+A specialized LLM personality (Otto for cooking, Luna for finances, Tina for household management) with domain-specific system prompts and access to user context. Otto receives only `food` Pantry Items, Tina only `domestic`; Luna receives none.
 _Avoid_: Bot, AI, chatbot, assistant
 
 **User Context** (Context):
@@ -63,6 +63,26 @@ _Avoid_: Appointment, task, reminder
 **Notification**:
 Push or local alert triggered on event date; stored as per-event preference in calendar_events table.
 _Avoid_: Alert, reminder, trigger
+
+---
+
+### Pantry (Despensa)
+
+**Pantry Item**:
+A catalog entry (name, emoji, domain) describing something a user can keep at home; the catalog is global — shared by every user, extensible by any of them — and create-only.
+_Avoid_: Catalog item, product, ingredient
+
+**Pantry** (Despensa):
+A user's own list of Pantry Items, each with its own quantity. "Despensa" is the user-facing screen name.
+_Avoid_: Inventory, stock, cupboard, larder
+
+**Quantity**:
+The count of packs a user holds of a Pantry Item. A plain whole number with no unit of measure; pack weight is not modelled and is never inferred.
+_Avoid_: Amount, weight, volume, measure
+
+**Domain**:
+The Pantry Item attribute — `food` or `domestic` — that routes an item to the agent that needs it. These values are shared with the diary-tag vocabulary and the agent→tag mapping, not a parallel set.
+_Avoid_: Category, type, kind, cooking, cleaning
 
 ---
 
@@ -125,7 +145,7 @@ Agent-specific instruction template injected into LLM request; establishes perso
 _Avoid_: Instructions, template, prompt (when specificity matters)
 
 **Context Injection**:
-Process of embedding user's financial records and preferences as hidden system messages in first LLM request of session; allows agent memorization without exposing raw data to user.
+Process of embedding user records and preferences as hidden system messages in first LLM request of session; allows agent memorization without exposing raw data to user. The Pantry rides inside this same once-per-session bundle, alongside the agent's own context and the diary context.
 _Avoid_: Context passing, data embedding
 
 **Token Counting**:
@@ -261,7 +281,7 @@ _Avoid_: Marketplace, booking platform, service platform (generic)
 ### Backend
 - **Runtime**: Node.js 18.0+
 - **Framework**: Express.js 4.18.2
-- **ORM**: Sequelize 6.35.2, Prisma 7.8.0
+- **ORM**: Sequelize 6.35.2 (Sequelize is the only ORM)
 - **Database**: PostgreSQL 14
 - **Auth**: firebase-admin 12.1.0, jsonwebtoken 9.0.2
 - **LLM**: openai SDK 4.52.7 (OpenAI/Grok-compatible), @anthropic-ai/sdk 0.9.1
@@ -324,6 +344,8 @@ _Avoid_: Marketplace, booking platform, service platform (generic)
 | `llm_conversations` | Session metadata (user_id, agent_type, expires_at) |
 | `messages` | Individual messages (conversation_id, sender_type, content, tokens_used) |
 | `emergency_contacts` | Phone numbers, verification status |
+| `pantry_items` | Global Pantry Item catalog (name, emoji, domain); shared across users, no owner |
+| `user_pantry` | A user's Pantry: one row per owned Pantry Item, with Quantity (pack count) |
 | `security_logs` | Authentication events, IP addresses, activity audit |
 
 ---
@@ -376,9 +398,9 @@ curl http://localhost:5000/health  # API readiness probe
 | **Firebase Auth** | Native OAuth (Google/Apple), no password management, Flutter integration native |
 | **Grok LLM** | OpenAI-compatible API, cost-efficient, ~850ms response, easy fallback to Claude |
 | **7-day retention** | Token economy vs context richness; daily extraction builds persona |
-| **Hidden context injection** | First message embeds financial data as system message; reduces token leakage to user |
+| **Hidden context injection** | First message embeds the user's agent, diary, and Pantry context as system messages; reduces token leakage to user |
 | **Oracle Cloud Free Tier** | Zero-cost startup infrastructure with permanent uptime guarantee |
-| **Dual ORM ready** | Sequelize + Prisma setup provides migration flexibility |
+| **Single ORM** | Sequelize is the only ORM; migrations run through Umzug (`npm run migrate`) |
 
 ---
 
@@ -392,6 +414,6 @@ curl http://localhost:5000/health  # API readiness probe
 
 ---
 
-**Last Updated**: August 22, 2026
-**Status**: MVP (Épicos 1-6) in development; Phase 2 roadmap (Profile Tracking, Analytics, Emergency SMS, MiAjudAki) defined
+**Last Updated**: October 19, 2026
+**Status**: MVP (Épicos 1-6) in development; Phase 2 roadmap (Profile Tracking, Analytics, Emergency SMS, MiAjudAki) defined; Despensa (Pantry) shipped and feeding Otto/Tina context
 **Audience**: Development team, stakeholders, new contributors

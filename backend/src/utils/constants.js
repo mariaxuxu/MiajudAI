@@ -104,3 +104,23 @@ export const DATE_FORMATS = {
   DISPLAY: 'DD/MM/YYYY',
   DISPLAY_TIME: 'DD/MM/YYYY HH:mm',
 };
+
+// Pantry domains. These reuse the vocabulary already present in
+// userActivityService's ALLOWED_TAGS and the agent→tag map in
+// userProfilePromptService (otto→food, tina→domestic).
+export const PANTRY_DOMAINS = {
+  FOOD: 'food',
+  DOMESTIC: 'domestic',
+};
+
+export const PANTRY_DOMAIN_VALUES = Object.values(PANTRY_DOMAINS);
+
+// Emoji a catalog item gets when the user does not pick one. Creation is a
+// two-field operation (name + domain); there is no emoji picker, and no image
+// upload anywhere in this feature.
+export const PANTRY_DOMAIN_DEFAULT_EMOJI = {
+  [PANTRY_DOMAINS.FOOD]: '🍽️',
+  [PANTRY_DOMAINS.DOMESTIC]: '🧹',
+};
+
+export const PANTRY_ITEM_NAME_MAX_LENGTH = 100;
