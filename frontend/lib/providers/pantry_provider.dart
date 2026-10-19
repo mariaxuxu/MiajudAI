@@ -70,6 +70,44 @@ class PantryProvider extends ChangeNotifier {
     }
   }
 
+  /// Creates a global catalog item and makes it selectable right away.
+  ///
+  /// The item added is the one the SERVER returned, not one rebuilt here: the
+  /// emoji is assigned server-side from the domain, and a local guess would
+  /// render differently from what a reload shows. It is INSERTED into the
+  /// already-loaded [_catalog] in name order — the same order `GET
+  /// /pantry/items` returns — instead of reloading it, so the item is
+  /// selectable in the CURRENT open AND sits where a reload would put it.
+  ///
+  /// Returns whether the item was created, so the sheet can tell success from
+  /// a failure; the error itself stays in [error], as in [adjustQuantity].
+  Future<bool> createItem(String token, String name, String domain) async {
+    _clearError();
+
+    try {
+      final item = await _pantryService.createItem(token, name, domain);
+      final index = _catalog.indexWhere(
+        (existing) =>
+            existing.name.toLowerCase().compareTo(item.name.toLowerCase()) > 0,
+      );
+      if (index == -1) {
+        _catalog.add(item);
+      } else {
+        _catalog.insert(index, item);
+      }
+      EventsService().publishEvent(
+        EventActions.pantryItemCreated,
+        metadata: {'item_id': item.id, 'domain': item.domain},
+      );
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _setError('Não foi possível criar o item.');
+      notifyListeners();
+      return false;
+    }
+  }
+
   /// Sets [quantity] for a pantry row. Reaching 0 removes the item and
   /// publishes a `pantry_item_removed` event; individual taps do not.
   Future<void> adjustQuantity(String token, int itemId, int quantity) async {

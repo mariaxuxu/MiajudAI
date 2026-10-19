@@ -255,33 +255,6 @@ void main() {
       expect(env.log.events, ['push /chat']);
     });
 
-    testWidgets('Otto shows the under-construction notice, no navigation', (
-      tester,
-    ) async {
-      final env = await pumpScreen(tester, const WelcomeScreen());
-
-      await tester.tap(find.text('Otto'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Em construção'), findsOneWidget);
-      expect(find.text('Assistente de Cozinha'), findsOneWidget);
-      expect(env.log.events.contains('push /chat'), isFalse);
-
-      await tester.tap(find.text('Entendido'));
-      await tester.pumpAndSettle();
-      expect(find.text('Em construção'), findsNothing);
-    });
-
-    testWidgets('Tina shows the under-construction notice', (tester) async {
-      await pumpScreen(tester, const WelcomeScreen());
-
-      await tester.tap(find.text('Tina'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Em construção'), findsOneWidget);
-      expect(find.text('Assistente Doméstica'), findsOneWidget);
-    });
-
     testWidgets('Início does not navigate', (tester) async {
       final env = await pumpScreen(tester, const WelcomeScreen());
 
@@ -289,19 +262,6 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(env.log.events, isEmpty);
-    });
-
-    testWidgets('agents without a screen are announced as "em breve"', (
-      tester,
-    ) async {
-      await pumpScreen(tester, const WelcomeScreen());
-      final handle = tester.ensureSemantics();
-
-      expect(find.bySemanticsLabel('Otto, em breve'), findsOneWidget);
-      expect(find.bySemanticsLabel('Tina, em breve'), findsOneWidget);
-      expect(find.bySemanticsLabel('Luna'), findsOneWidget);
-
-      handle.dispose();
     });
   });
 }

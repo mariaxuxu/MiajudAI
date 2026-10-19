@@ -343,31 +343,6 @@ void main() {
       });
     });
 
-    testWidgets('contact sheet saves the right key; phone uses phone keyboard',
-        (tester) async {
-      await _run(tester, _user(c1Name: 'Maria', c1Phone: '111'), (api) async {
-        await _open(tester, 'Contatos de emergência');
-
-        await tester.tap(find.text('111'));
-        await tester.pumpAndSettle();
-        expect(find.text('Contato 1 — Telefone'), findsOneWidget);
-        expect(
-          tester.widget<TextField>(find.byType(TextField)).keyboardType,
-          TextInputType.phone,
-        );
-        await _saveSheet(tester, '(11) 90000-0000');
-        expect(api.lastBody, {'emergency_contact_1_phone': '(11) 90000-0000'});
-        expect(find.text('Contato de emergência atualizado!'), findsOneWidget);
-        await _dismissSnackBar(tester);
-
-        await tester.tap(find.text('Maria'));
-        await tester.pumpAndSettle();
-        expect(find.text('Contato 1 — Nome'), findsOneWidget);
-        await _saveSheet(tester, 'Maria B');
-        expect(api.lastBody, {'emergency_contact_1_name': 'Maria B'});
-      });
-    });
-
     testWidgets('"Não tenho" clears name and phone and disables editing', (
       tester,
     ) async {

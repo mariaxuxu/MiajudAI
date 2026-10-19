@@ -25,6 +25,7 @@ class FakePantryProvider extends ChangeNotifier implements PantryProvider {
         String commitKey,
         List<({int itemId, int quantity})> items,
       })> commitCalls = [];
+  final List<({String token, String name, String domain})> createCalls = [];
 
   @override
   bool isLoading = false;
@@ -54,6 +55,28 @@ class FakePantryProvider extends ChangeNotifier implements PantryProvider {
       if (entry.itemId == itemId) return entry.quantity;
     }
     return 0;
+  }
+
+  @override
+  Future<bool> createItem(String token, String name, String domain) async {
+    createCalls.add((token: token, name: name, domain: domain));
+    // Reproduz a INSERCAO em ordem do provider real: as telas dependem de um
+    // item novo ficar selecionavel sem reload. O append sem posicao, a
+    // publicacao do evento e o emoji do servidor sao asseverados em
+    // `pantry_provider_test.dart` — este fake prova que a TELA pede a criacao.
+    final index = catalogItems.indexWhere(
+      (existing) =>
+          existing.name.toLowerCase().compareTo(name.toLowerCase()) > 0,
+    );
+    if (index == -1) {
+      catalogItems.add(fakePantryItem(id: -1, name: name, domain: domain));
+    } else {
+      catalogItems.insert(
+        index,
+        fakePantryItem(id: -1, name: name, domain: domain),
+      );
+    }
+    return true;
   }
 
   @override

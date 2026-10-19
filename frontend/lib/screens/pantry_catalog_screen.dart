@@ -6,10 +6,16 @@ import '../models/pantry_item_model.dart';
 import '../providers/auth_provider.dart';
 import '../providers/pantry_provider.dart';
 import '../theme/app_spacing.dart';
+import '../theme/app_typography.dart';
 import '../theme/tokens/app_colors_semantic.dart';
 import '../widgets/common/app_feedback_snackbar.dart';
+import '../widgets/common/app_form_dropdown.dart';
+import '../widgets/common/app_form_field.dart';
+import '../widgets/common/app_form_sheet.dart';
 import '../widgets/common/app_module_scaffold.dart';
+import '../widgets/common/app_primary_button.dart';
 import '../widgets/common/empty_state_card.dart';
+import '../widgets/common/module_header_action.dart';
 import '../widgets/common/module_screen_header.dart';
 import '../widgets/diary/category_chips.dart';
 import '../widgets/pantry/cart_confirm_bar.dart';
@@ -95,6 +101,62 @@ class _PantryCatalogScreenState extends State<PantryCatalogScreen> {
     });
   }
 
+  Future<void> _showCreateItemSheet() {
+    // A sheet e uma rota: o corpo dela precisa de um widget com estado PROPRIO
+    // (o `StatefulBuilder` nao tem `dispose`, e o controller seria descartado
+    // enquanto a animacao de saida ainda desenha o campo).
+    //
+    // O catalogo vai como uma COPIA: nada muda a lista enquanto a sheet esta
+    // aberta (criar fecha a sheet), entao nao ha por que a sheet ler o provider
+    // pelo contexto da rota dela — as leituras de estado ficam todas aqui.
+    return AppFormSheet.show(
+      context: context,
+      title: 'Novo item',
+      builder: (sheetContext) => _CreateItemSheet(
+        catalog: context.read<PantryProvider>().catalog,
+        onSubmit: (name, domain) => _submitCreate(sheetContext, name, domain),
+        onUseExisting: (item) => _useExisting(sheetContext, item),
+      ),
+    );
+  }
+
+  /// Adiciona um item a compra atual: fecha a sheet de criacao e conta 1
+  /// pacote do item sugerido. "Usar esse" nesta tela significa usar na compra
+  /// de hoje — a barra de confirmar mostra o efeito na hora.
+  void _useExisting(BuildContext sheetContext, PantryItem item) {
+    Navigator.pop(sheetContext);
+    _increment(item);
+    AppFeedbackSnackBar.success(context, '${item.name} entrou na compra.');
+  }
+
+  /// Cria o item e fecha a sheet. Uma falha mantem a sheet aberta com o texto
+  /// intacto, para o usuario tentar de novo — o erro fica no provider.
+  Future<void> _submitCreate(
+    BuildContext sheetContext,
+    String rawName,
+    String domain,
+  ) async {
+    final name = rawName.trim();
+    if (name.isEmpty) {
+      AppFeedbackSnackBar.error(sheetContext, 'Digite o nome do item');
+      return;
+    }
+
+    final token = context.read<AuthProvider>().authToken;
+    if (token == null) return;
+
+    final created =
+        await context.read<PantryProvider>().createItem(token, name, domain);
+
+    if (created) {
+      Navigator.pop(sheetContext);
+      if (!mounted) return;
+      AppFeedbackSnackBar.success(context, '$name foi criado.');
+    } else if (sheetContext.mounted) {
+      AppFeedbackSnackBar.error(sheetContext, 'Não foi possível criar o item.');
+    }
+  }
+
   Future<void> _confirm() async {
     final token = context.read<AuthProvider>().authToken;
     if (token == null || _cart.isEmpty || _isCommitting) return;
@@ -134,6 +196,13 @@ class _PantryCatalogScreenState extends State<PantryCatalogScreen> {
         title: 'Catálogo',
         subtitle: 'O que você está comprando hoje',
         onBack: () => Navigator.pop(context),
+        actions: [
+          ModuleHeaderAction(
+            icon: Icons.add_rounded,
+            tooltip: 'Criar item',
+            onPressed: _showCreateItemSheet,
+          ),
+        ],
       ),
       bottomBar: CartConfirmBar(
         itemCount: _itemCount,
@@ -228,6 +297,184 @@ class _PantryCatalogScreenState extends State<PantryCatalogScreen> {
       cartQuantity: cartQuantity,
       onIncrement: () => _increment(item),
       onDecrement: cartQuantity == 0 ? null : () => _decrement(item),
+    );
+  }
+}
+
+/// Corpo da sheet de criacao: nome + categoria, com o gate de sugestao.
+///
+/// E um `StatefulWidget` (nao um `StatefulBuilder`) porque o controller do
+/// nome precisa de `dispose` no tempo certo — a sheet e uma rota, e o ultimo
+/// frame da animacao de saida ainda desenha o campo.
+class _CreateItemSheet extends StatefulWidget {
+  const _CreateItemSheet({
+    required this.catalog,
+    required this.onSubmit,
+    required this.onUseExisting,
+  });
+
+  /// O catalogo ja carregado, sobre o qual o match de duplicata roda. Passado
+  /// do corpo da tela: a sheet NAO le o provider pelo proprio contexto de rota.
+  final List<PantryItem> catalog;
+
+  final void Function(String name, String domain) onSubmit;
+  final ValueChanged<PantryItem> onUseExisting;
+
+  @override
+  State<_CreateItemSheet> createState() => _CreateItemSheetState();
+}
+
+class _CreateItemSheetState extends State<_CreateItemSheet> {
+  final TextEditingController _nameCtrl = TextEditingController();
+  String _domain = PantryDomain.food.value;
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    super.dispose();
+  }
+
+  /// Candidatos do catalogo JA carregado que parecem o nome digitado. Sem
+  /// requisicao: e o mesmo conjunto em memoria que a busca da tela filtra.
+  /// Casa nos dois sentidos ("arroz" acha "Arroz Integral" e vice-versa) e
+  /// ignora acento e caixa, para "Feijao" ainda achar "Feijão". Abaixo de 3
+  /// letras e ruido demais para sugerir.
+  List<PantryItem> _matches() {
+    final query = _normalize(_nameCtrl.text);
+    if (query.length < 3) return const [];
+
+    return widget.catalog
+        .where(
+          (item) =>
+              _normalize(item.name).contains(query) ||
+              query.contains(_normalize(item.name)),
+        )
+        .toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<TextEditingValue>(
+      valueListenable: _nameCtrl,
+      builder: (context, _, __) {
+        final matches = _matches();
+
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            AppFormField(
+              controller: _nameCtrl,
+              label: 'Nome do item',
+              hint: 'Ex: Chimichurri',
+              isRequired: true,
+              autofocus: true,
+            ),
+            const SizedBox(height: AppSpacing.defaultGap),
+            AppFormDropdown<String>(
+              label: 'Categoria',
+              value: _domain,
+              onChanged: (v) => setState(() => _domain = v!),
+              items: [
+                for (final domain in PantryDomain.values)
+                  DropdownMenuItem(
+                    value: domain.value,
+                    child: Text(domain.label),
+                  ),
+              ],
+            ),
+            if (matches.isEmpty) ...[
+              const SizedBox(height: AppSpacing.blockGap),
+              AppPrimaryButton(
+                label: 'Criar item',
+                onPressed: () => widget.onSubmit(_nameCtrl.text, _domain),
+              ),
+            ] else ...[
+              const SizedBox(height: AppSpacing.defaultGap),
+              _ExistingMatches(
+                matches: matches,
+                onUse: widget.onUseExisting,
+              ),
+              const SizedBox(height: AppSpacing.blockGap),
+              // O gate: com um parecido em tela, a acao primaria de criar some
+              // e so a confirmacao explicita de que o item e novo cria — em
+              // botao secundario, para nao convidar ao toque. Um aviso que
+              // ainda deixasse criar nao cumpriria o ticket.
+              OutlinedButton(
+                onPressed: () => widget.onSubmit(_nameCtrl.text, _domain),
+                child: const Text('É um item novo — criar'),
+              ),
+            ],
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// Minusculas sem acento, para o match nao depender de como o usuario digitou
+/// uma palavra que o catalogo guarda acentuada.
+String _normalize(String value) {
+  const from = 'áàâãäéèêëíìîïóòôõöúùûüç';
+  const to = 'aaaaaeeeeiiiiooooouuuuc';
+
+  final buffer = StringBuffer();
+  for (final char in value.trim().toLowerCase().split('')) {
+    final index = from.indexOf(char);
+    buffer.write(index == -1 ? char : to[index]);
+  }
+  return buffer.toString();
+}
+
+/// Sugestoes de itens ja existentes para quem esta criando um parecido.
+///
+/// Cada linha leva o item para a COMPRA atual e abandona a criacao — e a
+/// alternativa a duplicar o catalogo com uma variacao de escrita.
+class _ExistingMatches extends StatelessWidget {
+  const _ExistingMatches({required this.matches, required this.onUse});
+
+  final List<PantryItem> matches;
+  final ValueChanged<PantryItem> onUse;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Já existe algo parecido — usar esse?',
+          style: AppTypography.labelMedium.copyWith(
+            color: AppSemanticColors.textSecondaryStrong,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.labelGap),
+        for (final item in matches) _buildMatch(context, item),
+      ],
+    );
+  }
+
+  Widget _buildMatch(BuildContext context, PantryItem item) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.labelGap),
+      child: OutlinedButton(
+        onPressed: () => onUse(item),
+        child: Row(
+          children: [
+            ExcludeSemantics(
+              child: Text(item.emoji, style: const TextStyle(fontSize: 20)),
+            ),
+            const SizedBox(width: AppSpacing.labelGap),
+            Expanded(
+              child: Text(
+                item.name,
+                textAlign: TextAlign.start,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const Icon(Icons.add_rounded, size: AppSizes.iconMd),
+          ],
+        ),
+      ),
     );
   }
 }

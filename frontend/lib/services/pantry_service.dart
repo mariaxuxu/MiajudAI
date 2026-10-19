@@ -6,6 +6,7 @@ import 'api_service.dart';
 ///
 /// Espelha os contratos do backend:
 ///  - `GET /pantry/items`      → o catalogo global
+///  - `POST /pantry/items`     → cria um item global a partir de `name` + `domain`
 ///  - `GET /pantry`            → as linhas do usuario (cada uma com seu item)
 ///  - `PATCH /pantry`          → define a quantidade; 0 remove a linha
 ///  - `POST /pantry/commit`    → incrementa o carrinho num lote idempotente
@@ -18,6 +19,23 @@ class PantryService {
     return items
         .map((i) => PantryItem.fromJson(i as Map<String, dynamic>))
         .toList();
+  }
+
+  /// Creates a GLOBAL catalog item from a [name] and a [domain]. The client
+  /// never sends an emoji: the backend assigns the domain's default one and
+  /// returns the row. There is no uniqueness check — the duplicate gate lives
+  /// in the UI (see the catalog screen).
+  Future<PantryItem> createItem(
+    String token,
+    String name,
+    String domain,
+  ) async {
+    final response = await _apiService.post(
+      '/pantry/items',
+      {'name': name, 'domain': domain},
+      token: token,
+    );
+    return PantryItem.fromJson(response['item'] as Map<String, dynamic>);
   }
 
   Future<List<PantryEntry>> getPantry(String token) async {

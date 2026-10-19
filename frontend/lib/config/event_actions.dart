@@ -17,6 +17,7 @@ class EventActions {
   static const String calendarEventCreated = 'calendar_event_created';
   static const String agentMessageSent = 'agent_message_sent';
   static const String emergencyContactAdded = 'emergency_contact_added';
+  static const String pantryItemCreated = 'pantry_item_created';
   static const String pantryItemRemoved = 'pantry_item_removed';
   static const String pantryCommit = 'pantry_commit';
 }

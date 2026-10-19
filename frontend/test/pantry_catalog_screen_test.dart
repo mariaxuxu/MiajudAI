@@ -270,4 +270,106 @@ void main() {
       expect(fake.quantityOf(10), 3);
     });
   });
+
+  group('creating an item from the catalog', () {
+    /// Abre a sheet pelo "+" do cabecalho.
+    Future<void> openSheet(WidgetTester tester) async {
+      await tester.tap(find.byTooltip('Criar item'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('the header offers the create action', (tester) async {
+      await _pump(tester, catalog: _catalog());
+
+      expect(find.byTooltip('Criar item'), findsOneWidget);
+    });
+
+    testWidgets('a genuinely new name creates with name and domain',
+        (tester) async {
+      final fake = await _pump(tester, catalog: _catalog());
+
+      await openSheet(tester);
+      await tester.enterText(find.byType(TextField).last, 'Chimichurri');
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Criar item'));
+      await tester.pumpAndSettle();
+
+      final call = fake.createCalls.single;
+      expect(call.token, 'test-token');
+      expect(call.name, 'Chimichurri');
+      expect(call.domain, 'food');
+      expect(find.text('Chimichurri foi criado.'), findsOneWidget);
+    });
+
+    testWidgets('an empty name is refused before it reaches the provider',
+        (tester) async {
+      final fake = await _pump(tester, catalog: _catalog());
+
+      await openSheet(tester);
+      await tester.tap(find.widgetWithText(FilledButton, 'Criar item'));
+      await tester.pumpAndSettle();
+
+      expect(fake.createCalls, isEmpty);
+      expect(find.text('Digite o nome do item'), findsOneWidget);
+    });
+
+    testWidgets('a near match surfaces a suggestion and the gate REPLACES '
+        'the create button', (tester) async {
+      await _pump(tester, catalog: _catalog());
+
+      await openSheet(tester);
+      await tester.enterText(find.byType(TextField).last, 'Arroz');
+      await tester.pumpAndSettle();
+
+      // O de sempre sumiu; sobrou so a confirmacao explicita de que e novo.
+      expect(find.text('Criar item'), findsNothing);
+      expect(find.widgetWithText(OutlinedButton, 'É um item novo — criar'),
+          findsOneWidget);
+      expect(find.text('Já existe algo parecido — usar esse?'), findsOneWidget);
+    });
+
+    testWidgets('with a near match on screen, the plain create is gone — '
+        'submitting requires the explicit confirm', (tester) async {
+      final fake = await _pump(tester, catalog: _catalog());
+
+      await openSheet(tester);
+      await tester.enterText(find.byType(TextField).last, 'Arroz');
+      await tester.pumpAndSettle();
+
+      // Nada de "Criar item" com um parecido em tela: o gate e real.
+      expect(find.widgetWithText(FilledButton, 'Criar item'), findsNothing);
+      expect(fake.createCalls, isEmpty);
+    });
+
+    testWidgets('matching ignores case and accents', (tester) async {
+      await _pump(tester, catalog: _catalog());
+
+      await openSheet(tester);
+      // "feijao" (sem til) tem de achar "Feijão".
+      await tester.enterText(find.byType(TextField).last, 'feijao');
+      await tester.pumpAndSettle();
+
+      expect(find.text('Já existe algo parecido — usar esse?'), findsOneWidget);
+    });
+
+    testWidgets('tapping a suggestion uses that item and abandons creation',
+        (tester) async {
+      final fake = await _pump(tester, catalog: _catalog());
+
+      await openSheet(tester);
+      await tester.enterText(find.byType(TextField).last, 'Arroz');
+      await tester.pumpAndSettle();
+
+      // A sugestao nomeia o item existente; toca-la escolhe ELE.
+      await tester.tap(
+        find.widgetWithText(OutlinedButton, 'Arroz').first,
+      );
+      await tester.pumpAndSettle();
+
+      // Nada foi criado...
+      expect(fake.createCalls, isEmpty);
+      // ...e o arroz entrou na compra (1 item · 1 pacote).
+      expect(find.text('1 item · 1 pacote'), findsOneWidget);
+    });
+  });
 }
