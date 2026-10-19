@@ -81,6 +81,24 @@ class ApiService {
     }
   }
 
+  Future<dynamic> patch(String endpoint, dynamic data, {String? token}) async {
+    try {
+      final headers = _buildHeaders(token);
+      final response = await http
+          .patch(
+            Uri.parse('$baseUrl$endpoint'),
+            headers: headers,
+            body: jsonEncode(data),
+          )
+          .timeout(const Duration(milliseconds: ApiConfig.connectionTimeout));
+
+      return _handleResponse(response);
+    } catch (e) {
+      print('DEBUG API ERROR: Request failed - $e');
+      rethrow;
+    }
+  }
+
   Future<dynamic> delete(String endpoint, {String? token}) async {
     try {
       final headers = _buildHeaders(token);

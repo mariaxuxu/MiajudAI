@@ -14,6 +14,8 @@ import '../screens/chat/agent_chat_screen.dart';
 import '../theme/tokens/app_colors_semantic.dart';
 import '../screens/invoice_dashboard_screen.dart';
 import '../screens/diary_screen.dart';
+import '../screens/pantry_screen.dart';
+import '../screens/pantry_catalog_screen.dart';
 
 class AppRoutes {
   static const String splash = '/';
@@ -32,6 +34,8 @@ class AppRoutes {
   static const String chat = '/chat';
   static const String invoiceDashboard = '/invoice-dashboard';
   static const String diary = '/diary';
+  static const String pantry = '/pantry';
+  static const String pantryCatalog = '/pantry/catalog';
 
   static Map<String, WidgetBuilder> routes = {
     splash: (context) => const SplashScreen(),
@@ -50,6 +54,8 @@ class AppRoutes {
     '/chat/otto': (context) => const AgentChatScreen(agent: AppAgent.otto),
     '/chat/tina': (context) => const AgentChatScreen(agent: AppAgent.tina),
     invoiceDashboard: (context) => const InvoiceDashboardScreen(),
-    diary: (context) => const DiaryScreen()
+    diary: (context) => const DiaryScreen(),
+    pantry: (context) => const PantryScreen(),
+    pantryCatalog: (context) => const PantryCatalogScreen(),
   };
 }
