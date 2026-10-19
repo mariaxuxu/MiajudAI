@@ -96,6 +96,24 @@ describe('pantryService', () => {
     });
   });
 
+  describe('getCatalogItems', () => {
+    it('orders by name so every client-side domain view stays alphabetical', async () => {
+      const items = [makeItem({ name: 'Arroz' })];
+      const findAll = jest.fn().mockResolvedValue(items);
+      getDatabase.mockReturnValue({ PantryItem: { findAll } });
+
+      const result = await pantryService.getCatalogItems();
+
+      expect(findAll).toHaveBeenCalledTimes(1);
+      const [args] = findAll.mock.calls[0];
+      // Ordering by domain first would split "Todos" into two blocks; the
+      // client filters by domain locally, so a plain name sort covers all
+      // three views.
+      expect(args.order).toEqual([['name', 'ASC']]);
+      expect(result).toBe(items);
+    });
+  });
+
   describe('getUserPantry', () => {
     it('reads only the authenticated user rows, with catalog details attached', async () => {
       const rows = [makeRow({ PantryItem: makeItem() })];

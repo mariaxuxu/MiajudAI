@@ -5,13 +5,13 @@ import {
   PANTRY_ITEM_NAME_MAX_LENGTH,
 } from '../utils/constants.js';
 
+// Alphabetical by name. The client filters by domain locally, so a subset
+// (Cozinha / Doméstico) stays alphabetical too — ordering by domain first
+// would instead split "Todos" into two blocks instead of one A→Z list.
 export const getCatalogItems = async () => {
   const { PantryItem } = getDatabase();
   const items = await PantryItem.findAll({
-    order: [
-      ['domain', 'ASC'],
-      ['name', 'ASC'],
-    ],
+    order: [['name', 'ASC']],
   });
   return items;
 };
