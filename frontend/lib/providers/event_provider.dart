@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../models/event_model.dart';
 import '../services/event_service.dart';
+import '../services/events_service.dart';
+import '../config/event_actions.dart';
 
 class EventProvider extends ChangeNotifier {
   final EventService _eventService = EventService();
@@ -39,6 +41,10 @@ class EventProvider extends ChangeNotifier {
       final event = await _eventService.createEvent(token, title, eventDate);
       _events.add(event);
       _events.sort((a, b) => a.eventDate.compareTo(b.eventDate));
+      EventsService().publishEvent(
+        EventActions.calendarEventCreated,
+        metadata: {'event_id': event.id, 'title': event.title},
+      );
       _setLoading(false);
       notifyListeners();
     } catch (e) {

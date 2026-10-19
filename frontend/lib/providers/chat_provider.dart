@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../models/chat_message.dart';
 import '../services/chat_service.dart';
+import '../services/events_service.dart';
+import '../config/event_actions.dart';
 
 class ChatProvider extends ChangeNotifier {
   final ChatService _chatService = ChatService();
@@ -43,6 +45,11 @@ class ChatProvider extends ChangeNotifier {
           timestamp: DateTime.now(),
         ));
       }
+
+      EventsService().publishEvent(
+        EventActions.agentMessageSent,
+        metadata: {'agent_type': agentKey},
+      );
     } catch (_) {
       _messages.removeLast();
       _error = 'Não foi possível conectar ao assistente. Tente novamente.';

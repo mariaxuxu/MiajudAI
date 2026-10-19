@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../models/income_model.dart';
 import '../services/income_service.dart';
+import '../services/events_service.dart';
+import '../config/event_actions.dart';
 
 class IncomeProvider extends ChangeNotifier {
   final IncomeService _incomeService = IncomeService();
@@ -62,6 +64,10 @@ class IncomeProvider extends ChangeNotifier {
       );
       _income.add(newIncome);
       _monthlyTotal += amount;
+      EventsService().publishEvent(
+        EventActions.incomeAdded,
+        metadata: {'income_id': newIncome.id, 'amount': newIncome.amount},
+      );
       _setLoading(false);
       notifyListeners();
     } catch (e) {

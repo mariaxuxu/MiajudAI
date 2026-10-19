@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../models/expense_model.dart';
 import '../services/expense_service.dart';
+import '../services/events_service.dart';
+import '../config/event_actions.dart';
 
 class ExpenseProvider extends ChangeNotifier {
   final ExpenseService _expenseService = ExpenseService();
@@ -68,6 +70,14 @@ class ExpenseProvider extends ChangeNotifier {
       );
       _expenses.add(newExpense);
       _monthlyTotal += amount;
+      EventsService().publishEvent(
+        EventActions.expenseAdded,
+        metadata: {
+          'expense_id': newExpense.id,
+          'amount': newExpense.amount,
+          'category_id': newExpense.categoryId,
+        },
+      );
       _setLoading(false);
       notifyListeners();
     } catch (e) {

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../models/fixed_cost_model.dart';
 import '../services/fixed_cost_service.dart';
+import '../services/events_service.dart';
+import '../config/event_actions.dart';
 
 class FixedCostProvider extends ChangeNotifier {
   final FixedCostService _fixedCostService = FixedCostService();
@@ -57,6 +59,13 @@ class FixedCostProvider extends ChangeNotifier {
         'description': description,
       });
       _fixedCosts.add(fixedCost);
+      EventsService().publishEvent(
+        EventActions.fixedCostAdded,
+        metadata: {
+          'fixed_cost_id': fixedCost.id,
+          'amount': fixedCost.amount,
+        },
+      );
       notifyListeners();
     } catch (e) {
       _setError(e.toString());

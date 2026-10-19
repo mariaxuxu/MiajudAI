@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../models/installment_model.dart';
 import '../services/installment_service.dart';
+import '../services/events_service.dart';
+import '../config/event_actions.dart';
 
 class InstallmentProvider extends ChangeNotifier {
   final InstallmentService _installmentService = InstallmentService();
@@ -64,6 +66,13 @@ class InstallmentProvider extends ChangeNotifier {
         'merchant_name': merchantName,
       });
       _installments.add(installment);
+      EventsService().publishEvent(
+        EventActions.installmentAdded,
+        metadata: {
+          'installment_id': installment.id,
+          'amount': installment.totalAmount,
+        },
+      );
       notifyListeners();
     } catch (e) {
       _setError(e.toString());

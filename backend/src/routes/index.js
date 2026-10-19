@@ -10,6 +10,7 @@ import chatRoutes from './chat.js';
 import installmentsRoutes from './installments.js';
 import fixedCostsRoutes from './fixedCosts.js';
 import userActivityRoutes from './userActivity.js';
+import userEventsRoutes from './userEvents.js';
 
 const router = express.Router();
 
@@ -28,5 +29,6 @@ router.use('/chat', chatRoutes);
 router.use('/installments', installmentsRoutes);
 router.use('/fixed-costs', fixedCostsRoutes);
 router.use('/user-activity', userActivityRoutes);
+router.use('/user-events', userEventsRoutes);
 
 export default router;
