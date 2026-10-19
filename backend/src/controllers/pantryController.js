@@ -1,5 +1,10 @@
 import pantryService from '../services/pantryService.js';
-import { HTTP_STATUS, ERROR_MESSAGES } from '../utils/constants.js';
+import {
+  HTTP_STATUS,
+  ERROR_MESSAGES,
+  PANTRY_DOMAIN_VALUES,
+  PANTRY_ITEM_NAME_MAX_LENGTH,
+} from '../utils/constants.js';
 
 const serializePantryRow = (row) => ({
   id: row.id,
@@ -72,6 +77,52 @@ export const getPantry = async (req, res) => {
       error: {
         statusCode: HTTP_STATUS.INTERNAL_SERVER_ERROR,
         message: ERROR_MESSAGES.INTERNAL_ERROR,
+      },
+    });
+  }
+};
+
+export const createCatalogItem = async (req, res) => {
+  try {
+    const { name, domain } = req.body;
+
+    if (typeof name !== 'string' || name.trim() === '') {
+      return badRequest(res, 'Missing or invalid field: name is required');
+    }
+
+    if (name.trim().length > PANTRY_ITEM_NAME_MAX_LENGTH) {
+      return badRequest(
+        res,
+        `Invalid field: name must be at most ${PANTRY_ITEM_NAME_MAX_LENGTH} characters`
+      );
+    }
+
+    if (!PANTRY_DOMAIN_VALUES.includes(domain)) {
+      return badRequest(
+        res,
+        `Missing or invalid field: domain must be one of ${PANTRY_DOMAIN_VALUES.join(', ')}`
+      );
+    }
+
+    const item = await pantryService.createCatalogItem(name, domain);
+
+    return res.status(HTTP_STATUS.CREATED).json({
+      success: true,
+      item: {
+        id: item.id,
+        name: item.name,
+        emoji: item.emoji,
+        domain: item.domain,
+        created_at: item.created_at,
+      },
+    });
+  } catch (error) {
+    console.error('Create catalog item error:', error);
+    return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+      error: {
+        statusCode: HTTP_STATUS.INTERNAL_SERVER_ERROR,
+        message: ERROR_MESSAGES.INTERNAL_ERROR,
+        details: error.message,
       },
     });
   }

@@ -31,6 +31,71 @@ describe('pantryService', () => {
     jest.clearAllMocks();
   });
 
+  describe('createCatalogItem', () => {
+    it('creates a global row with the domain default emoji', async () => {
+      const create = jest.fn().mockResolvedValue({ id: 41, name: 'Tofu', emoji: '🍽️', domain: 'food' });
+      getDatabase.mockReturnValue({ PantryItem: { create } });
+
+      await pantryService.createCatalogItem('Tofu', 'food');
+
+      expect(create).toHaveBeenCalledTimes(1);
+      const [values] = create.mock.calls[0];
+      expect(values.name).toBe('Tofu');
+      expect(values.domain).toBe('food');
+      expect(values.emoji).toBe('🍽️');
+      // The catalog is global — nothing about the creator is stored.
+      expect(values.user_id).toBeUndefined();
+    });
+
+    it('uses the domestic default emoji for a domestic item', async () => {
+      const create = jest.fn().mockResolvedValue({});
+      getDatabase.mockReturnValue({ PantryItem: { create } });
+
+      await pantryService.createCatalogItem('Rodo', 'domestic');
+
+      expect(create.mock.calls[0][0].emoji).toBe('🧹');
+    });
+
+    it('trims the name before storing it', async () => {
+      const create = jest.fn().mockResolvedValue({});
+      getDatabase.mockReturnValue({ PantryItem: { create } });
+
+      await pantryService.createCatalogItem('  Tofu  ', 'food');
+
+      expect(create.mock.calls[0][0].name).toBe('Tofu');
+    });
+
+    it('rejects an invalid domain', async () => {
+      const create = jest.fn();
+      getDatabase.mockReturnValue({ PantryItem: { create } });
+
+      await expect(
+        pantryService.createCatalogItem('Tofu', 'cooking')
+      ).rejects.toThrow('Domain must be one of');
+      expect(create).not.toHaveBeenCalled();
+    });
+
+    it('rejects an empty name', async () => {
+      const create = jest.fn();
+      getDatabase.mockReturnValue({ PantryItem: { create } });
+
+      await expect(pantryService.createCatalogItem('   ', 'food')).rejects.toThrow(
+        'Name is required'
+      );
+      expect(create).not.toHaveBeenCalled();
+    });
+
+    it('rejects a non-string name', async () => {
+      const create = jest.fn();
+      getDatabase.mockReturnValue({ PantryItem: { create } });
+
+      await expect(pantryService.createCatalogItem(42, 'food')).rejects.toThrow(
+        'Name is required'
+      );
+      expect(create).not.toHaveBeenCalled();
+    });
+  });
+
   describe('getUserPantry', () => {
     it('reads only the authenticated user rows, with catalog details attached', async () => {
       const rows = [makeRow({ PantryItem: makeItem() })];
@@ -147,19 +212,11 @@ describe('pantryService', () => {
   describe('commitPantry', () => {
     const mkTx = () => ({ transaction: jest.fn((cb) => cb('tx')) });
 
-    it('increments an owned row rather than replacing the quantity (3 + 2 = 5)', async () => {
-      const increment = jest.fn().mockResolvedValue([1]);
-      const update = jest.fn().mockResolvedValue([1]);
-      const create = jest.fn();
+    it('increments in SQL so an owned row accumulates (3 + 2 = 5)', async () => {
+      const query = jest.fn().mockResolvedValue([]);
       getDatabase.mockReturnValue({
-        sequelize: mkTx(),
+        sequelize: { transaction: jest.fn((cb) => cb('tx')), query },
         PantryItem: { findAll: jest.fn().mockResolvedValue([{ id: 1 }]) },
-        UserPantry: {
-          findAll: jest.fn().mockResolvedValue([{ item_id: 1, quantity: 3 }]),
-          increment,
-          update,
-          create,
-        },
         PantryCommit: { create: jest.fn().mockResolvedValue({}) },
       });
 
@@ -167,36 +224,34 @@ describe('pantryService', () => {
         { item_id: 1, quantity: 2 },
       ]);
 
-      expect(increment).toHaveBeenCalledWith(
-        { quantity: 2 },
-        { where: { user_id: USER_ID, item_id: 1 }, transaction: 'tx' }
-      );
-      // increment skips updated_at, so an explicit stamp must follow it.
-      expect(update).toHaveBeenCalledWith(
-        { updated_at: expect.any(Date) },
-        { where: { user_id: USER_ID, item_id: 1 }, transaction: 'tx' }
-      );
-      expect(create).not.toHaveBeenCalled();
+      expect(query).toHaveBeenCalledTimes(1);
+      const [sql, options] = query.mock.calls[0];
+      // The accumulation must happen in the database, not in JS — that is what
+      // keeps concurrent commits from overwriting each other.
+      expect(sql).toContain('user_pantry.quantity + EXCLUDED.quantity');
+      expect(sql).toContain('ON CONFLICT (user_id, item_id)');
+      expect(options.replacements).toEqual({ userId: USER_ID, itemId: 1, quantity: 2 });
+      expect(options.transaction).toBe('tx');
       expect(result.applied).toBe(true);
     });
 
-    it('creates a row for an item the user does not own yet', async () => {
-      const increment = jest.fn();
-      const create = jest.fn().mockResolvedValue({});
+    it('uses the same statement to create a row for an unowned item', async () => {
+      // Create and increment are one path: the INSERT half of the upsert
+      // handles an item the user does not own yet, so there is no separate
+      // create branch to race with.
+      const query = jest.fn().mockResolvedValue([]);
       getDatabase.mockReturnValue({
-        sequelize: mkTx(),
+        sequelize: { transaction: jest.fn((cb) => cb('tx')), query },
         PantryItem: { findAll: jest.fn().mockResolvedValue([{ id: 2 }]) },
-        UserPantry: { findAll: jest.fn().mockResolvedValue([]), increment, create },
         PantryCommit: { create: jest.fn().mockResolvedValue({}) },
       });
 
       await pantryService.commitPantry(USER_ID, COMMIT_KEY, [{ item_id: 2, quantity: 4 }]);
 
-      expect(create).toHaveBeenCalledWith(
-        { user_id: USER_ID, item_id: 2, quantity: 4 },
-        { transaction: 'tx' }
-      );
-      expect(increment).not.toHaveBeenCalled();
+      expect(query).toHaveBeenCalledTimes(1);
+      const [sql, options] = query.mock.calls[0];
+      expect(sql).toContain('INSERT INTO user_pantry');
+      expect(options.replacements.itemId).toBe(2);
     });
 
     it('is a no-op when the commit_key was already applied', async () => {
@@ -222,17 +277,11 @@ describe('pantryService', () => {
     });
 
     it('scopes every write to the authenticated user', async () => {
-      const increment = jest.fn().mockResolvedValue([1]);
+      const query = jest.fn().mockResolvedValue([]);
       const commitCreate = jest.fn().mockResolvedValue({});
       getDatabase.mockReturnValue({
-        sequelize: mkTx(),
+        sequelize: { transaction: jest.fn((cb) => cb('tx')), query },
         PantryItem: { findAll: jest.fn().mockResolvedValue([{ id: 1 }]) },
-        UserPantry: {
-          findAll: jest.fn().mockResolvedValue([{ item_id: 1 }]),
-          increment,
-          update: jest.fn().mockResolvedValue([1]),
-          create: jest.fn(),
-        },
         PantryCommit: { create: commitCreate },
       });
 
@@ -242,19 +291,13 @@ describe('pantryService', () => {
         { user_id: USER_ID, commit_key: COMMIT_KEY },
         { transaction: 'tx' }
       );
-      expect(increment.mock.calls[0][1].where.user_id).toBe(USER_ID);
+      expect(query.mock.calls[0][1].replacements.userId).toBe(USER_ID);
     });
 
     it('rejects an item_id that is not in the catalog instead of skipping it', async () => {
       getDatabase.mockReturnValue({
         sequelize: mkTx(),
         PantryItem: { findAll: jest.fn().mockResolvedValue([{ id: 1 }]) },
-        UserPantry: {
-          findAll: jest.fn(),
-          increment: jest.fn(),
-          update: jest.fn(),
-          create: jest.fn(),
-        },
         PantryCommit: { create: jest.fn().mockResolvedValue({}) },
       });
 
@@ -264,12 +307,10 @@ describe('pantryService', () => {
     });
 
     it('aggregates duplicate item_ids into one write', async () => {
-      const increment = jest.fn().mockResolvedValue([1]);
-      const create = jest.fn();
+      const query = jest.fn().mockResolvedValue([]);
       getDatabase.mockReturnValue({
-        sequelize: mkTx(),
+        sequelize: { transaction: jest.fn((cb) => cb('tx')), query },
         PantryItem: { findAll: jest.fn().mockResolvedValue([{ id: 1 }]) },
-        UserPantry: { findAll: jest.fn().mockResolvedValue([]), increment, create },
         PantryCommit: { create: jest.fn().mockResolvedValue({}) },
       });
 
@@ -278,11 +319,8 @@ describe('pantryService', () => {
         { item_id: 1, quantity: 3 },
       ]);
 
-      expect(create).toHaveBeenCalledTimes(1);
-      expect(create).toHaveBeenCalledWith(
-        { user_id: USER_ID, item_id: 1, quantity: 5 },
-        { transaction: 'tx' }
-      );
+      expect(query).toHaveBeenCalledTimes(1);
+      expect(query.mock.calls[0][1].replacements.quantity).toBe(5);
     });
   });
 

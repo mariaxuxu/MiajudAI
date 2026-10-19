@@ -1,4 +1,9 @@
 import { getDatabase } from '../config/database.js';
+import {
+  PANTRY_DOMAIN_VALUES,
+  PANTRY_DOMAIN_DEFAULT_EMOJI,
+  PANTRY_ITEM_NAME_MAX_LENGTH,
+} from '../utils/constants.js';
 
 export const getCatalogItems = async () => {
   const { PantryItem } = getDatabase();
@@ -9,6 +14,35 @@ export const getCatalogItems = async () => {
     ],
   });
   return items;
+};
+
+// Writes a row into the global catalog. The emoji is derived from the domain
+// rather than supplied, so creating an item stays a two-field operation.
+//
+// Deliberately no user_id on the row: the catalog is shared by every user and
+// carries no creator attribution. There is also deliberately no uniqueness
+// check on the name — duplicate prevention is a client-side suggestion gate,
+// because legitimate spelling variations must not be blocked.
+export const createCatalogItem = async (name, domain) => {
+  const { PantryItem } = getDatabase();
+
+  const trimmedName = typeof name === 'string' ? name.trim() : '';
+  if (!trimmedName) {
+    throw new Error('Name is required');
+  }
+  if (trimmedName.length > PANTRY_ITEM_NAME_MAX_LENGTH) {
+    throw new Error(`Name must be at most ${PANTRY_ITEM_NAME_MAX_LENGTH} characters`);
+  }
+  if (!PANTRY_DOMAIN_VALUES.includes(domain)) {
+    throw new Error(`Domain must be one of: ${PANTRY_DOMAIN_VALUES.join(', ')}`);
+  }
+
+  const item = await PantryItem.create({
+    name: trimmedName,
+    emoji: PANTRY_DOMAIN_DEFAULT_EMOJI[domain],
+    domain,
+  });
+  return item;
 };
 
 export const getUserPantry = async (userId) => {
@@ -59,9 +93,16 @@ export const updateQuantity = async (userId, itemId, quantity) => {
 
 // Records a whole market trip at once. Increment semantics: committing 2 onto
 // an owned 3 leaves 5. All-or-nothing — the whole trip is written or none of
-// it is. Idempotent on commit_key: inserting the key first means a replay
-// collides on UNIQUE (user_id, commit_key) and becomes a no-op, which also
-// makes two concurrent identical commits safe (the loser rolls back).
+// it is.
+//
+// Idempotent on commit_key: the key is inserted first, so a replay collides on
+// UNIQUE (user_id, commit_key). Postgres aborts the transaction on that error,
+// so the subsequent COMMIT degrades to a ROLLBACK — which is exactly the no-op
+// wanted, and why returning early here is safe.
+//
+// The key insert is deliberately the first statement, and a concurrent
+// duplicate blocks on the unique index until the winner commits, so it can
+// never reach the pantry writes and double-increment.
 export const commitPantry = async (userId, commitKey, items) => {
   const { sequelize, UserPantry, PantryItem, PantryCommit } = getDatabase();
 
@@ -101,32 +142,28 @@ export const commitPantry = async (userId, commitKey, items) => {
       return { applied: false };
     }
 
-    const owned = await UserPantry.findAll({
-      where: { user_id: userId, item_id: [...quantitiesByItem.keys()] },
-      transaction,
-    });
-    const ownedIds = new Set(owned.map((row) => row.item_id));
-
+    // One statement per item: create the row, or add to the quantity that is
+    // already there. Incrementing in SQL (rather than reading and writing
+    // back) is what makes concurrent commits sum instead of clobbering each
+    // other, and ON CONFLICT resolves the case where two trips with different
+    // commit_keys create the same new item on top of each other — the loser
+    // waits on the unique index and then takes the DO UPDATE branch.
+    //
+    // Deliberately not a try/catch around a plain INSERT: a constraint error
+    // aborts the enclosing Postgres transaction, so any recovery write after
+    // catching it would silently never run.
     for (const [itemId, quantity] of quantitiesByItem) {
-      if (ownedIds.has(itemId)) {
-        // increment issues a single `SET quantity = quantity + N`, which keeps
-        // concurrent commits from clobbering each other — but it also skips
-        // updated_at (the model is timestamps:false), so the stamp is applied
-        // separately to keep the pantry ordering honest.
-        await UserPantry.increment(
-          { quantity },
-          { where: { user_id: userId, item_id: itemId }, transaction }
-        );
-        await UserPantry.update(
-          { updated_at: new Date() },
-          { where: { user_id: userId, item_id: itemId }, transaction }
-        );
-      } else {
-        await UserPantry.create(
-          { user_id: userId, item_id: itemId, quantity },
-          { transaction }
-        );
-      }
+      await sequelize.query(
+        `INSERT INTO user_pantry (user_id, item_id, quantity, created_at, updated_at)
+         VALUES (:userId, :itemId, :quantity, NOW(), NOW())
+         ON CONFLICT (user_id, item_id)
+         DO UPDATE SET quantity = user_pantry.quantity + EXCLUDED.quantity,
+                       updated_at = NOW()`,
+        {
+          replacements: { userId, itemId, quantity },
+          transaction,
+        }
+      );
     }
 
     return { applied: true };
@@ -149,6 +186,7 @@ export const removeItem = async (userId, itemId) => {
 
 export default {
   getCatalogItems,
+  createCatalogItem,
   getUserPantry,
   commitPantry,
   updateQuantity,
