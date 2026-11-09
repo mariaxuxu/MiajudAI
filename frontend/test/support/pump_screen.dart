@@ -9,6 +9,7 @@ import 'package:miajudai/providers/expense_provider.dart';
 import 'package:miajudai/providers/fixed_cost_provider.dart';
 import 'package:miajudai/providers/income_provider.dart';
 import 'package:miajudai/providers/installment_provider.dart';
+import 'package:miajudai/providers/pantry_provider.dart';
 import 'package:provider/provider.dart';
 
 import 'fake_auth_provider.dart';
@@ -48,6 +49,8 @@ const String kOriginScreenText = 'ORIGEM';
 /// informados, sao providos a arvore (telas de financas); [events], a tela do
 /// calendario; [diary], a do diario.
 ///
+/// A tela de despensa e o catalogo: [pantry], quando informado.
+///
 /// [pushed] monta a tela EMPILHADA sobre uma pagina "ORIGEM" em vez de como
 /// raiz, para que "voltar" (`Navigator.pop`) tenha para onde voltar.
 Future<({FakeAuthProvider auth, RouteLog log})> pumpScreen(
@@ -62,6 +65,7 @@ Future<({FakeAuthProvider auth, RouteLog log})> pumpScreen(
   FixedCostProvider? fixedCosts,
   EventProvider? events,
   DiaryProvider? diary,
+  PantryProvider? pantry,
   bool pushed = false,
 }) async {
   tester.view.physicalSize = const Size(390, 844) * 2;
@@ -95,6 +99,8 @@ Future<({FakeAuthProvider auth, RouteLog log})> pumpScreen(
           ChangeNotifierProvider<EventProvider>.value(value: events),
         if (diary != null)
           ChangeNotifierProvider<DiaryProvider>.value(value: diary),
+        if (pantry != null)
+          ChangeNotifierProvider<PantryProvider>.value(value: pantry),
       ],
       child: MaterialApp(
         navigatorKey: navigatorKey,

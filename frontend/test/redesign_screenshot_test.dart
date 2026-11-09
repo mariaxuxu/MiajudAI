@@ -398,14 +398,10 @@ void main() {
     }
   });
 
-  // Os cards "Area Domestica" e "Servicos Externos" abrem o aviso de "em
-  // construcao" (o mesmo de Otto e Tina).
+  // O card "Servicos Externos" abre o aviso de "em construcao" (o mesmo de
+  // Otto e Tina). O card "Despensa" (ex-"Area Domestica") passou a navegar
+  // para a tela real, entao nao entra mais nesta lista.
   for (final card in [
-    (
-      title: 'Área Doméstica',
-      capture: 'home-domestic',
-      png: 'home_domestic_390x844',
-    ),
     (
       title: 'Serviços Externos',
       capture: 'home-services',

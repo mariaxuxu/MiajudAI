@@ -28,6 +28,7 @@ class EmptyStateCard extends StatelessWidget {
     required this.message,
     this.actionLabel,
     this.onAction,
+    this.actionIcon = Icons.add_rounded,
     this.actionStyle = EmptyStateActionStyle.outlined,
   }) : assert(
           (actionLabel == null) == (onAction == null),
@@ -39,6 +40,10 @@ class EmptyStateCard extends StatelessWidget {
   final String message;
   final String? actionLabel;
   final VoidCallback? onAction;
+
+  /// Icone da acao. O padrao (`+`) combina com o caso comum, que e "adicionar".
+  final IconData actionIcon;
+
   final EmptyStateActionStyle actionStyle;
 
   static final ButtonStyle _actionStyle = ButtonStyle(
@@ -94,14 +99,14 @@ class EmptyStateCard extends StatelessWidget {
             if (actionStyle == EmptyStateActionStyle.filled)
               FilledButton.icon(
                 onPressed: onAction,
-                icon: const Icon(Icons.add_rounded, size: AppSizes.iconLg),
+                icon: Icon(actionIcon, size: AppSizes.iconLg),
                 label: Text(actionLabel),
               )
             else
               OutlinedButton.icon(
                 onPressed: onAction,
                 style: _actionStyle,
-                icon: const Icon(Icons.add_rounded, size: AppSizes.iconLg),
+                icon: Icon(actionIcon, size: AppSizes.iconLg),
                 label: Text(actionLabel),
               ),
           ],

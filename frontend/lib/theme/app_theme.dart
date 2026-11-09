@@ -50,12 +50,14 @@ abstract final class AppTheme {
       textButtonTheme: _textButtonTheme,
       inputDecorationTheme: _inputDecorationTheme,
       cardTheme: _cardTheme,
+      // Sem `shape`: o default do Material 3 ja da o formato certo por tipo
+      // (CircleBorder no FAB redondo, StadiumBorder no `.extended`). Fixar
+      // CircleBorder aqui recortava o rotulo do FAB estendido da Despensa.
       floatingActionButtonTheme: const FloatingActionButtonThemeData(
         backgroundColor: AppSemanticColors.actionPrimary,
         foregroundColor: AppSemanticColors.onAction,
         elevation: 4,
         highlightElevation: 6,
-        shape: CircleBorder(),
       ),
       dividerTheme: const DividerThemeData(
         color: AppSemanticColors.border,

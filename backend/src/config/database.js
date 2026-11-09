@@ -14,6 +14,9 @@ import defineDiaryEntryModel from '../models/DiaryEntry.js';
 import defineScreenEventModel from '../models/ScreenEvent.js';
 import defineInteractionEventModel from '../models/InteractionEvent.js';
 import defineUserEventModel from '../models/UserEvent.js';
+import definePantryItemModel from '../models/PantryItem.js';
+import defineUserPantryModel from '../models/UserPantry.js';
+import definePantryCommitModel from '../models/PantryCommit.js';
 
 let sequelize = null;
 let db = null;
@@ -105,6 +108,9 @@ export const initializeDatabase = async () => {
     const ScreenEvent = defineScreenEventModel(sequelize);
     const InteractionEvent = defineInteractionEventModel(sequelize);
     const UserEvent = defineUserEventModel(sequelize);
+    const PantryItem = definePantryItemModel(sequelize);
+    const UserPantry = defineUserPantryModel(sequelize);
+    const PantryCommit = definePantryCommitModel(sequelize);
 
     // Define associations
     User.hasMany(EmergencyContact, {
@@ -187,6 +193,23 @@ export const initializeDatabase = async () => {
     });
     UserEvent.belongsTo(User, { foreignKey: 'user_id' });
 
+    User.hasMany(UserPantry, {
+      foreignKey: 'user_id',
+      onDelete: 'CASCADE',
+    });
+    UserPantry.belongsTo(User, { foreignKey: 'user_id' });
+    UserPantry.belongsTo(PantryItem, { foreignKey: 'item_id' });
+    PantryItem.hasMany(UserPantry, {
+      foreignKey: 'item_id',
+      onDelete: 'CASCADE',
+    });
+
+    User.hasMany(PantryCommit, {
+      foreignKey: 'user_id',
+      onDelete: 'CASCADE',
+    });
+    PantryCommit.belongsTo(User, { foreignKey: 'user_id' });
+
     db = {
       sequelize,
       User,
@@ -203,6 +226,9 @@ export const initializeDatabase = async () => {
       ScreenEvent,
       InteractionEvent,
       UserEvent,
+      PantryItem,
+      UserPantry,
+      PantryCommit,
     };
 
     return { sequelize, db };

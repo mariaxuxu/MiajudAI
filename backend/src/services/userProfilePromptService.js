@@ -1,12 +1,39 @@
 import { getDatabase } from '../config/database.js';
 import { Op } from 'sequelize';
 import userActivityService from './userActivityService.js';
+import pantryService from './pantryService.js';
+import { PANTRY_DOMAINS, PANTRY_DOMAIN_VALUES } from '../utils/constants.js';
 
 // Agent-to-tag mapping
 const AGENT_TAGS = {
   luna: 'finance',
   otto: 'food',
   tina: 'domestic',
+};
+
+// Prompt-text labels for the pantry block, keyed off the shared domain values so
+// a domain added to constants.js can never drift from its label here. The UI
+// spells these "Cozinha" / "Doméstico", but this is prose shown to the model,
+// not a screen label, so it follows the ticket's lowercase form. The vocabulary
+// that must stay shared is the domain value (`food`/`domestic`), not this string.
+const PANTRY_DOMAIN_LABELS = {
+  [PANTRY_DOMAINS.FOOD]: 'cozinha',
+  [PANTRY_DOMAINS.DOMESTIC]: 'doméstico',
+};
+
+/**
+ * Hard-truncate prompt narrative at the character limit.
+ * Shared by buildDiaryContext and buildPantryContext so profile-derived prompt
+ * text is clipped the same way wherever it is assembled.
+ */
+const truncateToLimit = (narrative, charLimit, label, agentType) => {
+  if (narrative.length <= charLimit) {
+    return narrative;
+  }
+  console.log(
+    `⚠️  ${label} context truncated to ${charLimit} chars for ${agentType}`
+  );
+  return narrative.substring(0, charLimit - 3) + '...';
 };
 
 /**
@@ -113,17 +140,67 @@ export const buildDiaryContext = async (userId, agentType, charLimit = 1000) => 
     narrative += `\n\nUse this context to personalize your recommendations.`;
 
     // Truncate if necessary
-    if (narrative.length > charLimit) {
-      narrative = narrative.substring(0, charLimit - 3) + '...';
-      console.log(
-        `⚠️  Diary context truncated to ${charLimit} chars for ${agentType}`
-      );
-    }
+    narrative = truncateToLimit(narrative, charLimit, 'Diary', agentType);
 
     console.log(`📖 Diary context built for ${agentType}: ${narrative.length} chars`);
     return narrative;
   } catch (error) {
     console.error(`❌ Error building diary context for ${agentType}:`, error.message);
+    return '';
+  }
+};
+
+/**
+ * Build pantry context for an agent
+ *
+ * The agent→domain mapping is the existing AGENT_TAGS map, gated on the tag
+ * actually being a pantry domain. Otto→food and Tina→domestic pass; Luna→finance
+ * does not, so she gets no pantry block. Writing a dedicated `{otto, tina}` map
+ * here would create the parallel vocabulary the domain glossary forbids.
+ *
+ * Unlike buildDiaryContext, an empty result is the empty string — not a
+ * "user has nothing" sentence. Otto and Tina must not mention a feature the
+ * user has not started using.
+ *
+ * @param {number} userId - User ID
+ * @param {string} agentType - luna, otto, or tina
+ * @param {number} charLimit - Hard character limit (default 1000)
+ * @returns {string} Formatted pantry context, or '' when there is nothing to say
+ */
+export const buildPantryContext = async (userId, agentType, charLimit = 1000) => {
+  try {
+    const domain = AGENT_TAGS[agentType.toLowerCase()];
+    if (!domain || !PANTRY_DOMAIN_VALUES.includes(domain)) {
+      return '';
+    }
+
+    // getUserPantry returns every domain (it is the same read GET /pantry does),
+    // so the food/domestic split happens here rather than in a second query.
+    const rows = await pantryService.getUserPantry(userId);
+    const owned = (rows || []).filter((row) => row.PantryItem?.domain === domain);
+
+    // Empty pantry (or only the other domain) produces no block at all.
+    if (owned.length === 0) {
+      return '';
+    }
+
+    const label = PANTRY_DOMAIN_LABELS[domain];
+    // Quantity is a pack count with no unit — print the number, never kg/l.
+    const list = owned
+      .map((row) => `${row.PantryItem.name} (${row.quantity})`)
+      .join(', ');
+
+    const narrative = truncateToLimit(
+      `Despensa (${label}): ${list}.`,
+      charLimit,
+      'Pantry',
+      agentType
+    );
+
+    console.log(`🥫 Pantry context built for ${agentType}: ${narrative.length} chars`);
+    return narrative;
+  } catch (error) {
+    console.error(`❌ Error building pantry context for ${agentType}:`, error.message);
     return '';
   }
 };
@@ -179,5 +256,6 @@ export const getUserMoodSummary = async (userId, daysBack = 7) => {
 
 export default {
   buildDiaryContext,
+  buildPantryContext,
   getUserMoodSummary,
 };

@@ -198,17 +198,11 @@ class _WelcomeScreenState extends State<WelcomeScreen>
         onTap: () => Navigator.pushNamed(context, AppRoutes.invoiceDashboard),
       ),
       _CardData(
-        icon: Icons.home_outlined,
-        title: 'Área Doméstica',
-        description: 'Gerenciar sua casa e tarefas',
+        icon: Icons.kitchen_outlined,
+        title: 'Despensa',
+        description: 'O que você tem em casa',
         tone: AppTone.green,
-        onTap: () => UnderConstructionDialog.show(
-          context,
-          agentName: 'Área Doméstica',
-          agentRole: 'Gerenciar sua casa e tarefas',
-          imagePath: AppAgent.tina.assetPath,
-          agentColor: AppTone.green.foreground,
-        ),
+        onTap: () => Navigator.pushNamed(context, AppRoutes.pantry),
       ),
       _CardData(
         icon: Icons.handyman_outlined,

@@ -65,10 +65,21 @@ void main() {
       });
     }
 
-    // Excecao pedida de proposito: estes dois cards passam a abrir o MESMO
-    // aviso de "em construcao" que Otto e Tina usam, sem navegar.
+    // O card "Despensa" (ex-"Área Doméstica") agora navega para a tela real.
+    testWidgets('"Despensa" pushes the pantry route, no notice', (
+      tester,
+    ) async {
+      final env = await pumpScreen(tester, const WelcomeScreen());
+
+      await _tapText(tester, 'Despensa');
+
+      expect(env.log.events, ['push /pantry']);
+      expect(find.text('Em construção'), findsNothing);
+    });
+
+    // Excecao pedida de proposito: este card abre o aviso de "em construcao"
+    // que Otto e Tina usam, sem navegar.
     const underConstruction = {
-      'Área Doméstica': 'Gerenciar sua casa e tarefas',
       'Serviços Externos': 'Encontre prestadores de serviços',
     };
 
@@ -100,19 +111,15 @@ void main() {
       });
     }
 
-    testWidgets('the notice of the two cards does not leak to the others', (
-      tester,
-    ) async {
+    testWidgets('the notice does not leak to the other cards', (tester) async {
       await pumpScreen(tester, const WelcomeScreen());
 
-      await _tapText(tester, 'Área Doméstica');
+      await _tapText(tester, 'Serviços Externos');
       await tester.tap(find.text('Entendido'));
       await tester.pumpAndSettle();
-      await _tapText(tester, 'Serviços Externos');
 
-      expect(find.text('Em construção'), findsOneWidget);
-      expect(find.text('Serviços Externos'), findsNWidgets(2));
-      expect(find.text('Área Doméstica'), findsOneWidget);
+      expect(find.text('Em construção'), findsNothing);
+      expect(find.text('Despensa'), findsOneWidget);
     });
 
     testWidgets('all six cards are still shown', (tester) async {
@@ -122,7 +129,7 @@ void main() {
         'Meu Diário',
         'Finanças',
         'Dashboard / Fatura',
-        'Área Doméstica',
+        'Despensa',
         'Serviços Externos',
       ]) {
         expect(find.text(t), findsOneWidget, reason: t);
@@ -248,33 +255,6 @@ void main() {
       expect(env.log.events, ['push /chat']);
     });
 
-    testWidgets('Otto shows the under-construction notice, no navigation', (
-      tester,
-    ) async {
-      final env = await pumpScreen(tester, const WelcomeScreen());
-
-      await tester.tap(find.text('Otto'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Em construção'), findsOneWidget);
-      expect(find.text('Assistente de Cozinha'), findsOneWidget);
-      expect(env.log.events.contains('push /chat'), isFalse);
-
-      await tester.tap(find.text('Entendido'));
-      await tester.pumpAndSettle();
-      expect(find.text('Em construção'), findsNothing);
-    });
-
-    testWidgets('Tina shows the under-construction notice', (tester) async {
-      await pumpScreen(tester, const WelcomeScreen());
-
-      await tester.tap(find.text('Tina'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Em construção'), findsOneWidget);
-      expect(find.text('Assistente Doméstica'), findsOneWidget);
-    });
-
     testWidgets('Início does not navigate', (tester) async {
       final env = await pumpScreen(tester, const WelcomeScreen());
 
@@ -282,19 +262,6 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(env.log.events, isEmpty);
-    });
-
-    testWidgets('agents without a screen are announced as "em breve"', (
-      tester,
-    ) async {
-      await pumpScreen(tester, const WelcomeScreen());
-      final handle = tester.ensureSemantics();
-
-      expect(find.bySemanticsLabel('Otto, em breve'), findsOneWidget);
-      expect(find.bySemanticsLabel('Tina, em breve'), findsOneWidget);
-      expect(find.bySemanticsLabel('Luna'), findsOneWidget);
-
-      handle.dispose();
     });
   });
 }
