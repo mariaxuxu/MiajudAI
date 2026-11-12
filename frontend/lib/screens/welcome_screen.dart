@@ -12,7 +12,6 @@ import '../widgets/common/app_screen_scaffold.dart';
 import '../widgets/common/cropped_asset_image.dart';
 import '../widgets/common/speech_bubble.dart';
 import '../widgets/dialogs/logout_dialog.dart';
-import '../widgets/dialogs/under_construction_dialog.dart';
 import '../widgets/home/agents_banner.dart';
 import '../widgets/home/quick_action_card.dart';
 import '../widgets/navigation/agent_bottom_nav.dart';
@@ -23,6 +22,38 @@ class WelcomeScreen extends StatefulWidget {
   @override
   State<WelcomeScreen> createState() => _WelcomeScreenState();
 }
+
+/// Cards de "Acesso rápido" da Home. A ordem é a ordem visual; o grid é 2x2.
+const List<_CardData> _quickActionCards = [
+  _CardData(
+    icon: Icons.calendar_today_outlined,
+    title: 'Calendário',
+    description: 'Veja e organize seus compromissos',
+    tone: AppTone.blue,
+    route: AppRoutes.calendar,
+  ),
+  _CardData(
+    icon: Icons.menu_book_outlined,
+    title: 'Meu Diário',
+    description: 'Registre seus pensamentos e humor',
+    tone: AppTone.violet,
+    route: AppRoutes.diary,
+  ),
+  _CardData(
+    icon: Icons.account_balance_wallet_outlined,
+    title: 'Finanças e Faturas',
+    description: 'Contas, parcelas e gastos fixos',
+    tone: AppTone.blue,
+    route: AppRoutes.finance,
+  ),
+  _CardData(
+    icon: Icons.kitchen_outlined,
+    title: 'Despensa',
+    description: 'O que você tem em casa',
+    tone: AppTone.green,
+    route: AppRoutes.pantry,
+  ),
+];
 
 class _WelcomeScreenState extends State<WelcomeScreen>
     with SingleTickerProviderStateMixin {
@@ -37,8 +68,8 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       duration: const Duration(milliseconds: 700),
     );
 
-    // Stagger de fade para os cards (6 cards)
-    _cardFades = List.generate(6, (i) {
+    // Stagger de fade para os cards, um por card (derivado de _quickActionCards).
+    _cardFades = List.generate(_quickActionCards.length, (i) {
       final start = i * 0.12;
       final end = (start + 0.5).clamp(0.0, 1.0);
       return Tween<double>(begin: 0, end: 1).animate(
@@ -168,65 +199,14 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   }
 
   Widget _buildQuickActions(BuildContext context) {
-    final cards = [
-      _CardData(
-        icon: Icons.calendar_today_outlined,
-        title: 'Calendário',
-        description: 'Veja e organize seus compromissos',
-        tone: AppTone.blue,
-        onTap: () => Navigator.pushNamed(context, AppRoutes.calendar),
-      ),
-      _CardData(
-        icon: Icons.menu_book_outlined,
-        title: 'Meu Diário',
-        description: 'Registre seus pensamentos e humor',
-        tone: AppTone.violet,
-        onTap: () => Navigator.pushNamed(context, AppRoutes.diary),
-      ),
-      _CardData(
-        icon: Icons.account_balance_wallet_outlined,
-        title: 'Finanças',
-        description: 'Contas, receitas e despesas',
-        tone: AppTone.blue,
-        onTap: () => Navigator.pushNamed(context, AppRoutes.accounts),
-      ),
-      _CardData(
-        icon: Icons.receipt_long_outlined,
-        title: 'Dashboard / Fatura',
-        description: 'Parcelas e gastos fixos mensais',
-        tone: AppTone.blue,
-        onTap: () => Navigator.pushNamed(context, AppRoutes.invoiceDashboard),
-      ),
-      _CardData(
-        icon: Icons.kitchen_outlined,
-        title: 'Despensa',
-        description: 'O que você tem em casa',
-        tone: AppTone.green,
-        onTap: () => Navigator.pushNamed(context, AppRoutes.pantry),
-      ),
-      _CardData(
-        icon: Icons.handyman_outlined,
-        title: 'Serviços Externos',
-        description: 'Encontre prestadores de serviços',
-        tone: AppTone.cyan,
-        onTap: () => UnderConstructionDialog.show(
-          context,
-          agentName: 'Serviços Externos',
-          agentRole: 'Encontre prestadores de serviços',
-          imagePath: 'assets/images/brand/logo_mark.png',
-          agentColor: AppTone.cyan.foreground,
-        ),
-      ),
-    ];
-
     Widget cell(int i) => FadeTransition(
           opacity: _cardFades[i],
           child: QuickActionCard(
-            icon: cards[i].icon,
-            title: cards[i].title,
-            description: cards[i].description,
-            tone: cards[i].tone,
-            onTap: cards[i].onTap,
+            icon: _quickActionCards[i].icon,
+            title: _quickActionCards[i].title,
+            description: _quickActionCards[i].description,
+            tone: _quickActionCards[i].tone,
+            onTap: () => Navigator.pushNamed(context, _quickActionCards[i].route),
           ),
         );
 
@@ -234,7 +214,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
     // (os titulos podem quebrar em duas linhas).
     return Column(
       children: [
-        for (var i = 0; i < cards.length; i += 2) ...[
+        for (var i = 0; i < _quickActionCards.length; i += 2) ...[
           if (i > 0) const SizedBox(height: AppSpacing.itemGap),
           IntrinsicHeight(
             child: Row(
@@ -243,7 +223,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                 Expanded(child: cell(i)),
                 const SizedBox(width: AppSpacing.itemGap),
                 Expanded(
-                  child: i + 1 < cards.length
+                  child: i + 1 < _quickActionCards.length
                       ? cell(i + 1)
                       : const SizedBox.shrink(),
                 ),
@@ -261,14 +241,14 @@ class _CardData {
   final String title;
   final String description;
   final AppTone tone;
-  final VoidCallback onTap;
+  final String route;
 
   const _CardData({
     required this.icon,
     required this.title,
     required this.description,
     required this.tone,
-    required this.onTap,
+    required this.route,
   });
 }
 

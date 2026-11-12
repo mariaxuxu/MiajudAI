@@ -389,7 +389,7 @@ void main() {
       setup: _loginAsPedro,
     );
 
-    // A home tem 6 cards + banner: rolar e esperado. O que importa e que a
+    // A home tem 4 cards + banner: rolar e esperado. O que importa e que a
     // navegacao inferior (fora do scroll) e os controles sejam acessiveis.
     await _expectAccessibleTapTargets(tester);
 
@@ -397,44 +397,6 @@ void main() {
       await _writePng(r.key, 'home_390x844');
     }
   });
-
-  // O card "Servicos Externos" abre o aviso de "em construcao" (o mesmo de
-  // Otto e Tina). O card "Despensa" (ex-"Area Domestica") passou a navegar
-  // para a tela real, entao nao entra mais nesta lista.
-  for (final card in [
-    (
-      title: 'Serviços Externos',
-      capture: 'home-services',
-      png: 'home_services_390x844',
-    ),
-  ]) {
-    testWidgets('home ${card.capture} dialog', (tester) async {
-      addTearDown(tester.view.reset);
-      final key =
-          await _mount(tester, const WelcomeScreen(), setup: _loginAsPedro);
-      await _settleAt(tester, kReferenceViewport);
-
-      await tester.ensureVisible(find.text(card.title));
-      await tester.pump();
-      await tester.tap(find.text(card.title));
-      await _pumpAfterTap(tester);
-      await _pumpAfterTap(tester);
-      expect(find.text('Em construção'), findsOneWidget);
-
-      for (final viewport in _otherViewports) {
-        tester.view.physicalSize = viewport * kPixelRatio;
-        await tester.pump();
-        await tester.pump(const Duration(milliseconds: 300));
-        expect(tester.takeException(), isNull, reason: 'dialogo em $viewport');
-      }
-
-      tester.view.physicalSize = kReferenceViewport * kPixelRatio;
-      await _pumpAfterTap(tester);
-      await _expectAccessibleTapTargets(tester);
-
-      if (kCapture == card.capture) await _writePng(key, card.png);
-    });
-  }
 
   // A home rolada ate o fim: mostra a ultima fileira de cards e o banner.
   testWidgets('home scrolled', (tester) async {

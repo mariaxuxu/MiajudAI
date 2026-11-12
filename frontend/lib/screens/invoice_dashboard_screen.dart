@@ -295,7 +295,7 @@ class _InvoiceDashboardScreenState extends State<InvoiceDashboardScreen>
     AppFormSheet.show(
       context: context,
       title: 'Nova Parcela',
-      builder: (sheetContext) => _InstallmentForm(selectedDate: _selectedDate),
+      builder: (sheetContext) => InstallmentForm(selectedDate: _selectedDate),
     );
   }
 
@@ -303,7 +303,7 @@ class _InvoiceDashboardScreenState extends State<InvoiceDashboardScreen>
     AppFormSheet.show(
       context: context,
       title: 'Novo Gasto Fixo',
-      builder: (sheetContext) => const _FixedCostForm(),
+      builder: (sheetContext) => const FixedCostForm(),
     );
   }
 
@@ -573,16 +573,16 @@ class _InvoiceDashboardScreenState extends State<InvoiceDashboardScreen>
   }
 }
 
-class _InstallmentForm extends StatefulWidget {
+class InstallmentForm extends StatefulWidget {
   final DateTime selectedDate;
 
-  const _InstallmentForm({required this.selectedDate});
+  const InstallmentForm({super.key, required this.selectedDate});
 
   @override
-  State<_InstallmentForm> createState() => _InstallmentFormState();
+  State<InstallmentForm> createState() => InstallmentFormState();
 }
 
-class _InstallmentFormState extends State<_InstallmentForm> {
+class InstallmentFormState extends State<InstallmentForm> {
   final _nameController = TextEditingController();
   final _merchantController = TextEditingController();
   final _totalAmountController = TextEditingController();
@@ -704,14 +704,14 @@ class _InstallmentFormState extends State<_InstallmentForm> {
   }
 }
 
-class _FixedCostForm extends StatefulWidget {
-  const _FixedCostForm();
+class FixedCostForm extends StatefulWidget {
+  const FixedCostForm({super.key});
 
   @override
-  State<_FixedCostForm> createState() => _FixedCostFormState();
+  State<FixedCostForm> createState() => FixedCostFormState();
 }
 
-class _FixedCostFormState extends State<_FixedCostForm> {
+class FixedCostFormState extends State<FixedCostForm> {
   final _nameController = TextEditingController();
   final _amountController = TextEditingController();
   final _dayController = TextEditingController();

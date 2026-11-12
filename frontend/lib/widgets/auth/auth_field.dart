@@ -26,6 +26,10 @@ class AuthField extends StatefulWidget {
   final VoidCallback? onEditingComplete;
   final bool autofocus;
 
+  /// Folga entre o campo focado e as bordas da viewport ao rolar para deixá-lo
+  /// visível (ex.: acima do teclado). Default igual ao do Flutter.
+  final EdgeInsets scrollPadding;
+
   const AuthField({
     super.key,
     required this.label,
@@ -40,6 +44,7 @@ class AuthField extends StatefulWidget {
     this.focusNode,
     this.onEditingComplete,
     this.autofocus = false,
+    this.scrollPadding = const EdgeInsets.all(20),
   });
 
   @override
@@ -77,6 +82,7 @@ class _AuthFieldState extends State<AuthField> {
               textInputAction: widget.textInputAction,
               focusNode: widget.focusNode,
               autofocus: widget.autofocus,
+              scrollPadding: widget.scrollPadding,
               onEditingComplete: widget.onEditingComplete,
               onChanged: widget.onChanged,
               validator: widget.validator,
