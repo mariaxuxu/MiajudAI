@@ -837,6 +837,8 @@ void main() {
       const ExpensesScreen(),
       expenses: FakeExpenseProvider(),
       accounts: FakeAccountProvider(),
+      installments: FakeInstallmentProvider(),
+      fixedCosts: FakeFixedCostProvider(),
     );
     await _expectAccessibleTapTargets(tester);
 
@@ -852,6 +854,8 @@ void main() {
       const ExpensesScreen(),
       expenses: withExpenses(),
       accounts: FakeAccountProvider(),
+      installments: FakeInstallmentProvider(),
+      fixedCosts: FakeFixedCostProvider(),
     );
     await _expectAccessibleTapTargets(tester);
 
@@ -866,6 +870,8 @@ void main() {
       const ExpensesScreen(),
       expenses: withExpenses(),
       accounts: FakeAccountProvider(),
+      installments: FakeInstallmentProvider(),
+      fixedCosts: FakeFixedCostProvider(),
     );
     await _settleAt(tester, kReferenceViewport);
 
@@ -893,6 +899,8 @@ void main() {
       const ExpensesScreen(),
       expenses: withExpenses(),
       accounts: FakeAccountProvider(),
+      installments: FakeInstallmentProvider(),
+      fixedCosts: FakeFixedCostProvider(),
     );
     for (final viewport in [..._otherViewports, kReferenceViewport]) {
       await _settleAt(tester, viewport);
@@ -906,6 +914,8 @@ void main() {
       const ExpensesScreen(),
       expenses: FakeExpenseProvider(),
       accounts: withTwoAccounts(),
+      installments: FakeInstallmentProvider(),
+      fixedCosts: FakeFixedCostProvider(),
     );
     await _settleAt(tester, kReferenceViewport);
 
@@ -945,6 +955,8 @@ void main() {
       const ExpensesScreen(),
       expenses: withExpenses(),
       accounts: FakeAccountProvider(),
+      installments: FakeInstallmentProvider(),
+      fixedCosts: FakeFixedCostProvider(),
     );
     await _settleAt(tester, kReferenceViewport);
 
@@ -976,9 +988,13 @@ void main() {
       const ExpensesScreen(),
       expenses: withExpenses(),
       accounts: FakeAccountProvider(),
+      installments: FakeInstallmentProvider(),
+      fixedCosts: FakeFixedCostProvider(),
     );
     await _settleAt(tester, kReferenceViewport);
 
+    await tester.ensureVisible(find.byTooltip('Remover Mercado'));
+    await tester.pump();
     await tester.tap(find.byTooltip('Remover Mercado'));
     await _pumpAfterTap(tester);
     await _pumpAfterTap(tester);

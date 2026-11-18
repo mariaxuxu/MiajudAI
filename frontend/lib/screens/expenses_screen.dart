@@ -4,7 +4,10 @@ import 'package:intl/intl.dart';
 import '../providers/auth_provider.dart';
 import '../providers/expense_provider.dart';
 import '../providers/account_provider.dart';
+import '../providers/installment_provider.dart';
+import '../providers/fixed_cost_provider.dart';
 import '../models/expense_model.dart';
+import '../utils/unified_gastos.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
 import '../theme/tokens/app_colors_semantic.dart';
@@ -51,7 +54,10 @@ class _ExpensesScreenState extends State<ExpensesScreen>
     super.initState();
     _selectedMonth = DateTime.now();
     _tabController = TabController(length: _expenseTypes.length, vsync: this);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _reload());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _reload();
+      _loadInstallmentsAndFixedCosts();
+    });
   }
 
   @override
@@ -69,6 +75,13 @@ class _ExpensesScreenState extends State<ExpensesScreen>
             year: _selectedMonth.year,
           );
     }
+  }
+
+  void _loadInstallmentsAndFixedCosts() {
+    final auth = context.read<AuthProvider>();
+    if (auth.authToken == null) return;
+    context.read<InstallmentProvider>().loadInstallments(auth.authToken!);
+    context.read<FixedCostProvider>().loadFixedCosts(auth.authToken!);
   }
 
   void _previousMonth() {
@@ -431,11 +444,21 @@ class _ExpensesScreenState extends State<ExpensesScreen>
         tooltip: 'Adicionar despesa',
         child: const Icon(Icons.add),
       ),
-      child: Consumer<ExpenseProvider>(
-        builder: (context, expenseProvider, _) {
+      child: Consumer3<ExpenseProvider, InstallmentProvider, FixedCostProvider>(
+        builder: (context, expenseProvider, installmentProvider,
+            fixedCostProvider, _) {
+          final unified = buildUnifiedGastos(
+            expenseProvider.expenses,
+            installmentProvider.installments,
+            fixedCostProvider.fixedCosts,
+            _selectedMonth,
+          );
           return TabBarView(
             controller: _tabController,
             children: _expenseTypes.map((type) {
+              if (type == 'Tudo') {
+                return _buildUnifiedTabContent(unified);
+              }
               final filtered = _filterExpenses(expenseProvider.expenses, type);
               final total =
                   filtered.fold<double>(0, (sum, e) => sum + e.amount);
@@ -456,7 +479,7 @@ class _ExpensesScreenState extends State<ExpensesScreen>
           _buildSummaryCard(total, expenses.length, type),
           const SizedBox(height: AppSpacing.blockGap),
           SectionHeader(
-            title: type == 'Tudo' ? 'Todas as despesas' : type,
+            title: type,
             count: expenses.length,
             accent: FinanceTone.expense.accent,
           ),
@@ -470,6 +493,135 @@ class _ExpensesScreenState extends State<ExpensesScreen>
         ],
       ),
     );
+  }
+
+  Widget _buildUnifiedTabContent(UnifiedGastos unified) {
+    return ModuleScrollBody(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildUnifiedSummaryCard(unified.total, unified.items.length),
+          const SizedBox(height: AppSpacing.blockGap),
+          SectionHeader(
+            title: 'Todos os gastos',
+            count: unified.items.length,
+            accent: FinanceTone.expense.accent,
+          ),
+          const SizedBox(height: AppSpacing.itemGap),
+          if (unified.items.isEmpty) ...[
+            _buildUnifiedEmptyState(),
+            const SizedBox(height: AppSpacing.blockGap),
+            _buildTips(),
+          ] else
+            ...unified.items.map(_buildGastoCard),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUnifiedSummaryCard(double total, int count) {
+    return TonalSummaryCard(
+      tone: FinanceTone.expense,
+      icon: Icons.trending_down_rounded,
+      label: 'Total de gastos no mês',
+      value: 'R\$ ${total.toStringAsFixed(2).replaceAll('.', ',')}',
+      caption: switch (count) {
+        0 => 'Nenhum gasto registrado',
+        1 => '1 gasto registrado',
+        _ => '$count gastos registrados',
+      },
+    );
+  }
+
+  Widget _buildUnifiedEmptyState() {
+    return EmptyStateCard(
+      art: const FinanceEmptyArt(tone: FinanceTone.expense),
+      title: 'Nenhum gasto neste mês',
+      message:
+          'Registre despesas, parcelas ou gastos fixos para acompanhar para onde seu dinheiro está indo.',
+      actionLabel: 'Adicionar despesa',
+      onAction: _showAddExpenseBottomSheet,
+      actionStyle: EmptyStateActionStyle.filled,
+    );
+  }
+
+  Widget _buildGastoCard(GastoItem item) {
+    switch (item.kind) {
+      case GastoKind.despesa:
+        return _buildExpenseCard(item.expense!);
+      case GastoKind.parcela:
+        return _buildParcelaCard(item);
+      case GastoKind.fixo:
+        return _buildFixoCard(item);
+    }
+  }
+
+  Widget _buildParcelaCard(GastoItem item) {
+    final number = item.installmentNumber ?? 0;
+    final total = item.totalInstallments ?? 0;
+
+    return _buildReferenceCard(
+      tone: FinanceTone.installment,
+      icon: Icons.shopping_bag_outlined,
+      badge: 'Parcela',
+      title: item.label,
+      subtitle: '$number de $total parcelas • vence dia ${item.dueDayOfMonth}',
+      amount: item.amount,
+    );
+  }
+
+  Widget _buildFixoCard(GastoItem item) {
+    final cost = item.fixedCost!;
+    return _buildReferenceCard(
+      tone: FinanceTone.fixedCost,
+      icon: _getFixedCostCategoryIcon(cost.category),
+      badge: 'Fixo',
+      title: item.label,
+      subtitle: 'Gasto fixo • vence dia ${item.dueDayOfMonth}',
+      amount: item.amount,
+    );
+  }
+
+  /// Card de parcela/fixo na lista unificada: nao expoe os controles de
+  /// despesa e leva o usuario ao Finance (onde esses itens sao geridos).
+  Widget _buildReferenceCard({
+    required FinanceTone tone,
+    required IconData icon,
+    required String badge,
+    required String title,
+    required String subtitle,
+    required double amount,
+  }) {
+    return GestureDetector(
+      onTap: () => Navigator.pushNamed(context, '/finance'),
+      child: FinanceRecordTile(
+        tone: tone,
+        icon: icon,
+        badge: badge,
+        title: title,
+        subtitle: '$subtitle\nGerencie em Finanças e Faturas',
+        amount: 'R\$ ${amount.toStringAsFixed(2).replaceAll('.', ',')}',
+        actions: [
+          IconButton(
+            tooltip: 'Gerenciar em Finanças',
+            icon: const Icon(Icons.chevron_right_rounded),
+            color: AppSemanticColors.textSecondaryStrong,
+            onPressed: () => Navigator.pushNamed(context, '/finance'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  IconData _getFixedCostCategoryIcon(String category) {
+    return switch (category) {
+      'streaming' => Icons.play_circle_outline,
+      'rent' => Icons.home_outlined,
+      'utility' => Icons.lightbulb_outline,
+      'subscription' => Icons.card_membership,
+      'insurance' => Icons.security_outlined,
+      _ => Icons.category_outlined,
+    };
   }
 
   Widget _buildSummaryCard(double total, int count, String type) {
@@ -492,6 +644,7 @@ class _ExpensesScreenState extends State<ExpensesScreen>
     return FinanceRecordTile(
       tone: FinanceTone.expense,
       icon: _getCategoryIcon(expense.categoryId),
+      badge: 'Despesa',
       title: expense.description,
       subtitle: DateFormat('dd/MM/yyyy').format(expense.expenseDate),
       amount: 'R\$ ${expense.amount.toStringAsFixed(2).replaceAll('.', ',')}',

@@ -24,6 +24,7 @@ class FinanceRecordTile extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.amount,
+    this.badge,
     this.actions = const [],
   });
 
@@ -32,6 +33,10 @@ class FinanceRecordTile extends StatelessWidget {
   final String title;
   final String subtitle;
   final String amount;
+
+  /// Selo de tipo (ex.: "Despesa", "Parcela", "Fixo"). Quando presente, aparece
+  /// como uma pílula tonal acima do título. Puramente informativo.
+  final String? badge;
 
   /// Acoes a direita do item (icones de 48dp).
   final List<Widget> actions;
@@ -77,6 +82,30 @@ class FinanceRecordTile extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  if (badge != null) ...[
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: tone.tone.surface,
+                          borderRadius:
+                              BorderRadius.circular(AppRadius.full),
+                        ),
+                        child: Text(
+                          badge!,
+                          style: AppTypography.labelSmall.copyWith(
+                            color: tone.tone.foreground,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.labelGap),
+                  ],
                   Text(
                     title,
                     style: AppTypography.titleMedium.copyWith(
