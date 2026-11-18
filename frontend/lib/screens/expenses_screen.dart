@@ -8,6 +8,7 @@ import '../providers/installment_provider.dart';
 import '../providers/fixed_cost_provider.dart';
 import '../models/expense_model.dart';
 import '../utils/unified_gastos.dart';
+import '../utils/formatters.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
 import '../theme/tokens/app_colors_semantic.dart';
@@ -25,6 +26,7 @@ import '../widgets/common/module_screen_header.dart';
 import '../widgets/common/section_header.dart';
 import '../widgets/dialogs/app_confirm_dialog.dart';
 import '../widgets/finance/finance_empty_art.dart';
+import '../widgets/finance/finance_icons.dart';
 import '../widgets/finance/finance_record_tile.dart';
 import '../widgets/finance/finance_tone.dart';
 import '../widgets/finance/month_selector.dart';
@@ -524,7 +526,7 @@ class _ExpensesScreenState extends State<ExpensesScreen>
       tone: FinanceTone.expense,
       icon: Icons.trending_down_rounded,
       label: 'Total de gastos no mês',
-      value: 'R\$ ${total.toStringAsFixed(2).replaceAll('.', ',')}',
+      value: formatMoney(total),
       caption: switch (count) {
         0 => 'Nenhum gasto registrado',
         1 => '1 gasto registrado',
@@ -574,7 +576,7 @@ class _ExpensesScreenState extends State<ExpensesScreen>
     final cost = item.fixedCost!;
     return _buildReferenceCard(
       tone: FinanceTone.fixedCost,
-      icon: _getFixedCostCategoryIcon(cost.category),
+      icon: fixedCostCategoryIcon(cost.category),
       badge: 'Fixo',
       title: item.label,
       subtitle: 'Gasto fixo • vence dia ${item.dueDayOfMonth}',
@@ -600,7 +602,7 @@ class _ExpensesScreenState extends State<ExpensesScreen>
         badge: badge,
         title: title,
         subtitle: '$subtitle\nGerencie em Finanças e Faturas',
-        amount: 'R\$ ${amount.toStringAsFixed(2).replaceAll('.', ',')}',
+        amount: formatMoney(amount),
         actions: [
           IconButton(
             tooltip: 'Gerenciar em Finanças',
@@ -613,17 +615,6 @@ class _ExpensesScreenState extends State<ExpensesScreen>
     );
   }
 
-  IconData _getFixedCostCategoryIcon(String category) {
-    return switch (category) {
-      'streaming' => Icons.play_circle_outline,
-      'rent' => Icons.home_outlined,
-      'utility' => Icons.lightbulb_outline,
-      'subscription' => Icons.card_membership,
-      'insurance' => Icons.security_outlined,
-      _ => Icons.category_outlined,
-    };
-  }
-
   Widget _buildSummaryCard(double total, int count, String type) {
     return TonalSummaryCard(
       tone: FinanceTone.expense,
@@ -631,7 +622,7 @@ class _ExpensesScreenState extends State<ExpensesScreen>
       // O total e o da aba (filtrado), entao o rotulo diz de qual aba e.
       label:
           type == 'Tudo' ? 'Total de despesas no mês' : 'Total de $type no mês',
-      value: 'R\$ ${total.toStringAsFixed(2).replaceAll('.', ',')}',
+      value: formatMoney(total),
       caption: switch (count) {
         0 => 'Nenhuma despesa registrada',
         1 => '1 despesa registrada',
@@ -647,7 +638,7 @@ class _ExpensesScreenState extends State<ExpensesScreen>
       badge: 'Despesa',
       title: expense.description,
       subtitle: DateFormat('dd/MM/yyyy').format(expense.expenseDate),
-      amount: 'R\$ ${expense.amount.toStringAsFixed(2).replaceAll('.', ',')}',
+      amount: formatMoney(expense.amount),
       actions: [
         IconButton(
           tooltip: 'Editar ${expense.description}',

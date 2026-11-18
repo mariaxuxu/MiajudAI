@@ -5,6 +5,7 @@ import '../providers/auth_provider.dart';
 import '../providers/income_provider.dart';
 import '../providers/account_provider.dart';
 import '../models/income_model.dart';
+import '../utils/formatters.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
 import '../theme/tokens/app_colors_semantic.dart';
@@ -358,7 +359,7 @@ class _IncomeScreenState extends State<IncomeScreen> {
       icon: Icons.trending_up_rounded,
       label: 'Total de receitas no mês',
       value:
-          'R\$ ${incomeProvider.monthlyTotal.toStringAsFixed(2).replaceAll('.', ',')}',
+          formatMoney(incomeProvider.monthlyTotal),
       caption: switch (count) {
         0 => 'Nenhuma receita registrada',
         1 => '1 receita registrada',
@@ -373,7 +374,7 @@ class _IncomeScreenState extends State<IncomeScreen> {
       icon: _getIncomeIcon(inc.type),
       title: inc.description,
       subtitle: DateFormat('dd/MM/yyyy').format(inc.incomeDate),
-      amount: 'R\$ ${inc.amount.toStringAsFixed(2).replaceAll('.', ',')}',
+      amount: formatMoney(inc.amount),
       actions: [
         IconButton(
           tooltip: 'Editar ${inc.description}',

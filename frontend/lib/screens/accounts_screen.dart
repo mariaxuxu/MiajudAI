@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../config/routes.dart';
 import '../providers/auth_provider.dart';
 import '../providers/account_provider.dart';
+import '../utils/formatters.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
 import '../theme/tokens/app_colors_semantic.dart';
@@ -187,7 +188,7 @@ class _AccountsTabState extends State<AccountsTab> {
     return BalanceHeroCard(
       label: 'Saldo total',
       value:
-          'R\$ ${accountProvider.totalBalance.toStringAsFixed(2).replaceAll('.', ',')}',
+          formatMoney(accountProvider.totalBalance),
       caption:
           '${accountProvider.accounts.length} conta${accountProvider.accounts.length != 1 ? 's' : ''}',
     );
@@ -244,7 +245,7 @@ class _AccountsTabState extends State<AccountsTab> {
                 ),
                 const SizedBox(height: AppSpacing.labelGap),
                 Text(
-                  'R\$ ${account.balance.toStringAsFixed(2).replaceAll('.', ',')}',
+                  formatMoney(account.balance),
                   style: AppTypography.headlineSmall.copyWith(
                     color: AppSemanticColors.textPrimary,
                   ),

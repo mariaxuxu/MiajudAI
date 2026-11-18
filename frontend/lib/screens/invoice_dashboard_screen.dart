@@ -6,6 +6,7 @@ import '../providers/installment_provider.dart';
 import '../providers/fixed_cost_provider.dart';
 import '../models/installment_model.dart';
 import '../models/fixed_cost_model.dart';
+import '../utils/formatters.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
 import '../theme/tokens/app_colors_semantic.dart';
@@ -23,6 +24,7 @@ import '../widgets/common/section_header.dart';
 import '../widgets/dialogs/app_confirm_dialog.dart';
 import '../widgets/finance/balance_hero_card.dart';
 import '../widgets/finance/finance_empty_art.dart';
+import '../widgets/finance/finance_icons.dart';
 import '../widgets/finance/finance_metric_card.dart';
 import '../widgets/finance/finance_record_tile.dart';
 import '../widgets/finance/finance_tone.dart';
@@ -123,7 +125,7 @@ class _InvoiceDashboardScreenState extends State<InvoiceDashboardScreen>
                     tone: FinanceTone.installment,
                     icon: Icons.shopping_bag_outlined,
                     label: 'Parcelas',
-                    value: _money(installmentTotal),
+                    value: formatMoney(installmentTotal),
                     caption: installmentCount == 1
                         ? '1 parcela'
                         : '$installmentCount parcelas',
@@ -135,7 +137,7 @@ class _InvoiceDashboardScreenState extends State<InvoiceDashboardScreen>
                     tone: FinanceTone.fixedCost,
                     icon: Icons.calendar_month_outlined,
                     label: 'Fixos',
-                    value: _money(fixedCostTotal),
+                    value: formatMoney(fixedCostTotal),
                     caption: fixedCostCount == 1
                         ? '1 gasto fixo'
                         : '$fixedCostCount gastos fixos',
@@ -149,7 +151,7 @@ class _InvoiceDashboardScreenState extends State<InvoiceDashboardScreen>
             tone: FinanceTone.neutral,
             icon: Icons.trending_up_rounded,
             label: 'Total do Mês',
-            value: _money(totalMonth),
+            value: formatMoney(totalMonth),
             caption: 'Somando parcelas e fixos',
           ),
           const SizedBox(height: AppSpacing.sectionGap),
@@ -360,11 +362,11 @@ class _InvoiceDashboardScreenState extends State<InvoiceDashboardScreen>
     return BalanceHeroCard(
       icon: Icons.description_outlined,
       label: 'Compromissos do Mês',
-      value: _money(totalMonth),
+      value: formatMoney(totalMonth),
       // Espacos sem quebra depois de "Parcelas:", "Fixos:" e "R$": a legenda
       // so quebra no marcador central, nunca entre um rotulo e o seu valor.
       caption:
-          'Parcelas: ${_money(installmentTotal)}  •  Fixos: ${_money(fixedCostTotal)}'
+          'Parcelas: ${formatMoney(installmentTotal)}  •  Fixos: ${formatMoney(fixedCostTotal)}'
               .replaceAll('R\$ ', 'R\$\u{A0}')
               .replaceAll(': ', ':\u{A0}'),
       control: HeroMonthSwitcher(
@@ -385,7 +387,7 @@ class _InvoiceDashboardScreenState extends State<InvoiceDashboardScreen>
       subtitle:
           '${inst.getPaidInstallmentsForDate(_selectedDate)} de ${inst.totalInstallments} parcelas • vence dia ${inst.dueDayOfMonth}\n'
           '${_getPaymentMethodLabel(inst.paymentMethod)} • ${_formatDateShort(inst.startDate)}',
-      amount: _money(inst.installmentValue),
+      amount: formatMoney(inst.installmentValue),
       actions: [
         IconButton(
           tooltip: 'Remover $name',
@@ -400,11 +402,11 @@ class _InvoiceDashboardScreenState extends State<InvoiceDashboardScreen>
   Widget _buildFixedCostCard(BuildContext context, FixedCostModel cost) {
     return FinanceRecordTile(
       tone: FinanceTone.fixedCost,
-      icon: _getCategoryIcon(cost.category),
+      icon: fixedCostCategoryIcon(cost.category),
       title: cost.name,
       subtitle:
           '${_getCategoryLabel(cost.category)} • todo dia ${cost.dueDayOfMonth}',
-      amount: _money(cost.amount),
+      amount: formatMoney(cost.amount),
       actions: [
         IconButton(
           tooltip: 'Remover ${cost.name}',
@@ -470,17 +472,6 @@ class _InvoiceDashboardScreenState extends State<InvoiceDashboardScreen>
     );
   }
 
-  IconData _getCategoryIcon(String category) {
-    return switch (category) {
-      'streaming' => Icons.play_circle_outline,
-      'rent' => Icons.home_outlined,
-      'utility' => Icons.lightbulb_outline,
-      'subscription' => Icons.card_membership,
-      'insurance' => Icons.security_outlined,
-      _ => Icons.category_outlined,
-    };
-  }
-
   void _deleteInstallment(BuildContext context, int id) {
     final auth = context.read<AuthProvider>();
     if (auth.authToken == null) return;
@@ -526,9 +517,6 @@ class _InvoiceDashboardScreenState extends State<InvoiceDashboardScreen>
       FixedCostProvider provider, DateTime month) {
     return provider.getFixedCostsForMonth(month);
   }
-
-  String _money(double value) =>
-      'R\$ ${value.toStringAsFixed(2).replaceAll('.', ',')}';
 
   String _formatDateShort(DateTime date) {
     final months = [
