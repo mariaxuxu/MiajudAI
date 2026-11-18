@@ -8,6 +8,7 @@ import '../screens/manage_account_screen.dart';
 import '../screens/home_screen.dart';
 import '../screens/calendar_screen.dart';
 import '../screens/accounts_screen.dart';
+import '../screens/finance_screen.dart';
 import '../screens/income_screen.dart';
 import '../screens/expenses_screen.dart';
 import '../screens/chat/agent_chat_screen.dart';
@@ -47,6 +48,7 @@ class AppRoutes {
     home: (context) => const HomeScreen(),
     calendar: (context) => const CalendarScreen(),
     accounts: (context) => const AccountsScreen(),
+    finance: (context) => const FinanceScreen(),
     income: (context) => const IncomeScreen(),
     expenses: (context) => const ExpensesScreen(),
     chat: (context) => const AgentChatScreen(agent: AppAgent.luna),

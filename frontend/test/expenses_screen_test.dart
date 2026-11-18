@@ -10,6 +10,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:miajudai/models/account_model.dart';
 import 'package:miajudai/models/expense_model.dart';
+import 'package:miajudai/models/fixed_cost_model.dart';
+import 'package:miajudai/models/installment_model.dart';
 import 'package:miajudai/screens/expenses_screen.dart';
 import 'package:miajudai/widgets/common/app_date_field.dart';
 import 'package:miajudai/widgets/common/app_form_field.dart';
@@ -19,12 +21,16 @@ import 'package:miajudai/widgets/finance/month_selector.dart';
 
 import 'support/fake_account_provider.dart';
 import 'support/fake_expense_provider.dart';
+import 'support/fake_fixed_cost_provider.dart';
+import 'support/fake_installment_provider.dart';
 import 'support/pump_screen.dart';
 import 'support/test_fonts.dart';
 
 typedef _Env = ({
   FakeExpenseProvider expenses,
   FakeAccountProvider accounts,
+  FakeInstallmentProvider installments,
+  FakeFixedCostProvider fixedCosts,
   RouteLog log,
 });
 
@@ -32,6 +38,8 @@ Future<_Env> _pump(
   WidgetTester tester, {
   List<ExpenseModel> Function()? seed,
   List<AccountModel> Function()? accountSeed,
+  List<InstallmentModel> Function()? installmentSeed,
+  List<FixedCostModel> Function()? fixedCostSeed,
   String? token = 'test-token',
   bool pushed = false,
 }) async {
@@ -39,16 +47,28 @@ Future<_Env> _pump(
   if (seed != null) expenses.items = seed();
   final accounts = FakeAccountProvider();
   if (accountSeed != null) accounts.items = accountSeed();
+  final installments = FakeInstallmentProvider();
+  if (installmentSeed != null) installments.items = installmentSeed();
+  final fixedCosts = FakeFixedCostProvider();
+  if (fixedCostSeed != null) fixedCosts.items = fixedCostSeed();
 
   final env = await pumpScreen(
     tester,
     const ExpensesScreen(),
     expenses: expenses,
     accounts: accounts,
+    installments: installments,
+    fixedCosts: fixedCosts,
     pushed: pushed,
     setup: (a) => a.token = token,
   );
-  return (expenses: expenses, accounts: accounts, log: env.log);
+  return (
+    expenses: expenses,
+    accounts: accounts,
+    installments: installments,
+    fixedCosts: fixedCosts,
+    log: env.log,
+  );
 }
 
 /// 8 despesas que exercitam cada filtro:
@@ -227,7 +247,7 @@ void main() {
           tester.getTopLeft(_pill(t)).dx
       ];
       expect(xs, [...xs]..sort());
-      expect(_sectionTitle('Todas as despesas'), findsOneWidget);
+      expect(_sectionTitle('Todos os gastos'), findsOneWidget);
     });
 
     testWidgets('Tudo lists everything and sums the whole list', (
@@ -235,10 +255,10 @@ void main() {
     ) async {
       await _pump(tester, seed: _mixed);
 
-      expect(find.text('Total de despesas no mês'), findsOneWidget);
+      expect(find.text('Total de gastos no mês'), findsOneWidget);
       // 89.9 + 1500 + 320.45 + 60 + 2500 + 40 + 30 + 15
       expect(find.text('R\$ 4555,35'), findsOneWidget);
-      expect(find.text('8 despesas registradas'), findsOneWidget);
+      expect(find.text('8 gastos registrados'), findsOneWidget);
       for (final d in [
         'Conta de água',
         'Aluguel',
@@ -329,7 +349,7 @@ void main() {
       tester,
     ) async {
       await _pump(tester, seed: _mixed);
-      expect(_sectionTitle('Todas as despesas'), findsOneWidget);
+      expect(_sectionTitle('Todos os gastos'), findsOneWidget);
 
       await tester.fling(find.byType(TabBarView), const Offset(-400, 0), 2000);
       await tester.pumpAndSettle();
@@ -338,7 +358,7 @@ void main() {
 
       await tester.fling(find.byType(TabBarView), const Offset(400, 0), 2000);
       await tester.pumpAndSettle();
-      expect(_sectionTitle('Todas as despesas'), findsOneWidget);
+      expect(_sectionTitle('Todos os gastos'), findsOneWidget);
     });
 
     testWidgets('the selected pill follows the tab, by swipe or by tap', (
@@ -384,7 +404,7 @@ void main() {
       // toStringAsFixed(2) + troca de "." por "," (sem separador de milhar).
       expect(find.text('R\$ 1234,50'), findsNWidgets(2)); // total + item
       expect(find.text('05/09/2026'), findsOneWidget);
-      expect(find.text('1 despesa registrada'), findsOneWidget);
+      expect(find.text('1 gasto registrado'), findsOneWidget);
     });
 
     testWidgets('one icon per category', (tester) async {
@@ -414,6 +434,176 @@ void main() {
       await tester.scrollUntilVisible(find.byIcon(Icons.receipt_outlined), 200,
           scrollable: find.byType(Scrollable).last);
       expect(find.byIcon(Icons.receipt_outlined), findsOneWidget);
+    });
+  });
+
+  group('unified "Tudo" tab', () {
+    final now = DateTime.now();
+
+    testWidgets('lists despesas, parcelas e fixos com selo de tipo', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        seed: () => [
+          fakeExpense(
+            id: 1,
+            description: 'Mercado',
+            amount: 100,
+            date: DateTime(now.year, now.month, 5),
+          ),
+        ],
+        installmentSeed: () => [
+          fakeInstallment(
+            id: 1,
+            name: 'iPhone',
+            merchantName: 'Apple Store',
+            totalAmount: 1200,
+            totalInstallments: 12,
+            dueDayOfMonth: 10,
+            startDate: DateTime(now.year, now.month, 1),
+          ),
+        ],
+        fixedCostSeed: () => [
+          fakeFixedCost(
+            id: 1,
+            name: 'Netflix',
+            amount: 30,
+            dueDayOfMonth: 15,
+            createdAt: DateTime(now.year, now.month - 1, 1),
+          ),
+        ],
+      );
+
+      expect(find.text('Despesa'), findsOneWidget);
+      expect(find.text('Parcela'), findsOneWidget);
+      expect(find.text('Fixo'), findsOneWidget);
+      expect(find.text('Mercado'), findsOneWidget);
+      expect(find.text('Apple Store'), findsOneWidget);
+      expect(find.text('Netflix'), findsOneWidget);
+    });
+
+    testWidgets('total agregado soma os tres tipos', (tester) async {
+      await _pump(
+        tester,
+        seed: () => [
+          fakeExpense(
+            id: 1,
+            description: 'Mercado',
+            amount: 100,
+            date: DateTime(now.year, now.month, 5),
+          ),
+        ],
+        installmentSeed: () => [
+          fakeInstallment(
+            id: 1,
+            name: 'iPhone',
+            totalAmount: 1200,
+            totalInstallments: 12,
+            dueDayOfMonth: 10,
+            startDate: DateTime(now.year, now.month, 1),
+          ),
+        ],
+        fixedCostSeed: () => [
+          fakeFixedCost(
+            id: 1,
+            name: 'Netflix',
+            amount: 30,
+            createdAt: DateTime(now.year, now.month - 1, 1),
+          ),
+        ],
+      );
+
+      expect(find.text('Total de gastos no mês'), findsOneWidget);
+      expect(find.text('R\$ 230,00'), findsOneWidget);
+      expect(find.text('3 gastos registrados'), findsOneWidget);
+    });
+
+    testWidgets('nao fica vazia quando so ha parcelas e fixos', (tester) async {
+      await _pump(
+        tester,
+        installmentSeed: () => [
+          fakeInstallment(
+            id: 1,
+            name: 'iPhone',
+            totalAmount: 1200,
+            totalInstallments: 12,
+            startDate: DateTime(now.year, now.month, 1),
+          ),
+        ],
+        fixedCostSeed: () => [
+          fakeFixedCost(
+            id: 1,
+            name: 'Netflix',
+            amount: 30,
+            createdAt: DateTime(now.year, now.month - 1, 1),
+          ),
+        ],
+      );
+
+      expect(find.text('Nenhum gasto neste mês'), findsNothing);
+      expect(find.text('Todos os gastos'), findsOneWidget);
+      expect(find.text('iPhone'), findsOneWidget);
+      expect(find.text('Netflix'), findsOneWidget);
+    });
+
+    testWidgets('parcela/fixo nao expoem controles de despesa', (tester) async {
+      await _pump(
+        tester,
+        seed: () => [
+          fakeExpense(
+            id: 1,
+            description: 'Mercado',
+            amount: 100,
+            date: DateTime(now.year, now.month, 5),
+          ),
+        ],
+        installmentSeed: () => [
+          fakeInstallment(
+            id: 1,
+            name: 'iPhone',
+            merchantName: 'Apple Store',
+            totalAmount: 1200,
+            totalInstallments: 12,
+            startDate: DateTime(now.year, now.month, 1),
+          ),
+        ],
+        fixedCostSeed: () => [
+          fakeFixedCost(
+            id: 1,
+            name: 'Netflix',
+            amount: 30,
+            createdAt: DateTime(now.year, now.month - 1, 1),
+          ),
+        ],
+      );
+
+      expect(find.byTooltip('Editar Mercado'), findsOneWidget);
+      expect(find.byTooltip('Editar Apple Store'), findsNothing);
+      expect(find.byTooltip('Remover Apple Store'), findsNothing);
+      expect(find.byTooltip('Remover Netflix'), findsNothing);
+      expect(find.byTooltip('Gerenciar em Finanças'), findsNWidgets(2));
+    });
+
+    testWidgets('tocar numa parcela leva ao Finance', (tester) async {
+      final r = await _pump(
+        tester,
+        installmentSeed: () => [
+          fakeInstallment(
+            id: 1,
+            name: 'iPhone',
+            merchantName: 'Apple Store',
+            totalAmount: 1200,
+            totalInstallments: 12,
+            startDate: DateTime(now.year, now.month, 1),
+          ),
+        ],
+      );
+
+      await tester.tap(find.text('Apple Store'));
+      await tester.pumpAndSettle();
+
+      expect(r.log.events, ['push /finance']);
     });
   });
 

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../config/routes.dart';
 import '../providers/auth_provider.dart';
 import '../providers/account_provider.dart';
+import '../utils/formatters.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
 import '../theme/tokens/app_colors_semantic.dart';
@@ -20,14 +21,120 @@ import '../widgets/dialogs/app_confirm_dialog.dart';
 import '../widgets/finance/balance_hero_card.dart';
 import '../widgets/home/quick_action_card.dart';
 
-class AccountsScreen extends StatefulWidget {
+/// Abre a sheet de "Nova Conta". Compartilhada entre a tela de contas e a tela
+/// unificada de finanças, para que o card único não perca o fluxo de criar conta.
+void showAddAccountSheet(BuildContext context) {
+  final nameCtrl = TextEditingController();
+  final bankCtrl = TextEditingController();
+  final numberCtrl = TextEditingController();
+  String selectedType = 'checking';
+  final outerContext = context;
+
+  AppFormSheet.show(
+    context: context,
+    title: 'Nova Conta',
+    builder: (sheetContext) {
+      return StatefulBuilder(
+        builder: (innerContext, sheetSetState) {
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              AppFormField(
+                controller: nameCtrl,
+                label: 'Nome da conta',
+                hint: 'Ex: Conta Corrente Nubank',
+              ),
+              const SizedBox(height: AppSpacing.defaultGap),
+              AppFormDropdown<String>(
+                label: 'Tipo de conta',
+                value: selectedType,
+                onChanged: (v) => sheetSetState(() => selectedType = v!),
+                items: const [
+                  DropdownMenuItem(
+                      value: 'checking', child: Text('Conta Corrente')),
+                  DropdownMenuItem(value: 'savings', child: Text('Poupança')),
+                  DropdownMenuItem(
+                      value: 'credit_card', child: Text('Cartão de Crédito')),
+                  DropdownMenuItem(value: 'other', child: Text('Outra')),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.defaultGap),
+              AppFormField(
+                controller: bankCtrl,
+                label: 'Banco (opcional)',
+                hint: 'Ex: Nubank',
+              ),
+              const SizedBox(height: AppSpacing.defaultGap),
+              AppFormField(
+                controller: numberCtrl,
+                label: 'Número da conta (opcional)',
+                hint: 'Ex: 123456-7',
+              ),
+              const SizedBox(height: AppSpacing.blockGap),
+              AppPrimaryButton(
+                label: 'Criar conta',
+                onPressed: () {
+                  final name = nameCtrl.text.trim();
+                  if (name.isEmpty) {
+                    AppFeedbackSnackBar.error(
+                        sheetContext, 'Digite o nome da conta');
+                    return;
+                  }
+                  final auth = outerContext.read<AuthProvider>();
+                  final accounts = outerContext.read<AccountProvider>();
+                  if (auth.authToken != null) {
+                    accounts.addAccount(
+                      auth.authToken!,
+                      name,
+                      selectedType,
+                      bankCtrl.text.isEmpty ? null : bankCtrl.text,
+                      numberCtrl.text.isEmpty ? null : numberCtrl.text,
+                    );
+                    Navigator.pop(sheetContext);
+                    AppFeedbackSnackBar.success(outerContext, 'Conta criada!');
+                  }
+                },
+              ),
+            ],
+          );
+        },
+      );
+    },
+  );
+}
+
+class AccountsScreen extends StatelessWidget {
   const AccountsScreen({super.key});
 
   @override
-  State<AccountsScreen> createState() => _AccountsScreenState();
+  Widget build(BuildContext context) {
+    return AppModuleScaffold(
+      header: ModuleScreenHeader(
+        title: 'Finanças',
+        subtitle: 'Controle suas contas e gastos',
+        onBack: () => Navigator.pop(context),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => showAddAccountSheet(context),
+        tooltip: 'Adicionar conta',
+        child: const Icon(Icons.add),
+      ),
+      child: const AccountsTab(),
+    );
+  }
 }
 
-class _AccountsScreenState extends State<AccountsScreen> {
+/// Corpo da tela de contas: saldo, atalhos de receitas/despesas e a lista.
+/// Reutilizado pela tela unificada de finanças como a aba "Contas".
+class AccountsTab extends StatefulWidget {
+  const AccountsTab({super.key});
+
+  @override
+  State<AccountsTab> createState() => _AccountsTabState();
+}
+
+class _AccountsTabState extends State<AccountsTab> {
   @override
   void initState() {
     super.initState();
@@ -39,135 +146,41 @@ class _AccountsScreenState extends State<AccountsScreen> {
     });
   }
 
-  void _showAddAccountBottomSheet() {
-    final nameCtrl = TextEditingController();
-    final bankCtrl = TextEditingController();
-    final numberCtrl = TextEditingController();
-    String selectedType = 'checking';
-    final outerContext = context;
-
-    AppFormSheet.show(
-      context: context,
-      title: 'Nova Conta',
-      builder: (sheetContext) {
-        return StatefulBuilder(
-          builder: (innerContext, sheetSetState) {
-            return Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                AppFormField(
-                  controller: nameCtrl,
-                  label: 'Nome da conta',
-                  hint: 'Ex: Conta Corrente Nubank',
-                ),
-                const SizedBox(height: AppSpacing.defaultGap),
-                AppFormDropdown<String>(
-                  label: 'Tipo de conta',
-                  value: selectedType,
-                  onChanged: (v) => sheetSetState(() => selectedType = v!),
-                  items: const [
-                    DropdownMenuItem(
-                        value: 'checking', child: Text('Conta Corrente')),
-                    DropdownMenuItem(value: 'savings', child: Text('Poupança')),
-                    DropdownMenuItem(
-                        value: 'credit_card', child: Text('Cartão de Crédito')),
-                    DropdownMenuItem(value: 'other', child: Text('Outra')),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.defaultGap),
-                AppFormField(
-                  controller: bankCtrl,
-                  label: 'Banco (opcional)',
-                  hint: 'Ex: Nubank',
-                ),
-                const SizedBox(height: AppSpacing.defaultGap),
-                AppFormField(
-                  controller: numberCtrl,
-                  label: 'Número da conta (opcional)',
-                  hint: 'Ex: 123456-7',
-                ),
-                const SizedBox(height: AppSpacing.blockGap),
-                AppPrimaryButton(
-                  label: 'Criar conta',
-                  onPressed: () {
-                    final name = nameCtrl.text.trim();
-                    if (name.isEmpty) {
-                      AppFeedbackSnackBar.error(
-                          sheetContext, 'Digite o nome da conta');
-                      return;
-                    }
-                    final auth = outerContext.read<AuthProvider>();
-                    final accounts = outerContext.read<AccountProvider>();
-                    if (auth.authToken != null) {
-                      accounts.addAccount(
-                        auth.authToken!,
-                        name,
-                        selectedType,
-                        bankCtrl.text.isEmpty ? null : bankCtrl.text,
-                        numberCtrl.text.isEmpty ? null : numberCtrl.text,
-                      );
-                      Navigator.pop(sheetContext);
-                      AppFeedbackSnackBar.success(
-                          outerContext, 'Conta criada!');
-                    }
-                  },
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    return AppModuleScaffold(
-      header: ModuleScreenHeader(
-        title: 'Finanças',
-        subtitle: 'Controle suas contas e gastos',
-        onBack: () => Navigator.pop(context),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _showAddAccountBottomSheet,
-        tooltip: 'Adicionar conta',
-        child: const Icon(Icons.add),
-      ),
-      child: Consumer<AccountProvider>(
-        builder: (context, accountProvider, _) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _buildBalanceCard(accountProvider),
-              const SizedBox(height: AppSpacing.defaultGap),
-              _buildQuickActions(),
-              const SizedBox(height: AppSpacing.blockGap),
-              SectionHeader(
-                title: 'Minhas contas',
-                count: accountProvider.accounts.length,
-              ),
-              const SizedBox(height: AppSpacing.itemGap),
-              if (accountProvider.accounts.isEmpty)
-                EmptyStateCard(
-                  art: const Icon(
-                    Icons.account_balance_outlined,
-                    size: 56,
-                    color: AppSemanticColors.textTertiary,
-                  ),
-                  title: 'Nenhuma conta cadastrada',
-                  message:
-                      'Adicione sua primeira conta para acompanhar seu saldo e movimentações.',
-                  actionLabel: 'Adicionar conta',
-                  onAction: _showAddAccountBottomSheet,
-                )
-              else
-                ...accountProvider.accounts
-                    .map((a) => _buildAccountCard(a, accountProvider)),
-            ],
-          );
-        },
-      ),
+    return Consumer<AccountProvider>(
+      builder: (context, accountProvider, _) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _buildBalanceCard(accountProvider),
+            const SizedBox(height: AppSpacing.defaultGap),
+            _buildQuickActions(),
+            const SizedBox(height: AppSpacing.blockGap),
+            SectionHeader(
+              title: 'Minhas contas',
+              count: accountProvider.accounts.length,
+            ),
+            const SizedBox(height: AppSpacing.itemGap),
+            if (accountProvider.accounts.isEmpty)
+              EmptyStateCard(
+                art: const Icon(
+                  Icons.account_balance_outlined,
+                  size: 56,
+                  color: AppSemanticColors.textTertiary,
+                ),
+                title: 'Nenhuma conta cadastrada',
+                message:
+                    'Adicione sua primeira conta para acompanhar seu saldo e movimentações.',
+                actionLabel: 'Adicionar conta',
+                onAction: () => showAddAccountSheet(context),
+              )
+            else
+              ...accountProvider.accounts
+                  .map((a) => _buildAccountCard(a, accountProvider)),
+          ],
+        );
+      },
     );
   }
 
@@ -175,7 +188,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
     return BalanceHeroCard(
       label: 'Saldo total',
       value:
-          'R\$ ${accountProvider.totalBalance.toStringAsFixed(2).replaceAll('.', ',')}',
+          formatMoney(accountProvider.totalBalance),
       caption:
           '${accountProvider.accounts.length} conta${accountProvider.accounts.length != 1 ? 's' : ''}',
     );
@@ -232,7 +245,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
                 ),
                 const SizedBox(height: AppSpacing.labelGap),
                 Text(
-                  'R\$ ${account.balance.toStringAsFixed(2).replaceAll('.', ',')}',
+                  formatMoney(account.balance),
                   style: AppTypography.headlineSmall.copyWith(
                     color: AppSemanticColors.textPrimary,
                   ),
@@ -289,8 +302,6 @@ class _AccountsScreenState extends State<AccountsScreen> {
   }
 
   Widget _buildQuickActions() {
-    // IntrinsicHeight iguala a altura dos dois cards se uma descricao quebrar
-    // (texto ampliado ou tela estreita), como na home.
     return IntrinsicHeight(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,

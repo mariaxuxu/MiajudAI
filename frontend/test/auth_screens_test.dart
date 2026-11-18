@@ -155,6 +155,20 @@ void main() {
       expect(find.widgetWithText(TextButton, 'Esqueci minha senha'),
           findsOneWidget);
     });
+
+    testWidgets('email and password fields keep a gap above the keyboard', (
+      tester,
+    ) async {
+      await pumpScreen(tester, const LoginScreen());
+
+      const expected = EdgeInsets.only(left: 20, top: 20, right: 20, bottom: 32);
+      for (final index in [0, 1]) {
+        final textField = tester.widget<TextField>(
+          find.descendant(of: _field(index), matching: find.byType(TextField)),
+        );
+        expect(textField.scrollPadding, expected);
+      }
+    });
   });
 
   group('SignupScreen', () {

@@ -102,6 +102,8 @@ class _LoginScreenState extends State<LoginScreen>
             keyboardType: TextInputType.emailAddress,
             focusNode: _emailFocus,
             textInputAction: TextInputAction.next,
+            scrollPadding: const EdgeInsets.only(
+                left: 20, top: 20, right: 20, bottom: 32),
             onEditingComplete: () =>
                 FocusScope.of(context).requestFocus(_passwordFocus),
             validator: (v) {
@@ -124,6 +126,8 @@ class _LoginScreenState extends State<LoginScreen>
             isPassword: true,
             focusNode: _passwordFocus,
             textInputAction: TextInputAction.done,
+            scrollPadding: const EdgeInsets.only(
+                left: 20, top: 20, right: 20, bottom: 32),
             onEditingComplete: () => _submit(context),
             validator: (v) {
               if (v == null || v.isEmpty) return 'Informe sua senha';

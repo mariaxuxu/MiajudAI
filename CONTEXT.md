@@ -44,13 +44,17 @@ _Avoid_: Earning, revenue, addition
 Monetary outflow from account (food, utilities, transport, entertainment), timestamped and categorized for spending analysis.
 _Avoid_: Transaction, payment, debit
 
-**Transaction**:
-Parent concept encompassing both income and expense; shared metadata: amount, date, category, account, type.
-_Avoid_: Record, entry, movement
+**Installment** (Parcela):
+A purchase split into a fixed number of monthly payments; carries total amount, number of installments, monthly value and a due day of month.
+_Avoid_: Parcel, recurring payment, plan
 
-**Dashboard**:
-Real-time financial analytics surface showing account balances, spending trends, category breakdowns, and expense forecasts.
-_Avoid_: Home, overview, summary
+**Fixed Cost** (Gasto Fixo):
+A recurring monthly commitment (rent, streaming, utility, subscription, insurance) with a monthly value and due day; managed in the Finance screen.
+_Avoid_: Recurring expense, monthly bill, subscription (when the category label matters)
+
+**Finance** (Finanças e Faturas):
+The unified financial screen with three tabs — Contas (accounts), Parcelas (installments) and Dashboard (a "Compromissos do Mês" summary of installments + fixed costs).
+_Avoid_: Dashboard (as a standalone analytics page), invoice, wallet
 
 ---
 
@@ -61,8 +65,24 @@ Scheduled activity with title, date, category, and optional notification; stored
 _Avoid_: Appointment, task, reminder
 
 **Notification**:
-Push or local alert triggered on event date; stored as per-event preference in calendar_events table.
+Push or local alert triggered on event date; stored as per-event preference in the events table.
 _Avoid_: Alert, reminder, trigger
+
+---
+
+### Diary (Diário)
+
+**Diary Entry**:
+A dated journal record with a mood (`happy`, `sad`, `neutral`) and tags (`food`, `finance`, `domestic`...), used for wellness tracking and to enrich agent context.
+_Avoid_: Note, journal post, log
+
+**Mood**:
+The emotional state recorded in a Diary Entry — `happy`, `sad` or `neutral`.
+_Avoid_: Feeling, emotion, sentiment
+
+**Tag**:
+A short label (`food`, `finance`, `domestic`...) shared between Diary Entries and the Pantry Domain, and mapped to agents.
+_Avoid_: Label, category, keyword
 
 ---
 
@@ -84,6 +104,10 @@ _Avoid_: Amount, weight, volume, measure
 The Pantry Item attribute — `food` or `domestic` — that routes an item to the agent that needs it. These values are shared with the diary-tag vocabulary and the agent→tag mapping, not a parallel set.
 _Avoid_: Category, type, kind, cooking, cleaning
 
+**Pantry Commit**:
+A batch of Pantry Item quantity changes recorded as a single market trip; committed atomically and idempotently.
+_Avoid_: Batch update, transaction, bulk edit
+
 ---
 
 ### Authentication & Security
@@ -104,9 +128,29 @@ _Avoid_: Contact, trusted contact
 Boolean flag confirming emergency contact has received and acknowledged SMS alert; updated after successful Twilio delivery.
 _Avoid_: Acknowledgment, confirmation
 
+**SMS Alert**:
+Automated SMS sent to an Emergency Contact when the app detects user inactivity or a logout-triggered alert; throttled via a `last_sms_alert` timestamp.
+_Avoid_: Notification, push, reminder
+
 **Security Log**:
 Immutable audit record tracking authentication attempts, API access, IP addresses, and security events for compliance and investigation.
 _Avoid_: Audit log, activity log
+
+---
+
+### Analytics & Event Tracking
+
+**User Event**:
+An instrumented record of user behavior — a screen navigation or a business action — published by the client to `/api/user-events`; deduplicated via a client-generated idempotency key.
+_Avoid_: Log, analytics event, metric
+
+**Screen Event**:
+A user-event recording a screen navigation (screen name and timestamp).
+_Avoid_: Navigation log, page view
+
+**Interaction Event**:
+A user-event recording a business action (e.g., creating an expense or an installment).
+_Avoid_: Action log, click event
 
 ---
 
@@ -129,7 +173,7 @@ SMS delivery service for emergency contacts; supports automatic retry and delive
 _Avoid_: SMS service, messaging service
 
 **PostgreSQL**:
-Relational database (v14+) storing users, transactions, conversations, messages, contexts, and security logs; hosted on Oracle Cloud Free Tier (20GB always-free).
+Relational database (v14+) storing users, accounts, expenses, incomes, installments, fixed costs, events, diary entries, contexts, and pantry/event-tracking records; hosted on Oracle Cloud Free Tier (20GB always-free).
 _Avoid_: Database, DB
 
 **Oracle Cloud Free Tier**:
@@ -173,7 +217,7 @@ Primary post-login dashboard displaying feature cards (Finance, Calendar, Chat) 
 _Avoid_: HomeScreen, Dashboard (generic), Home
 
 **Provider** (State Management):
-Dart package for reactive state sharing across Flutter widgets; MiAjudAI uses AuthProvider, AccountProvider, IncomeProvider, ExpenseProvider, ChatProvider.
+Dart package for reactive state sharing across Flutter widgets; MiAjudAI uses AuthProvider, AccountProvider, IncomeProvider, ExpenseProvider, ChatProvider, InstallmentProvider, FixedCostProvider, DiaryProvider, PantryProvider, EventProvider, OnboardingProvider.
 _Avoid_: State manager, bloc, redux
 
 **Dotenv**:
@@ -251,10 +295,6 @@ _Avoid_: Behavior tracking, analytics
 **Advanced Analytics** (Sep 2026, 4 weeks):
 Dashboard with expense forecasting, spending trends, and category analytics; wellness tracking (habits, meals, exercise, gamified streaks).
 _Avoid_: Reporting, insights, statistics
-
-**Emergency SMS** (Sep-Oct 2026, 2 weeks):
-Reliable bulk SMS delivery to emergency contacts with automatic retry, delivery confirmation, and audit logging via Twilio.
-_Avoid_: Alert system, notification service, SMS service (when referring to specific feature)
 
 **MiAjudAki** (Oct-Nov 2026, 6 weeks):
 Service marketplace enabling bookings (electrician, cleaner, plumber) with catalog, contracting, payment processing, invoices, and service tracking.
@@ -336,17 +376,23 @@ _Avoid_: Marketplace, booking platform, service platform (generic)
 
 | Table | Purpose |
 |-------|---------|
-| `users` | Firebase UID, email, phone, full_name, avatar, timestamps |
+| `users` | Firebase UID, email, phone, full_name, avatar, timestamps, last_sms_alert, logout_at |
 | `user_context` | Extracted persona: interests, routine_data, preferences, common_questions |
-| `calendar_events` | User's events with title, date, category, notification flag |
 | `accounts` | Financial accounts (checking, savings, credit card) |
-| `transactions` | Income/expense records with amount, date, category, account_id |
-| `llm_conversations` | Session metadata (user_id, agent_type, expires_at) |
-| `messages` | Individual messages (conversation_id, sender_type, content, tokens_used) |
+| `categories` | Expense/income categories (seeded) |
+| `expenses` | Expense records with amount, date, category, account |
+| `income` | Income records with amount, date, category, account |
+| `installments` | Purchase installments (total amount, count, monthly value, due day) |
+| `fixed_costs` | Recurring fixed costs (rent, streaming...) with monthly value and due day |
+| `events` | Calendar events with title, date, category, notification flag |
+| `diary_entries` | Diary entries with mood, tags, created_at |
 | `emergency_contacts` | Phone numbers, verification status |
+| `user_events` | Instrumented user-behavior events (client idempotency key) |
+| `screen_events` | Screen navigation events |
+| `interaction_events` | Business-action interaction events |
 | `pantry_items` | Global Pantry Item catalog (name, emoji, domain); shared across users, no owner |
 | `user_pantry` | A user's Pantry: one row per owned Pantry Item, with Quantity (pack count) |
-| `security_logs` | Authentication events, IP addresses, activity audit |
+| `pantry_commits` | Batch commits of pantry quantity changes (a market trip) |
 
 ---
 
@@ -414,6 +460,6 @@ curl http://localhost:5000/health  # API readiness probe
 
 ---
 
-**Last Updated**: October 19, 2026
-**Status**: MVP (Épicos 1-6) in development; Phase 2 roadmap (Profile Tracking, Analytics, Emergency SMS, MiAjudAki) defined; Despensa (Pantry) shipped and feeding Otto/Tina context
+**Last Updated**: November 18, 2026
+**Status**: MVP (Épicos 1-6) in development; redesigned app, Despensa (Pantry), SMS alerting, user-event tracking and unified expenses (despesas + parcelas + fixos) shipped; Phase 2 roadmap (Profile Tracking, Analytics, MiAjudAki) defined
 **Audience**: Development team, stakeholders, new contributors

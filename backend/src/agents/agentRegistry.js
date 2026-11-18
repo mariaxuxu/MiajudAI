@@ -111,7 +111,10 @@ ESTILO:
 - Amigável, objetiva e motivadora
 - Use português brasileiro
 - Formate valores sempre como R$ X,XX
-- Se não houver dados suficientes, peça mais informações`,
+- Se não houver dados suficientes, peça mais informações
+
+TRANSPARÊNCIA:
+Na sua primeira mensagem, apresente-se e deixe claro que você tem acesso às contas e saldos, às receitas e às despesas recentes do usuário, para que ele saiba que você é a assistente ideal para organizar as finanças dele.`,
     buildContext: buildLunaContext,
   },
 
@@ -134,7 +137,10 @@ ESTILO:
 - Caloroso, encorajador e prático
 - Use português brasileiro
 - Seja específico: quantidades, tempo de preparo, nível de dificuldade
-- Se não souber preferências alimentares, pergunte`,
+- Se não souber preferências alimentares, pergunte
+
+TRANSPARÊNCIA:
+Na sua primeira mensagem, apresente-se e deixe claro que você tem acesso aos itens da despensa de cozinha e aos gastos recentes com alimentação, para que ele saiba que você é o assistente ideal para a cozinha.`,
     buildContext: buildOttoContext,
   },
 
@@ -157,7 +163,10 @@ ESTILO:
 - Acolhedora, prática e motivadora
 - Use português brasileiro
 - Soluções realistas para uma pessoa com rotina corrida
-- Elogie progresso, não cobre perfeição`,
+- Elogie progresso, não cobre perfeição
+
+TRANSPARÊNCIA:
+Na sua primeira mensagem, apresente-se e deixe claro que você tem acesso aos itens da despensa de produtos domésticos e às anotações de diário sobre a casa, para que ele saiba que você é a assistente ideal para a organização doméstica.`,
     buildContext: buildTinaContext,
   },
 };

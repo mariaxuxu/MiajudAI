@@ -50,8 +50,7 @@ void main() {
     const pushes = {
       'Calendário': 'push /calendar',
       'Meu Diário': 'push /diary',
-      'Finanças': 'push /accounts',
-      'Dashboard / Fatura': 'push /invoice-dashboard',
+      'Finanças e Faturas': 'push /finance',
     };
 
     for (final entry in pushes.entries) {
@@ -77,63 +76,25 @@ void main() {
       expect(find.text('Em construção'), findsNothing);
     });
 
-    // Excecao pedida de proposito: este card abre o aviso de "em construcao"
-    // que Otto e Tina usam, sem navegar.
-    const underConstruction = {
-      'Serviços Externos': 'Encontre prestadores de serviços',
-    };
-
-    for (final entry in underConstruction.entries) {
-      testWidgets('"${entry.key}" shows the under-construction notice', (
-        tester,
-      ) async {
-        final env = await pumpScreen(tester, const WelcomeScreen());
-
-        await _tapText(tester, entry.key);
-
-        expect(find.text('Em construção'), findsOneWidget);
-        expect(
-            find.text('Estamos construindo algo incrível!\n'
-                'Em breve este agente estará disponível para te ajudar.'),
-            findsOneWidget);
-        // O titulo e o subtitulo do aviso vem do card (o card continua la).
-        expect(find.text(entry.key), findsNWidgets(2));
-        expect(find.text(entry.value), findsNWidgets(2));
-        // So a rota do proprio aviso (sem nome): nenhuma tela nomeada abre.
-        expect(env.log.events, ['push null']);
-
-        await tester.tap(find.text('Entendido'));
-        await tester.pumpAndSettle();
-
-        expect(find.text('Em construção'), findsNothing);
-        expect(find.text(entry.key), findsOneWidget);
-        expect(env.log.events, ['push null', 'pop null']);
-      });
-    }
-
-    testWidgets('the notice does not leak to the other cards', (tester) async {
-      await pumpScreen(tester, const WelcomeScreen());
-
-      await _tapText(tester, 'Serviços Externos');
-      await tester.tap(find.text('Entendido'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Em construção'), findsNothing);
-      expect(find.text('Despensa'), findsOneWidget);
-    });
-
-    testWidgets('all six cards are still shown', (tester) async {
+    testWidgets('all four cards are still shown', (tester) async {
       await pumpScreen(tester, const WelcomeScreen());
       for (final t in [
         'Calendário',
         'Meu Diário',
-        'Finanças',
-        'Dashboard / Fatura',
+        'Finanças e Faturas',
         'Despensa',
-        'Serviços Externos',
       ]) {
         expect(find.text(t), findsOneWidget, reason: t);
       }
+    });
+
+    testWidgets('the old finance cards and Serviços Externos are gone', (
+      tester,
+    ) async {
+      await pumpScreen(tester, const WelcomeScreen());
+      expect(find.text('Finanças'), findsNothing);
+      expect(find.text('Dashboard / Fatura'), findsNothing);
+      expect(find.text('Serviços Externos'), findsNothing);
     });
   });
 
@@ -152,8 +113,8 @@ void main() {
         ),
         findsNothing,
       );
-      // A seta que resta na tela e a dos seis atalhos, que sao tocaveis.
-      expect(find.byIcon(Icons.chevron_right_rounded), findsNWidgets(6));
+      // A seta que resta na tela e a dos quatro atalhos, que sao tocaveis.
+      expect(find.byIcon(Icons.chevron_right_rounded), findsNWidgets(4));
     });
 
     testWidgets('keeps its texts and stays non-interactive', (tester) async {
